@@ -670,10 +670,49 @@
       <button id="coffeeModalClose" class="shohoj-modal-close-x">×</button>
       <div style="font-size:28px;margin-bottom:6px;">☕</div>
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:#fff;margin-bottom:16px;">Buy me a coffee</div>
-      <div id="panel-rocket">
-        <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:12px;">Scan with Rocket app to support</div>
-        <div style="display:inline-block;background:rgba(139,47,201,0.08);border:2px solid rgba(139,47,201,0.35);border-radius:14px;padding:8px;margin:0 auto;"><img id="qr-img-rocket" src="" style="width:220px;height:220px;border-radius:12px;display:block;margin:0 auto;" /></div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:14px;">Even ৳20 means a lot <span style="color:#8B2FC9;">♥</span></div>
+      <!-- One pill + panel per wallet. --wallet is the brand colour, --wallet-ink the text on it.
+           A QR frame stays hidden until js/qr-data.js carries window._shohoj_<id>_qr. -->
+      <div class="wallet-tabs" role="tablist" aria-label="Mobile wallet">
+        <button type="button" class="wallet-pill" role="tab" id="wallet-tab-bkash" aria-controls="wallet-panel-bkash" aria-selected="true" data-wallet="bkash" style="--wallet:#E2136E;--wallet-ink:#fff;">bKash</button>
+        <button type="button" class="wallet-pill" role="tab" id="wallet-tab-nagad" aria-controls="wallet-panel-nagad" aria-selected="false" data-wallet="nagad" style="--wallet:#EE4023;--wallet-ink:#fff;">Nagad</button>
+        <button type="button" class="wallet-pill" role="tab" id="wallet-tab-rocket" aria-controls="wallet-panel-rocket" aria-selected="false" data-wallet="rocket" style="--wallet:#8B2FC9;--wallet-ink:#fff;">Rocket</button>
+        <button type="button" class="wallet-pill" role="tab" id="wallet-tab-upay" aria-controls="wallet-panel-upay" aria-selected="false" data-wallet="upay" style="--wallet:#FFCC00;--wallet-ink:#0a2a66;">Upay</button>
+      </div>
+      <div class="wallet-panel" role="tabpanel" id="wallet-panel-bkash" aria-labelledby="wallet-tab-bkash" data-wallet="bkash" style="--wallet:#E2136E;--wallet-ink:#fff;">
+        <div class="wallet-hint">Send Money with bKash</div>
+        <div class="wallet-qr" hidden><img alt="bKash QR code" /></div>
+        <div class="wallet-number-row">
+          <span class="wallet-number">+880 17 3297 2046</span>
+          <button type="button" class="wallet-copy" data-copy="01732972046" aria-label="Copy bKash number">Copy</button>
+        </div>
+        <div class="wallet-note">Even ৳20 means a lot <span>♥</span></div>
+      </div>
+      <div class="wallet-panel" role="tabpanel" id="wallet-panel-nagad" aria-labelledby="wallet-tab-nagad" data-wallet="nagad" style="--wallet:#EE4023;--wallet-ink:#fff;" hidden>
+        <div class="wallet-hint">Send Money with Nagad</div>
+        <div class="wallet-qr" hidden><img alt="Nagad QR code" /></div>
+        <div class="wallet-number-row">
+          <span class="wallet-number">+880 17 3297 2046</span>
+          <button type="button" class="wallet-copy" data-copy="01732972046" aria-label="Copy Nagad number">Copy</button>
+        </div>
+        <div class="wallet-note">Even ৳20 means a lot <span>♥</span></div>
+      </div>
+      <div class="wallet-panel" role="tabpanel" id="wallet-panel-rocket" aria-labelledby="wallet-tab-rocket" data-wallet="rocket" style="--wallet:#8B2FC9;--wallet-ink:#fff;" hidden>
+        <div class="wallet-hint">Send Money with Rocket</div>
+        <div class="wallet-qr" hidden><img alt="Rocket QR code" /></div>
+        <div class="wallet-number-row">
+          <span class="wallet-number">+880 17 3297 2046-0</span>
+          <button type="button" class="wallet-copy" data-copy="017329720460" aria-label="Copy Rocket number">Copy</button>
+        </div>
+        <div class="wallet-note">Even ৳20 means a lot <span>♥</span></div>
+      </div>
+      <div class="wallet-panel" role="tabpanel" id="wallet-panel-upay" aria-labelledby="wallet-tab-upay" data-wallet="upay" style="--wallet:#FFCC00;--wallet-ink:#0a2a66;" hidden>
+        <div class="wallet-hint">Send Money with Upay</div>
+        <div class="wallet-qr" hidden><img alt="Upay QR code" /></div>
+        <div class="wallet-number-row">
+          <span class="wallet-number">+880 17 3297 2046</span>
+          <button type="button" class="wallet-copy" data-copy="01732972046" aria-label="Copy Upay number">Copy</button>
+        </div>
+        <div class="wallet-note">Even ৳20 means a lot <span>♥</span></div>
       </div>
     </div>
   </div>
@@ -713,11 +752,67 @@
 
   <script src="js/qr-data.js"></script>
   <script>
+    // ── Coffee modal wallets ──────────────────────────────────────────────────
     (function(){
-      function _setQR(){
-        if(window._shohoj_rocket_qr) document.getElementById("qr-img-rocket").src=window._shohoj_rocket_qr;
+      function _init(){
+        var modal = document.getElementById('coffeeModal');
+        if (!modal) return;
+        var pills  = modal.querySelectorAll('.wallet-pill');
+        var panels = modal.querySelectorAll('.wallet-panel');
+
+        // A wallet shows its QR only once qr-data.js carries one for it.
+        panels.forEach(function(panel){
+          var qr = window['_shohoj_' + panel.dataset.wallet + '_qr'];
+          if (!qr) return;
+          var frame = panel.querySelector('.wallet-qr');
+          frame.querySelector('img').src = qr;
+          frame.hidden = false;
+        });
+
+        function select(id){
+          pills.forEach(function(p){ p.setAttribute('aria-selected', p.dataset.wallet === id ? 'true' : 'false'); });
+          panels.forEach(function(p){ p.hidden = p.dataset.wallet !== id; });
+        }
+        pills.forEach(function(p, i){
+          p.addEventListener('click', function(){ select(p.dataset.wallet); });
+          p.addEventListener('keydown', function(e){
+            var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+            if (!step) return;
+            e.preventDefault();
+            var next = pills[(i + step + pills.length) % pills.length];
+            select(next.dataset.wallet);
+            next.focus();
+          });
+        });
+
+        // Copy the bare digits wallet apps accept, not the spaced display form.
+        function copyText(text){
+          if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+          return new Promise(function(resolve, reject){
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = false;
+            try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+            document.body.removeChild(ta);
+            if (ok) resolve(); else reject(new Error('copy failed'));
+          });
+        }
+        modal.querySelectorAll('.wallet-copy').forEach(function(btn){
+          var timer;
+          btn.addEventListener('click', function(){
+            copyText(btn.dataset.copy).then(function(){ btn.textContent = 'Copied ✓'; },
+                                            function(){ btn.textContent = 'Copy failed'; });
+            clearTimeout(timer);
+            timer = setTimeout(function(){ btn.textContent = 'Copy'; }, 1600);
+          });
+        });
       }
-      if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",_setQR); else _setQR();
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init); else _init();
     })();
   </script>
   <script>
