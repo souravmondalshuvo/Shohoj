@@ -41,7 +41,15 @@ const {
 const { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS, getCourseDept } = await import('../js/core/catalog.js');
 const { DEPARTMENTS } = await import('../js/core/departments.js');
 const { setActiveCampusForEmail } = await import('../js/core/activeCampus.js');
-const { getActiveCatalog, getCatalogFor, loadDiuProgramCourses, setDiuProgramCourses } = await import('../js/core/activeCatalog.js');
+const {
+  catalogEntryFor,
+  courseCodeIn,
+  getActiveCatalog,
+  getCatalogFor,
+  loadDiuProgramCourses,
+  normalizeCatalogCode,
+  setDiuProgramCourses,
+} = await import('../js/core/activeCatalog.js');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const { campuses, errors } = loadCampuses();
@@ -235,7 +243,19 @@ assert.equal(getCatalogFor('diu', 'CSE'), cse, 'expanded once per program');
 assert.equal(cse.courses.CSE212.name, 'Discrete Mathematics');
 assert.match(getCatalogFor('diu', 'RME').courses.CSE212.name, /Object Oriented Programming/);
 // A program whose page lists no courses Shohoj can read offers none.
-assert.deepEqual(getCatalogFor('diu', 'BBA').allCourses, []);
+assert.deepEqual(getCatalogFor('diu', 'LLB').allCourses, []);
+// A code is read however it was typed, and written as the catalogue writes it.
+assert.deepEqual(
+  ['0413 313', '0413313', '0413 - 313', '0321-106l', 'cse-113', 'CSE 113', 'CSE113', 'BPH 111P', 'Strategic Management', '04133', 'CSE11'].map(normalizeCatalogCode),
+  ['0413-313', '0413-313', '0413-313', '0321-106L', 'CSE113', 'CSE113', 'CSE113', 'BPH111P', null, null, null],
+);
+assert.equal(courseCodeIn('Production and Operations Management (0413-313)'), '0413-313');
+assert.equal(courseCodeIn('Programming and Problem Solving (CSE113)'), 'CSE113');
+assert.equal(courseCodeIn('0413 313'), '0413-313');
+assert.equal(courseCodeIn('A course with no code'), null);
+assert.equal(catalogEntryFor('0413313', getCatalogFor('diu', 'BBA')).code, '0413-313');
+// ISCED field codes are catalogue codes like any other.
+assert.equal(getCatalogFor('diu', 'BBA').courses['0413-313'].name, 'Production and Operations Management');
 assert.deepEqual(getCatalogFor('diu', 'NOPE').allCourses, []);
 // Electives are published as slots, so every DIU catalogue is partial and a
 // course it does not hold takes typed credits.
