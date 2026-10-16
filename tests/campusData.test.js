@@ -97,7 +97,12 @@ assert.equal(diuCourse('CSE', 'CSE113').title, 'Programming and Problem Solving'
 assert.equal(diuCourse('CSE', 'CSE212').title, 'Discrete Mathematics');
 assert.match(diuCourse('RME', 'CSE212').title, /Object Oriented Programming/);
 assert.equal(diuCourse('ARCH', 'ARCH102').credits, 5, "Architecture's 0:5 is five credits, not ten contact hours");
-assert.ok(diu.programCourses.note.includes('ISCED'), 'the note says why the BBA family and EEE are not listed');
+// ISCED field codes, as fifteen programs write theirs.
+assert.equal(diuCourse('EEE', '0714-211').title, 'Electronics I');
+assert.equal(diuCourse('BBA', '0413-313').title, 'Production and Operations Management');
+// ITM prints an ISCED code beside its own: its own is the one kept.
+assert.equal(diuCourse('ITM', 'ITM222').credits, 1);
+assert.ok(!diu.programCourses.records.some((r) => r.program === 'ITM' && /^\d/.test(r.code)));
 for (const r of diu.programCourses.records) {
   assert.equal(diu.sources.records.find((s) => s.id === r.source)?.status, 'official', `${r.program} ${r.code} cites DIU's own page`);
 }
