@@ -230,8 +230,10 @@ DIU's site reads every program's detail from its public content API —
 scripts — and that record's `summary` is the program's "Year/Level/Semester/Term-wise
 distribution of courses": HTML tables of codes, titles and credits. 34 undergraduate
 programs have one. `scripts/import_diu_curricula.py` reads them into
-`data/campuses/diu/program-courses.json`; **692 courses in 11 programs** (CSE, SWE,
-CIS, ICE, RME, TE, CE, ESDM, English, Architecture, Pharmacy).
+`data/campuses/diu/program-courses.json`; **1,558 courses in 25 programs**: CSE, SWE,
+CIS, ICE, RME, TE, CE, ESDM, English, Architecture, Pharmacy, and — with ISCED codes,
+below — EEE, ITM, MCT, JMC, GEB, PESS, THM, Real Estate, Entrepreneurship and the five
+BBA programs. MCT's and JMC's lists sum exactly to their official totals (147, 142).
 
 What reading all 34 showed:
 - **Codes are unique only within a department** [official, derived across pages]:
@@ -244,12 +246,17 @@ What reading all 34 showed:
   as Programming and Problem Solving. 47 of the 75 codes in the Fall 2026 CSE routine
   are on CSE's list; the other 28 are electives, which the page publishes only as slots
   (`CSE-***`), and older-curriculum codes.
-- **15 programs use ISCED field codes** (`0413-111`): the BBA family (five), EEE, Real Estate,
-  Entrepreneurship, JMC, NFE, THM, GEB, ITM, MCT, PESS. Not imported — the course code
-  is letters then three digits everywhere from the campus database to the Worker and
-  the Firestore rules (~25 places), and widening it is its own change.
+- **15 programs use ISCED field codes** (`0413-111`: a four-digit field of study, then a
+  course number): the BBA family (five), EEE, Real Estate, Entrepreneurship, JMC, NFE,
+  THM, GEB, ITM, MCT, PESS. Imported as DIU writes them, with one hyphen; a student may
+  type `0413 313` or `0413313` and the calculator finds `0413-313`. ITM prints a field
+  code beside its own `ITM 123`, and its own is kept. These codes are accepted **only in
+  `program-courses.json` and the legacy calculator**: the campus-wide course code — and
+  the Worker's and Firestore rules' checks, ~25 places — stays letters then three digits,
+  which is fine while DIU has no reviews, papers or groups. Turning those on for DIU
+  means widening it there too. NFE lists only 3 courses, so it is still not imported.
 - Not imported, for other reasons: AGS, Fisheries, SWE Data Science (no course table);
-  Law (no credits); Public Health (5 courses); SWE Robotics (1 course: its page
+  Law (no credits); Public Health (5 courses); SWE Robotics (9 of its courses do not read: its page
   describes courses one card at a time, not in a course table); SWE Cyber Security (its page shows the **M.Sc.** curriculum).
 - A 34th program exists that `programs.json` lacks: **B.Sc. in Artificial Intelligence
   and Data Engineering (AIDE)**, 153 credits, no course table yet.
@@ -481,7 +488,7 @@ On the legacy site, as of 2026-10-09:
 | Feature | State | Why |
 |---|---|---|
 | calculator, playground, degree, profile, feedback | ✅ on | Pure rules; the scale is official. The student types each course **and its credits** — with no catalogue the legacy calculator had nowhere to read credits from, so on a campus with none the credits cell is a field (`campusTypesCredits`, `js/ui/render.js`). A named course starts at 3. |
-| course autocomplete | ✅ on | 11 programs (§8): pick the program and its courses fill in title and credits. Fetched as `feeds/diu-courses.json` by DIU students only. Electives, and every course of the other 22 programs, still take typed credits. |
+| course autocomplete | ✅ on | 25 programs (§8), ISCED-coded ones included: pick the program and its courses fill in title and credits. Fetched as `feeds/diu-courses.json` by DIU students only. Electives, and every course of the other 8 programs, still take typed credits. |
 | program picker | ✅ on | 33 programs and totals, generated into `js/core/catalogDiu.generated.js`. A program whose calendar DIU does not state is offered all three seasons. |
 | planner | ❌ | Lists a catalogue's courses and prerequisites; DIU publishes neither (§8). |
 | groups, papers, reviews | ❌ | Each names a course, and the page and the Worker both check it against the campus's catalogue. Needs §8 first; reviews also need §11 and an answer to staff sharing `diu.edu.bd` (§9). |
