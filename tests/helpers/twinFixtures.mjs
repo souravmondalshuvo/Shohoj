@@ -116,6 +116,30 @@ const NORM_LATE = {
 };
 const NORM_NO_SLOTS = { ...NORM_OPEN, sectionId: 204, sectionName: '04', classSlots: [] };
 
+// A section with a lab, raw and normalized: the lab has its own faculty list
+// (or TBA before it is assigned), which is not the theory faculty's.
+const SECTION_WITH_LAB = {
+  ...SECTION,
+  sectionId: 105,
+  courseCode: 'EEE103',
+  faculties: 'MOD',
+  labSchedules: [{ day: 'THURSDAY', startTime: '08:00:00', endTime: '10:50:00' }],
+  labFaculties: 'thmd, IAA',
+  labRoomName: '09B-11L',
+};
+const NORM_LAB = {
+  ...NORM_OPEN,
+  sectionId: 205,
+  facultyInitials: 'TAP',
+  labFacultyInitials: 'TBA',
+  roomName: '08H-22C',
+  classSlots: [
+    { day: 'SUNDAY', startMin: 11 * 60, endMin: 12 * 60 + 20, kind: 'theory', room: '08H-22C' },
+    { day: 'SATURDAY', startMin: 14 * 60, endMin: 16 * 60 + 50, kind: 'lab', room: '09B-11L' },
+  ],
+};
+const NORM_LAB_ASSIGNED = { ...NORM_LAB, sectionId: 206, labFacultyInitials: 'THMD,ARFB' };
+
 /** Two programs and a cross-department catalogue, for the relevance filter (#539). */
 const TWIN_PROGRAMS = {
   CSE: {
@@ -741,6 +765,8 @@ export const FIXTURES = {
     normalizeSection: [
       [SECTION],
       [SECTION_B],
+      [SECTION_WITH_LAB],
+      [{ ...SECTION_WITH_LAB, labFaculties: 'TBA' }],
       [{ sectionId: 9001 }],
       [null],
       [{ courseCode: 'X' }],
@@ -759,6 +785,16 @@ export const FIXTURES = {
       [SECTION, CLASHING],
     ],
     isClashFree: [[[SECTION, SECTION_B]], [[SECTION, CLASHING]]],
+    splitFacultyInitials: [['THMD,ARFB'], [' thmd , TBA, THMD '], ['TBA'], [''], [null]],
+    slotFaculties: [
+      [NORM_LAB, { kind: 'theory' }],
+      [NORM_LAB, { kind: 'lab' }],
+      [NORM_LAB_ASSIGNED, { kind: 'lab' }],
+      [{ ...NORM_LAB, labFacultyInitials: null }, { kind: 'lab' }],
+      [{ ...NORM_LAB, facultyInitials: '' }, { kind: 'lab' }],
+      [{ facultyInitials: 'HKU,TWTI' }, { kind: 'theory' }],
+      [{ facultyInitials: '' }, { kind: 'theory' }],
+    ],
   },
 
   freeRooms: {
@@ -987,7 +1023,12 @@ export const FIXTURES = {
   },
 
   routineGrid: {
-    computeGridLayout: [[[]], [[SECTION]], [[SECTION, SECTION_B, CLASHING]]],
+    computeGridLayout: [
+      [[]],
+      [[SECTION]],
+      [[SECTION, SECTION_B, CLASHING]],
+      [[NORM_OPEN, NORM_LAB, NORM_LAB_ASSIGNED]],
+    ],
   },
 
   routinePlannerImport: {
