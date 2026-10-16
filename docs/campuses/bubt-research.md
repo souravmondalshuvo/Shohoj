@@ -1,7 +1,7 @@
 # BUBT — what Shohoj needs, and what we know
 
 Research for adding **Bangladesh University of Business and Technology** (Rupnagar,
-Mirpur-2, Dhaka-1216) as a campus. Gathered 2026-10-16. The data itself lives in
+Mirpur-2, Dhaka-1216) as a campus. Gathered 2026-10-16 (dates in this file are UTC). The data itself lives in
 [`data/campuses/bubt/`](../../data/campuses/bubt/) (see [Data files](#data-files));
 this file is how it was found, what was left out, and what is still unknown, laid out
 like [`diu-research.md`](diu-research.md) so the two can be compared section by section.
@@ -29,7 +29,7 @@ Primary sources:
 - Class routines — https://bubt.edu.bd/routines, which links 13 programmes to
   `https://annex.bubt.edu.bd/global_file/routine.php?p=<programme>&semNo=068,502,614,902`
   (public HTML, no login) and the rest to PDFs; querying that endpoint for programme ids
-  001–040 (2026-10-17) found 16 (§12, §18)
+  001–040 (2026-10-16) found 16 (§12, §18)
 - Notices — 1,514 notices (2015-06-27 → 2026-10-15) embedded in https://bubt.edu.bd/notice
 - *Course Offer – Fall 2026 – CSE [Day]* — https://bubt.edu.bd/storage/notices/iM4YVPW8Eq4Qz8uZ58wCQW20c6dvOfDpGIlHUy6z.pdf
 - Credit-limit and student-email notices (2021) —
@@ -349,7 +349,7 @@ HTML timetable per intake-section: programme, intake, semester, a day × slot gr
 cells read `CSE 101 / FC: ZAK / R: 2316`, and a legend (code, title, faculty code,
 faculty name) [official].
 
-Parsed for Fall 2026 on 2026-10-17 [derived]:
+Parsed for Fall 2026 on 2026-10-16 [derived]:
 
 | | |
 |---|---|
@@ -542,7 +542,7 @@ Not loaded, because the schema can't hold them yet:
    is ~60 lines over the annex HTML (scratch, not in the repo).
 5. Ask BUBT the §16 questions, starting with 1, 2, 5 and 9.
 
-## 18. What annex.bubt.edu.bd exposes (scanned 2026-10-17)
+## 18. What annex.bubt.edu.bd exposes (scanned 2026-10-16)
 
 Only links BUBT's own pages expose were followed, plus the routine endpoint's own
 parameters. No form was submitted, no sign-in attempted, no path guessed.
