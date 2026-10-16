@@ -1082,21 +1082,36 @@ async function runFreeRooms(input, ctx) {
 const BRIEF_TOOLS = ['get_degree_progress', 'get_minor_progress'];
 
 /**
- * Run the record's executors for this turn. Resolves to their outputs keyed by
- * tool name, or null when the record cannot be read — the turn then goes ahead
- * on the plain prompt and the tools, which is how every turn worked before.
+ * How long a turn waits for its record before going ahead without it. The read
+ * usually lands during admission, so this only bites when Firestore is slow —
+ * and then a seat, room or routine question, which never needed the record,
+ * must not stall behind it. Long enough for a normal cold read; short against
+ * a model call.
  */
-export async function loadStudentBrief(ctx) {
+export const BRIEF_TIMEOUT_MS = 1500;
+
+/**
+ * Run the record's executors for this turn. Resolves to their outputs keyed by
+ * tool name, or null when the record cannot be read in time — the turn then
+ * goes ahead on the plain prompt and the tools, which is how every turn worked
+ * before. A read still in flight is not abandoned: the route memoizes it, so a
+ * tool that needs it later in the turn picks up the same request.
+ */
+export async function loadStudentBrief(ctx, { timeoutMs = BRIEF_TIMEOUT_MS } = {}) {
   if (typeof ctx?.loadUserSnapshot !== 'function') return null;
+  let timer;
+  const timedOut = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  // Both start from the same snapshot, which the route reads once per turn.
+  const brief = Promise.all([runDegreeProgress({}, ctx), runMinorProgress({}, ctx)]).then(
+    ([degree, minor]) => ({ get_degree_progress: degree, get_minor_progress: minor }),
+    () => null,
+  );
   try {
-    // Both start from the same snapshot, which the route reads once per turn.
-    const [degree, minor] = await Promise.all([
-      runDegreeProgress({}, ctx),
-      runMinorProgress({}, ctx),
-    ]);
-    return { get_degree_progress: degree, get_minor_progress: minor };
-  } catch {
-    return null;
+    return await Promise.race([brief, timedOut]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
