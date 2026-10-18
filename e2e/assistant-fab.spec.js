@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
+import { expectStreamFailure, expectStreamedTurn, installControlledStream } from '../e2e-support/assistantStream.js';
 
 // Browser coverage for the Shohoj Assistant launcher on the legacy page (#533):
 // the three-condition gate, one chat turn end to end, tab-aware starter
@@ -183,7 +184,11 @@ test('asking a question posts the transcript and renders the reply', async ({ pa
   await expect(page.locator('.assistant-bubble--user')).toHaveText('what is my cgpa?');
   expect(turns).toHaveLength(1);
   expect(turns[0].auth).toBe('Bearer id-token');
-  expect(turns[0].body).toEqual({ messages: [{ role: 'user', content: 'what is my cgpa?' }] });
+  // The panel asks for a streamed answer (#924); a JSON reply is handled as before.
+  expect(turns[0].body).toEqual({
+    messages: [{ role: 'user', content: 'what is my cgpa?' }],
+    stream: true,
+  });
   // Pending local edits are pushed first, or the Worker reads stale Firestore data.
   expect(await page.evaluate(() => window.__flushes)).toBe(1);
 
@@ -224,6 +229,7 @@ test('a chat does not survive a sign-out into the next student session', async (
   await expect(page.locator('.assistant-bubble--reply')).toHaveCount(1);
   expect(turns[turns.length - 1].body).toEqual({
     messages: [{ role: 'user', content: 'what about me?' }],
+    stream: true,
   });
 });
 
@@ -263,6 +269,28 @@ test('the pending state animates, and still announces itself to screen readers',
   release();
   await expect(page.locator('.assistant-bubble--reply')).toContainText('3.42');
   expect(turns).toHaveLength(1);
+});
+
+// #924: the answer is shown as it is written. Twin of the shell's check in
+// e2e-shell/assistant-drawer.spec.js — one helper holds both panels to it.
+const askCgpa = page => async () => {
+  await page.locator('.assistant-input').fill('what is my cgpa?');
+  await page.locator('.assistant-send').click();
+};
+
+test('a streamed answer grows in place, and the final reply is what is kept', async ({ page }) => {
+  await installControlledStream(page, WORKER);
+  await boot(page);
+  await fab(page).click();
+  await expectStreamedTurn(page, askCgpa(page));
+});
+
+test('a stream that fails mid-answer keeps no half answer', async ({ page }) => {
+  await installControlledStream(page, WORKER);
+  await boot(page);
+  await fab(page).click();
+  await expectStreamFailure(page, askCgpa(page));
+  await expect(page.locator('.assistant-bubble--user')).toHaveText('what is my cgpa?');
 });
 
 test('a failed turn shows an error and keeps the question in the log', async ({ page }) => {
