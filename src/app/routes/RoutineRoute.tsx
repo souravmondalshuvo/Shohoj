@@ -21,6 +21,7 @@ import {
   hasExamClash,
   indexByCourse,
   parseFeed,
+  slotFaculties,
   type NormalizedSection,
   type SectionIndex,
   type WeekdayName,
@@ -267,6 +268,26 @@ function FacultyBadge({
       data-testid="routine-faculty-badge"
     >
       ★ {score}
+    </span>
+  );
+}
+
+/** Who teaches a section's lab, or null when it has none — legacy's
+    _labFaculties. The lab's own list, often two people and not always the
+    theory faculty, or "TAP, TBA" until it is assigned (slotFaculties). */
+function labFaculties(section: NormalizedSection): string[] | null {
+  const hasLab = section.classSlots.some((slot) => slot.kind === 'lab');
+  return hasLab ? slotFaculties(section, { kind: 'lab' }) : null;
+}
+
+/** Legacy's quieter "LAB …" line under the theory faculty
+    (_sectionLabFacultyHTML): names only, with style.css's own classes. */
+function LabFacultyLine({ section }: { section: NormalizedSection }) {
+  const lab = labFaculties(section);
+  if (!lab) return null;
+  return (
+    <span className="routine-section-labfac" data-testid="routine-section-labfac">
+      <span className="routine-lab-tag">Lab</span> {lab.join(', ')}
     </span>
   );
 }
@@ -1425,6 +1446,7 @@ export function Component() {
                                 {` · ${section.consumedSeat}/${section.capacity} seats`}
                                 {` · ${seatsLeft(section)} left`}
                               </span>
+                              <LabFacultyLine section={section} />
                               <span className="routine-section-slots">{slotSummary(section)}</span>
                               {hasClash && (
                                 <span className="routine-section-clash-badge">
