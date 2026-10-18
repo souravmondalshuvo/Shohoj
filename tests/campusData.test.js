@@ -110,6 +110,22 @@ const friday = diu.bus.records.find((r) => r.route.startsWith('Friday Schedule :
 assert.deepEqual(friday.departCampus, ['14:20', '18:30'], 'the 12-hour Friday times are read as afternoon');
 assert.match(friday.note, /Printed as 02:20, 06:30/);
 
+// BUBT: sections belong to a program, and a code means what its program says.
+const bubt = real.campuses.find((c) => c.id === 'bubt');
+assert.equal(bubt.courses, undefined, 'no campus-wide course table for BUBT');
+const bubtCourse = (program, code) => bubt.programCourses.records.find((r) => r.program === program && r.code === code);
+assert.equal(bubtCourse('ENG', 'GED1105').title, 'History of the Emergence of Bangladesh');
+assert.equal(bubtCourse('LLB', 'GED1105').title, 'Government and Politics', 'one code, two programs, two courses');
+assert.equal(bubtCourse('CSE', 'CSE100').credits, 0.75, 'quarter credits load');
+assert.equal(bubtCourse('BBA', 'ENG1101').credits, null, 'a routine gives a title, not credits');
+assert.equal(bubtCourse('CSE', 'CSE490').credits, 0, 'a 0-credit course loads with its note');
+const bubtSections = Object.values(bubt.sections).flatMap((f) => f.records);
+assert.equal(bubtSections.length, 1324);
+assert.ok(bubtSections.every((s) => s.program && s.capacity === null && s.meetings.length > 0));
+assert.ok(bubt.sections['263-bisemester'].records.every((s) => s.program === 'LLB' || s.program === 'LLM'), 'Law runs bi-semester');
+assert.ok(bubtSections.some((s) => s.program === 'BBA' && s.section === '59-1') && bubtSections.some((s) => s.program === 'CSE' && s.section === '59-1'),
+  'every program has its own intake-section 59-1');
+
 // ── Each rule catches the mistake it is for ─────────────────────────────────
 
 function withBrokenCopy(mutate, campus = 'nsu') {
@@ -292,6 +308,46 @@ expectError('a bus without dates or fares and no note', (dir) => editJson(path.j
 expectError('a bus route off on an unknown day', (dir) => editJson(path.join(dir, 'bus.json'), (d) => {
   d.records[0].daysOff = 'X';
 }), /bad daysOff string "X"/, 'diu');
+
+// Program-scoped sections (BUBT).
+const bubtTrimester = (dir) => path.join(dir, 'sections', '263-trimester.json');
+
+expectError('a section in an unknown program', (dir) => editJson(bubtTrimester(dir), (d) => {
+  d.records[0].program = 'NOPE';
+}), /unknown program NOPE/, 'bubt');
+
+expectError('a section of a program on another calendar', (dir) => editJson(bubtTrimester(dir), (d) => {
+  d.records[0].program = 'LLB';
+}), /LLB runs on bisemester, not trimester/, 'bubt');
+
+expectError("a section whose course is not in its program's list", (dir) => editJson(bubtTrimester(dir), (d) => {
+  d.records[0].course = 'CSE999';
+}), /course is not in [A-Z-]+'s program-courses list/, 'bubt');
+
+expectError('a section listed twice in one program', (dir) => editJson(bubtTrimester(dir), (d) => {
+  d.records.push({ ...d.records[0] });
+}), /duplicate section/, 'bubt');
+
+expectError('a four-digit code outside a program-scoped section', (dir) => editJson(bubtTrimester(dir), (d) => {
+  delete d.records.find((s) => /\d{4}$/.test(s.course)).program;
+}), /only a program-scoped section may use this code shape/, 'bubt');
+
+// "No capacity published" is allowed only when the file says so, and why.
+expectError('unpublished capacity with no note', (dir) => editJson(bubtTrimester(dir), (d) => {
+  delete d.note;
+}), /capacity is unpublished with no note/, 'bubt');
+
+expectError('sections with no capacity and no flag', (dir) => editJson(bubtTrimester(dir), (d) => {
+  delete d.capacityPublished;
+}), /has neither a capacity nor a seat count/, 'bubt');
+
+expectError("program credits off the quarter grid", (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  d.records.find((r) => r.credits === 0.75).credits = 0.3;
+}), /multiple of 0\.25/, 'bubt');
+
+expectError('a 0-credit course with no note', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  delete d.records.find((r) => r.credits === 0).note;
+}), /a 0-credit course needs a note/, 'bubt');
 
 // A prerequisite that names a course we have no record of is incomplete data,
 // not wrong data: a warning, never an error.
