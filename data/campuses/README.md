@@ -165,9 +165,12 @@ npm run check:campus-data
 This writes `sections/<term>-trimester.json` and `<term>-bisemester.json` (Law),
 adds any course the routines' legends name that `program-courses.json` lacks
 (legend title, credits `null`; existing records are left as they are), and
-registers the source. A programme label it does not know, pages from two terms,
-or a course with two teachers in one section stops it; add a new programme to
-`PROGRAMME_LABELS` in the script. Re-importing a term replaces its files, and
+registers the source. Nothing is written if any check fails: a saved file with
+no routine in it (name the file, save it again), a programme the newest term
+already held has but the pages lack (save it too, or pass
+`--allow-missing CODE,…` if it really has no routine this term), a programme
+label it does not know (add it to `PROGRAMME_LABELS` in the script), pages from
+two terms, or a course with two teachers in one section. Re-importing a term replaces its files, and
 records come out identical when the routines have not changed.
 
 ## Validating
