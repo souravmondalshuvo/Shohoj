@@ -483,7 +483,21 @@ export async function readGeminiStream(res, onText) {
         break;
       case 'step.start': {
         const step = { ...(event.step || {}) };
-        if (step.type !== 'function_call') step.content = [];
+        if (step.type !== 'function_call' && step.type !== 'thought') {
+          // An output step may open with its first words already inside it —
+          // the API's own example starts one with content [{type:"text", …}].
+          // They are part of the answer: kept, and written like any delta.
+          const opening = Array.isArray(step.content) ? step.content : [];
+          step.content = [];
+          for (const part of opening) {
+            if (part?.type === 'text' && typeof part.text === 'string') {
+              appendStepText(step, part.text);
+              if (part.text) onText(part.text);
+            } else if (part) {
+              step.content.push(part);
+            }
+          }
+        }
         body.steps[event.index] = step;
         break;
       }
