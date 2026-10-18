@@ -78,9 +78,85 @@ export async function fetchAssistantAvailability(options) {
   return configured ? 'ready' : 'unconfigured';
 }
 
-/** POST one chat turn to the Worker; maps transport/HTTP failures to typed codes. */
+/**
+ * Read a streamed turn (#924): server-sent events from the Worker, as
+ *   delta {text}  reset {}  done {reply, quota}  error {error}
+ *
+ * `onPartialReply` is handed the WHOLE answer so far on every change — never a
+ * fragment to append — so a panel can simply re-render it, and a reset is just
+ * the empty string. What the turn resolves to is `done`'s reply, not this
+ * reassembly: a lost or repeated fragment can cost a flicker, never a wrong
+ * answer kept in the chat.
+ */
+async function readAssistantStream(res, onPartialReply) {
+  let partial = '';
+  let outcome = null;
+  const handle = (event, data) => {
+    if (event === 'delta' && typeof data?.text === 'string') {
+      partial += data.text;
+      onPartialReply(partial);
+    } else if (event === 'reset') {
+      partial = '';
+      onPartialReply('');
+    } else if (event === 'done') {
+      outcome = data && typeof data.reply === 'string' && data.reply.trim() ? data : null;
+      if (!outcome) outcome = { failed: true };
+    } else if (event === 'error') {
+      outcome = { failed: true };
+    }
+  };
+  const readFrame = frame => {
+    let event = 'message';
+    const data = [];
+    for (const line of frame.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''));
+    }
+    if (data.length === 0) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(data.join('\n'));
+    } catch (_e) {
+      return;
+    }
+    handle(event, parsed);
+  };
+
+  try {
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = '';
+    while (!outcome) {
+      const { value, done } = await reader.read();
+      if (value) buffer = (buffer + value).replace(/\r\n/g, '\n');
+      let cut;
+      while (!outcome && (cut = buffer.indexOf('\n\n')) !== -1) {
+        readFrame(buffer.slice(0, cut));
+        buffer = buffer.slice(cut + 2);
+      }
+      if (done) {
+        if (!outcome && buffer.trim()) readFrame(buffer);
+        break;
+      }
+    }
+    if (outcome) reader.cancel().catch(() => {});
+  } catch (_e) {
+    // A dropped connection mid-answer: whatever was shown is not an answer.
+  }
+  if (!outcome || outcome.failed) return null;
+  return outcome;
+}
+
+/**
+ * POST one chat turn to the Worker; maps transport/HTTP failures to typed codes.
+ *
+ * Pass `onPartialReply` to have the answer streamed (#924): it is called with
+ * the answer so far as the model writes it, and with '' when that text is to
+ * be dropped. A Worker that does not stream simply answers with JSON, which is
+ * handled exactly as before — so the option is safe against any deployment.
+ */
 export async function sendAssistantTurn(transcript, options) {
-  const { workerUrl, getToken, fetchImpl = fetch, routine } = options || {};
+  const { workerUrl, getToken, fetchImpl = fetch, routine, onPartialReply } = options || {};
+  const streaming = typeof onPartialReply === 'function';
   if (!workerUrl) {
     return {
       ok: false,
@@ -116,12 +192,22 @@ export async function sendAssistantTurn(transcript, options) {
       // only in this browser — the cloud snapshot the Worker reads carries
       // semesters, never the Routine Builder's selections. So they travel with
       // the turn (#543). Omitted entirely when nothing is picked.
-      body: JSON.stringify(routine ? { messages, routine } : { messages }),
+      body: JSON.stringify({
+        messages,
+        ...(routine ? { routine } : {}),
+        ...(streaming ? { stream: true } : {}),
+      }),
     });
   } catch (_e) {
     return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
   }
 
+  if (res.ok && streaming && (res.headers.get('content-type') || '').startsWith('text/event-stream')) {
+    const outcome = await readAssistantStream(res, onPartialReply);
+    if (outcome) return { ok: true, reply: outcome.reply, quota: outcome.quota ?? null };
+    onPartialReply('');
+    return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
+  }
   if (res.ok) {
     const body = await res.json().catch(() => null);
     if (body && typeof body.reply === 'string' && body.reply.trim()) {
