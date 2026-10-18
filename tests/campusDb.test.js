@@ -144,6 +144,31 @@ try {
   const fridayBus = all(`SELECT t.time FROM bus_times t JOIN bus_routes r ON r.campus=t.campus AND r.route=t.route
                          WHERE t.campus='diu' AND r.service='friday' AND t.direction='depart' AND t.time < '07:00'`);
   assert.equal(fridayBus.length, 0, 'no Friday bus leaves campus before dawn');
+
+  // BUBT: sections belong to a program, so the same course and intake-section
+  // in two programs are two rows, and every meeting keeps its program.
+  const bubt = campuses.find((c) => c.id === 'bubt');
+  for (const [key, file] of Object.entries(bubt.sections)) {
+    const [term, system] = key.split('-');
+    const where = `campus='bubt' AND term='${term}' AND term_system='${system}'`;
+    assert.equal(one(`SELECT COUNT(*) AS n FROM sections WHERE ${where}`).n, file.records.length, `bubt ${key}`);
+    const expected = file.records.reduce((n, s) => n + s.meetings.length, 0);
+    assert.equal(one(`SELECT COUNT(*) AS n FROM meetings WHERE ${where}`).n, expected, `bubt ${key} meetings`);
+  }
+  assert.equal(one("SELECT COUNT(*) AS n FROM meetings WHERE campus='bubt' AND program=''").n, 0, 'no BUBT meeting loses its program');
+  assert.ok(one("SELECT COUNT(DISTINCT program) AS n FROM sections WHERE campus='bubt' AND section='59-1'").n > 1);
+  // The free-room question the data exists for: no room is ever booked twice.
+  const doubleBooked = one(`SELECT COUNT(*) AS n FROM meetings a JOIN meetings b
+                              ON b.campus=a.campus AND b.term=a.term AND b.room=a.room AND b.day=a.day
+                             AND b.rowid > a.rowid AND a.start < b."end" AND b.start < a."end"
+                           WHERE a.campus='bubt'`);
+  assert.equal(doubleBooked.n, 0);
+  assert.deepEqual(
+    all("SELECT program, title FROM program_courses WHERE campus='bubt' AND code='GED1105' ORDER BY program"),
+    [{ program: 'ENG', title: 'History of the Emergence of Bangladesh' }, { program: 'LLB', title: 'Government and Politics' }],
+  );
+  const credited = one("SELECT COUNT(*) AS n, COUNT(credits) AS credited FROM program_courses WHERE campus='bubt'");
+  assert.ok(credited.credited > 0 && credited.credited < credited.n, 'unpublished credits stay NULL');
   db.close();
 
   // Deterministic: an unchanged source rebuilds the identical D1 dump.
