@@ -349,6 +349,35 @@ function listInputs(inputs) {
   );
 }
 
+/**
+ * Saved files that hold no routine: a bot-check page, an error page, the wrong
+ * page. One of these among good pages would otherwise drop its programme from
+ * the term without a word. `pages` is `[{ file, blocks }]`.
+ */
+export function filesWithoutRoutine(pages) {
+  return pages.filter((p) => p.blocks.length === 0).map((p) => p.file);
+}
+
+/**
+ * Programmes the newest term already held has, that this import lacks.
+ *
+ * `existing` is the sections files already in data/campuses/bubt/sections/
+ * (`[{ term, records }]`); `imported` the program codes the saved pages cover.
+ * A page forgotten when saving a term must not delete that programme's
+ * sections, so the import stops unless the gap is acknowledged.
+ */
+export function missingProgrammes(existing, imported) {
+  if (existing.length === 0) return [];
+  const newest = Math.max(...existing.map((f) => Number(f.term)));
+  const held = new Set(
+    existing
+      .filter((f) => Number(f.term) === newest)
+      .flatMap((f) => f.records.map((r) => r.program).filter(Boolean)),
+  );
+  const now = new Set(imported);
+  return [...held].filter((p) => !now.has(p)).sort();
+}
+
 function main(argv) {
   const args = { campus: 'bubt' };
   const inputs = [];
@@ -359,15 +388,27 @@ function main(argv) {
   }
   if (!args.source || !/^\d{4}-\d{2}-\d{2}$/.test(args.retrieved ?? '') || inputs.length === 0) {
     console.error(
-      'usage: import_bubt_routine.mjs --source <id> --retrieved YYYY-MM-DD <saved-page.html | folder> [...]',
+      'usage: import_bubt_routine.mjs --source <id> --retrieved YYYY-MM-DD [--allow-missing CODE,…] <saved-page.html | folder> [...]',
     );
     process.exit(2);
   }
 
+  // Everything below is checked before anything is written.
   const files = listInputs(inputs);
-  const blocks = files.flatMap((f) => parseRoutinePage(fs.readFileSync(f, 'utf8')));
+  const pages = files.map((file) => ({
+    file,
+    blocks: parseRoutinePage(fs.readFileSync(file, 'utf8')),
+  }));
+  const blocks = pages.flatMap((p) => p.blocks);
   if (blocks.length === 0) {
     throw new Error('no routine found in the saved pages (a bot-check page saved by mistake?)');
+  }
+  const empty = filesWithoutRoutine(pages);
+  if (empty.length > 0) {
+    throw new Error(
+      `no routine in ${empty.map((f) => path.basename(f)).join(', ')} (a bot-check page saved by mistake?). ` +
+        'Save it again, or leave it out if that programme has no routine this term.',
+    );
   }
 
   const dir = path.join(CAMPUS_DATA_DIR, args.campus);
@@ -375,6 +416,27 @@ function main(argv) {
   const systemOf = new Map(programs.records.map((p) => [p.code, p.termSystem]));
   const built = buildRecords(blocks, (program) => systemOf.get(program));
   const programmes = [...new Set(blocks.map((b) => PROGRAMME_LABELS[b.programme]))].sort();
+
+  const sectionsDir = path.join(dir, 'sections');
+  const existing = fs.existsSync(sectionsDir)
+    ? fs
+        .readdirSync(sectionsDir)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => JSON.parse(fs.readFileSync(path.join(sectionsDir, f), 'utf8')))
+    : [];
+  const allowed = new Set(
+    String(args['allow-missing'] ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  const missing = missingProgrammes(existing, programmes).filter((p) => !allowed.has(p));
+  if (missing.length > 0) {
+    throw new Error(
+      `the newest term held has ${missing.join(', ')}, which these pages lack. Save their routines too, ` +
+        `or pass --allow-missing ${missing.join(',')} if they really have none this term.`,
+    );
+  }
 
   const sourcesPath = path.join(dir, 'sources.json');
   const sources = readLayout(sourcesPath);
