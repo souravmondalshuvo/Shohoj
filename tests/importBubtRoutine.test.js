@@ -15,8 +15,10 @@ import path from 'node:path';
 import { CAMPUS_DATA_DIR } from '../scripts/campus_data.mjs';
 import {
   buildRecords,
+  filesWithoutRoutine,
   formatRecordsFile,
   mergeProgramCourses,
+  missingProgrammes,
   normaliseCode,
   normaliseSection,
   parseRoutinePage,
@@ -156,6 +158,28 @@ assert.throws(
 );
 // A bot-check page saved by mistake holds no routine at all.
 assert.deepEqual(parseRoutinePage('<title>One moment, please...</title>'), []);
+
+// One bad file among good ones is named, not silently dropped with its programme.
+assert.deepEqual(
+  filesWithoutRoutine([
+    { file: 'cse.html', blocks: parseRoutinePage(CSE) },
+    { file: 'llb.html', blocks: parseRoutinePage('<title>One moment, please...</title>') },
+  ]),
+  ['llb.html'],
+);
+
+// A programme the newest held term has, but the saved pages lack, is caught;
+// older terms do not count, and a complete set passes.
+{
+  const held = [
+    { term: '262', records: [{ program: 'DSE' }] },
+    { term: '263', records: [{ program: 'CSE' }, { program: 'BBA' }] },
+    { term: '263', records: [{ program: 'LLB' }] },
+  ];
+  assert.deepEqual(missingProgrammes(held, ['CSE', 'BBA']), ['LLB'], 'the Law file of the same term counts too');
+  assert.deepEqual(missingProgrammes(held, ['BBA', 'CSE', 'LLB']), [], 'DSE was only in an older term');
+  assert.deepEqual(missingProgrammes([], ['CSE']), [], 'the first term imported has nothing to compare with');
+}
 
 // ── Layout: rewriting the committed files reflows nothing ───────────────────
 
