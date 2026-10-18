@@ -295,6 +295,24 @@ test('streaming: the answer so far is handed over whole, then the final reply wi
   assert.deepEqual(result, { ok: true, reply: 'Your CGPA is 3.50.', quota });
 });
 
+// Firefox 88–104 and Safari 14.0 have no TextDecoderStream (Codex review on
+// #926). The reader must not need it.
+test('streaming: works where TextDecoderStream does not exist', async () => {
+  const original = globalThis.TextDecoderStream;
+  globalThis.TextDecoderStream = undefined;
+  try {
+    const seen = [];
+    const result = await streamTurn(
+      sseResponse([['delta', { text: 'ধন্যবাদ' }], ['done', { reply: 'ধন্যবাদ', quota: null }]], { chunkSize: 1 }),
+      seen,
+    );
+    assert.deepEqual(result, { ok: true, reply: 'ধন্যবাদ', quota: null });
+    assert.deepEqual([...seen], ['ধন্যবাদ'], 'one-byte chunks reassembled into whole characters');
+  } finally {
+    globalThis.TextDecoderStream = original;
+  }
+});
+
 test('streaming: a reset hands over the empty string', async () => {
   const seen = [];
   await streamTurn(
