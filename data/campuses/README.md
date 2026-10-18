@@ -139,6 +139,37 @@ this way has `capacity: null` and a `seatsAvailable` snapshot — never live.
 A TBA time becomes an unscheduled section (days, start, end and room null).
 `sections/263-trimester.json` came from RDS4+'s copy (source `rds4plus-263`).
 
+## Importing a BUBT term
+
+BUBT serves routines only for the running term, so each term must be saved
+while it runs or it is gone. Since October 2026 the routine pages sit behind a
+bot check, so Shohoj never fetches them; a person saves them from their own
+browser, once a term (more often if BUBT revises the routines):
+
+1. Open each programme's routine. The *View* links on
+   https://bubt.edu.bd/routines cover 13 programmes; three more (LL.M,
+   Textile DH, Civil DH) are linked from nowhere, so open them by URL with the
+   same `semNo` the other links use:
+   `https://annex.bubt.edu.bd/global_file/routine.php?p=014&semNo=<…>`, then
+   `p=024` and `p=028`.
+2. Save each page (*Save Page As…*, HTML only) into one folder. Check one opens
+   as a timetable: a saved "One moment, please…" page holds nothing, and the
+   import refuses a folder with no routine in it.
+3. Import, naming the source and the day the pages were saved:
+
+```bash
+node scripts/import_bubt_routine.mjs --source bubt-routine-271 --retrieved 2027-01-20 <folder>
+npm run check:campus-data
+```
+
+This writes `sections/<term>-trimester.json` and `<term>-bisemester.json` (Law),
+adds any course the routines' legends name that `program-courses.json` lacks
+(legend title, credits `null`; existing records are left as they are), and
+registers the source. A programme label it does not know, pages from two terms,
+or a course with two teachers in one section stops it; add a new programme to
+`PROGRAMME_LABELS` in the script. Re-importing a term replaces its files, and
+records come out identical when the routines have not changed.
+
 ## Validating
 
 ```bash
