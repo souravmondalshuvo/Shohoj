@@ -123,11 +123,18 @@ async function readAssistantStream(res, onPartialReply) {
   };
 
   try {
-    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    // Bytes in, decoded here with TextDecoder's streaming mode rather than
+    // TextDecoderStream: the README promises Firefox 88+ and Safari 14+, and
+    // TextDecoderStream only arrived in Firefox 105 and Safari 14.1. `stream:
+    // true` holds back a multi-byte character split across two chunks.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
     let buffer = '';
     while (!outcome) {
       const { value, done } = await reader.read();
-      if (value) buffer = (buffer + value).replace(/\r\n/g, '\n');
+      const text = value ? decoder.decode(value, { stream: true }) : '';
+      const tail = done ? decoder.decode() : '';
+      if (text || tail) buffer = (buffer + text + tail).replace(/\r\n/g, '\n');
       let cut;
       while (!outcome && (cut = buffer.indexOf('\n\n')) !== -1) {
         readFrame(buffer.slice(0, cut));
