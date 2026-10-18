@@ -8,6 +8,11 @@
 // and only the client-shaped transcript (no uid — the Worker derives it).
 
 import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
+import {
+  expectStreamFailure,
+  expectStreamedTurn,
+  installControlledStream,
+} from '../e2e-support/assistantStream.js';
 
 const VALID_GLOBALS = {
   _shohoj_firebase_config: {
@@ -182,8 +187,10 @@ test('signed in: example prompt round-trips through the endpoint with the bearer
 
   expect(requests).toHaveLength(1);
   expect(requests[0].auth).toBe('Bearer e2e-id-token');
+  // The panel asks for a streamed answer (#924); a JSON reply is handled as before.
   expect(requests[0].body).toEqual({
     messages: [{ role: 'user', content: 'What GPA do I need to reach a 3.5 CGPA?' }],
+    stream: true,
   });
 
   // Reopening restores the conversation from the device.
@@ -212,6 +219,32 @@ test('signed in: example prompt round-trips through the endpoint with the bearer
   // visible delete is a record the student cannot get rid of (#543).
   await page.getByRole('button', { name: 'Clear chat history' }).click();
   await expect(page.locator('.assistant-bubble')).toHaveCount(0);
+});
+
+// #924: the answer is shown as it is written. Twin of the legacy check in
+// e2e/assistant-fab.spec.js — one helper holds both panels to it.
+const openDrawer = async (page) => {
+  await signedIn(page);
+  await readyReports(page, true);
+  await installControlledStream(page, VALID_GLOBALS._shohoj_papers_worker_url);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const fab = page.getByRole('button', { name: 'Open Shohoj Assistant' });
+  await expect(fab).toBeVisible({ timeout: 15_000 });
+  await fab.click();
+  const drawer = page.getByRole('dialog', { name: 'Shohoj Assistant' });
+  return async () => {
+    await drawer.getByRole('textbox', { name: 'Message the assistant' }).fill('what is my cgpa?');
+    await drawer.getByRole('button', { name: 'Send' }).click();
+  };
+};
+
+test('signed in: a streamed answer grows in place, and the final reply is what is kept', async ({ page }) => {
+  await expectStreamedTurn(page, await openDrawer(page));
+});
+
+test('signed in: a stream that fails mid-answer keeps no half answer', async ({ page }) => {
+  await expectStreamFailure(page, await openDrawer(page));
+  await expect(page.locator('.assistant-bubble--user')).toHaveText('what is my cgpa?');
 });
 
 test('signed in: a failing endpoint surfaces the unavailable error state', async ({ page }) => {
