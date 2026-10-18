@@ -281,17 +281,21 @@ Graduate: MBA 66, LL.M 41, M.Sc. CSE 40, M.Sc. Economics 40, MA in ELT 40 [offic
   - **3-digit:** CSE, CSE (DH), EEE, EEE (DH), Textile, DSE (e.g. `CSE 101`).
   - **4-digit:** BBA, English, LL.B, Economics, Civil, MA ELT, M.Sc Econ (e.g.
     `ENG 1101`, `GED 1105`).
-  - Oddities to normalise, not guess: `Law 101` and `ICTs 3102` (mixed case),
-    `CSE 498B` (letter suffix).
+  - Oddities to normalise, not guess: LL.B's `Law 624`, `Law 640`, `Law 646` and
+    `ICTs 3105` (mixed case; uppercased, with a note), and `CSE 498B` (letter suffix).
 - ⚠ **The same code means different courses in different programmes** [derived,
-  routine legends]. `CSE 209` is *Operating Systems* (CSE) and *Data Communication*
-  (DH); `EEE 301` is *Modern Control System* and *Fundamentals of Electrical
-  Engineering*; `ENG 103`/`ENG 104` are *Speaking & Listening* / *Communication Lab* in
-  one programme and *Introduction to Poetry* / *Prose* in English. **The catalogue must
-  be keyed by (programme, code)**, which the current `courses.json` shape does not do.
+  routine legends, each programme's majority title]. `GED 1105` is *History of the
+  Emergence of Bangladesh* in English and *Government and Politics* in LL.B; `EEE 301`
+  is *Fundamentals of Electrical Engineering and Electronics* in Textile and *Modern
+  Control System* in EEE-DH; `ICT 3102`, `MAT 102`, `PHY 101` and `ENG 103`/`ENG 104`
+  differ the same way. **The catalogue must be keyed by (programme, code)**, which the
+  current `courses.json` shape does not do; `program-courses.json` is.
 - **Course titles are inconsistent** even within one code (`Data Structure` vs
-  `Data Structures`, `Furrier`, `Liner Algbras`) — 33 codes carry 2–4 titles. Pick per
-  programme and keep variants as aliases.
+  `Data Structures`, `Furrier`, `Liner Algbras`): 31 codes carry different titles in
+  different programmes, most of them spelling. Within one programme, three titles are
+  one-off legend slips, all in CSE intake 51's sections 24 and 25 (`CSE 209` printed
+  *Data Communication*, which is *Operating Systems* in every other CSE and CSE-DH
+  section). Pick each programme's majority title.
 - **Best catalogue source today:** per-department **course offers** (CSE Day + Evening
   for Fall 2026 found; BBA, MBA, EMBA offers appear in older notices) — each gives
   code, title and **credits** per intake [official]. CSE Day Fall 2026 alone gives ~75
@@ -467,8 +471,8 @@ What the profile type can't say yet, that BUBT needs:
 | Feature | Ready? | Why |
 |---|---|---|
 | calculator, playground, degree, profile, feedback | 🔶 after §9 | Scale official, identical to DIU's; typed credits (as DIU) until a catalogue exists. Degree tracker gets 16 programme totals. |
-| **routine** | 🔶 strong | All 16 annex programmes parse cleanly (§12); needs the intake-section schema DIU also needs, and a per-term capture since annex keeps no past terms |
-| **rooms** | 🔶 strong | Same data; 0 clashes; only M.Sc CSE and MBA/EMBA are missing (PDF-only) |
+| **routine** | 🔶 strong | Fall 2026 sections loaded (Data files); needs the screen, and a per-term capture since annex keeps no past terms |
+| **rooms** | 🔶 strong | Same data, loaded; 0 clashes; only M.Sc CSE and MBA/EMBA are missing (PDF-only) |
 | faculty directory / reviews | 🔶 | 298 official initials → names (§11); reviews also need §8 and §9 |
 | course autocomplete | 🔶 partial | CSE Day/Evening offers give codes + credits; other departments need their offers |
 | planner, tasks, groups, papers | ❌ | Need a per-programme catalogue + prerequisites (§8) |
@@ -509,9 +513,11 @@ warnings):
 
 | File | What | Tag |
 |---|---|---|
-| `sources.json` | 24 sources | — |
+| `sources.json` | 25 sources | — |
 | `profile.json` | Grading (+ R and I), retake (`best`, A- and below), credit load (warn above 16, no hard max), 18 academic rules, both term systems with their history, day codes, buildings 2 and 3, room-code pattern | [official]; `emailDomains` empty with a note (§9); class divisions, honours, class standing empty with notes |
-| `programs.json` | 16 undergraduate programmes (the 4 diploma-holder tracks included), credits, faculty, term system | [official]; every total cross-checked against the admission fee table |
+| `programs.json` | 22 programmes: BBA and its four majors (which extend it), the other 11 undergraduate programmes including the 4 diploma-holder tracks, and 5 graduate programmes; credits, faculty, term system | [official]; every undergraduate total cross-checked against the admission fee table |
+| `program-courses.json` | 610 courses across 16 programmes' Fall 2026 lists: each programme's majority routine title; credits for CSE and CSE-DH from their course offers (116), `null` elsewhere | [official]; `CSE484` (offer misprints the lab as a second CSE 483) and LL.B's lowercase `Law 624/640/646`, `ICTs 3105` corrected with notes |
+| `sections/263-trimester.json`, `263-bisemester.json` | Fall 2026: 1,324 programme-scoped intake-section courses (1,251 trimester, 73 Law), 2,272 meetings after merging consecutive lab slots, 115 rooms; `capacityPublished: false` | [official] from the annex endpoint; 0 rooms double-booked |
 | `calendar/261-trimester.json`, `262-trimester.json`, `263-trimester.json` | Spring, Summer, Fall 2026 | [official]; the "Spring – 2026" header slips recorded as the term they belong to, with a note |
 | `calendar/261-bisemester.json` | Spring 2026, Law | [official]; two wrong printed weekdays noted |
 | `calendar/263-bisemester.json` | Fall 2026, Law | [official]; "Spring 2026" pre-registration and "22 Non" slips noted |
@@ -522,24 +528,22 @@ Retrieved 2026-10-16. Calendar rows for clubs, wellbeing, census, parents', spor
 research-showcase days are left out. `classes-pause` marks the last class before the
 mid-term, so the feed's class-end date (latest `last-class`) is unaffected.
 
-Not loaded, because the schema can't hold them yet:
-- **Course offers and course credits.** `credits` must be a multiple of 0.5, and BUBT
-  has 0.75-credit labs (`CSE 100`, `CSE 324`); course codes must be 3-digit, and half
-  of BUBT's are 4-digit (`ENG 1101`).
-- **Sections (Fall 2026, 2,640 meetings).** Same shape problem as DIU's (§12): the key
-  is (programme, intake, section), a section meets at different times on different
-  days, and there is no capacity.
+Sections and per-programme course lists load since the campus format gained
+programme-scoped sections, four-digit codes, quarter credits and an unpublished
+capacity (`data/campuses/README.md`, "Courses and sections that belong to a
+program"). Still not loaded: each programme's **full curriculum and prerequisites**
+(behind the student portal, §18), and **credits outside CSE** (no other department's
+Fall 2026 offer was found).
 
 ## 17. Next steps for Shohoj
 
 1. **Get the email domain** (Q1); without it nothing ships. Same path DIU took.
 2. Register `bubt` in `UniversityId` and `src/core/university.ts` (§14) once Q1 is
    settled, plus `tests/universityData.test.js` parity against `profile.json`.
-3. Widen the campus schema for 4-digit codes and quarter credits, then load the CSE
-   course offers (§8).
-4. Commit the routine snapshot once the intake-section schema exists, and capture each
-   term while it runs (annex keeps none, §12). The parser that produced §12's numbers
-   is ~60 lines over the annex HTML (scratch, not in the repo).
+3. Build the routine and free-rooms screens for BUBT on the loaded sections, picking
+   an intake-section rather than single sections (§5).
+4. Capture each term while it runs (annex keeps none, §12): a Worker cron or an
+   import script over the 16 programme ids, 16 requests per term.
 5. Ask BUBT the §16 questions, starting with 1, 2, 5 and 9.
 
 ## 18. What annex.bubt.edu.bd exposes (scanned 2026-10-16)
