@@ -443,6 +443,131 @@ function geminiGroundedPrompt(messages, grounding) {
   ].join('\n');
 }
 
+/** Append streamed text to a step, as one text part the way a whole response carries it. */
+function appendStepText(step, text) {
+  const last = step.content[step.content.length - 1];
+  if (last && last.type === 'text') last.text += text;
+  else step.content.push({ type: 'text', text });
+}
+
+/**
+ * Read a streamed interaction (#924) back into the shape the non-streaming
+ * response has — { id, status, steps, usage } — so the tool loop below reads
+ * ONE structure whichever way the answer arrived, and streaming cannot grow a
+ * second interpretation of a function call or a usage block.
+ *
+ * The event model is the Interactions API's: `interaction.created` carries the
+ * id, each step is `step.start` → `step.delta`… → `step.stop`, and
+ * `interaction.completed` carries the usage. A function call's id and name
+ * arrive on `step.start` with empty arguments; the argument JSON follows as
+ * `arguments_delta` fragments, concatenated here and handed on as the string
+ * the loop already knows how to parse.
+ *
+ * `onText` sees answer text the moment it is written. Thought steps are never
+ * forwarded — they are the model's working, not its answer — and never land in
+ * the rebuilt steps either, so they cannot leak into the final reply.
+ *
+ * Anything that is not a clean stream is the provider failing, not an answer:
+ * an `error` event, unparseable data, a dropped connection, or a stream that
+ * ends without `interaction.completed` or `[DONE]`.
+ */
+export async function readGeminiStream(res, onText) {
+  const body = { id: undefined, status: undefined, steps: [], usage: undefined };
+  const argumentText = new Map();
+  let finished = false;
+
+  const handle = (event) => {
+    switch (event?.event_type) {
+      case 'interaction.created':
+        body.id = event.interaction?.id ?? body.id;
+        break;
+      case 'step.start': {
+        const step = { ...(event.step || {}) };
+        if (step.type !== 'function_call') step.content = [];
+        body.steps[event.index] = step;
+        break;
+      }
+      case 'step.delta': {
+        const step = body.steps[event.index];
+        const delta = event.delta || {};
+        if (!step || step.type === 'thought') break;
+        if (delta.type === 'text' && typeof delta.text === 'string' && step.content) {
+          appendStepText(step, delta.text);
+          if (delta.text) onText(delta.text);
+        } else if (delta.type === 'arguments_delta' && typeof delta.arguments === 'string') {
+          argumentText.set(event.index, (argumentText.get(event.index) || '') + delta.arguments);
+        }
+        break;
+      }
+      case 'interaction.completed':
+        body.id = event.interaction?.id ?? body.id;
+        body.status = event.interaction?.status;
+        body.usage = event.interaction?.usage;
+        finished = true;
+        break;
+      case 'error':
+        throw new ProviderUnavailable(
+          'gemini',
+          `stream error: ${event.error?.code || event.error?.message || 'unknown'}`,
+        );
+      default:
+        break;
+    }
+  };
+
+  // One SSE frame: its `data:` lines joined, or null for a frame without data.
+  const readFrame = (frame) => {
+    const data = frame
+      .split('\n')
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).replace(/^ /, ''))
+      .join('\n');
+    if (!data) return;
+    if (data === '[DONE]') {
+      finished = true;
+      return;
+    }
+    let event;
+    try {
+      event = JSON.parse(data);
+    } catch (e) {
+      throw new ProviderUnavailable('gemini', 'unreadable stream', e);
+    }
+    handle(event);
+  };
+
+  let reader;
+  try {
+    reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  } catch (e) {
+    throw new ProviderUnavailable('gemini', 'unreadable stream', e);
+  }
+  let buffer = '';
+  for (;;) {
+    let chunk;
+    try {
+      chunk = await reader.read();
+    } catch (e) {
+      throw new ProviderUnavailable('gemini', 'stream interrupted', e);
+    }
+    if (chunk.value) buffer = (buffer + chunk.value).replace(/\r\n/g, '\n');
+    let cut;
+    while ((cut = buffer.indexOf('\n\n')) !== -1) {
+      readFrame(buffer.slice(0, cut));
+      buffer = buffer.slice(cut + 2);
+    }
+    if (chunk.done) break;
+  }
+  if (buffer.trim()) readFrame(buffer);
+  if (!finished) throw new ProviderUnavailable('gemini', 'stream ended early');
+
+  for (const [index, json] of argumentText) {
+    if (body.steps[index]) body.steps[index].arguments = json;
+  }
+  body.steps = body.steps.filter((step) => step && step.type !== 'thought');
+  return body;
+}
+
 /** The same bounded tool loop against the Interactions API. Same { text, usage }. */
 export async function runGeminiTurn({
   apiKey,
@@ -450,10 +575,16 @@ export async function runGeminiTurn({
   ctx,
   system = ASSISTANT_SYSTEM,
   fetchImpl = fetch,
+  onDelta,
+  onReset,
 }) {
   // Tool declarations happen to use the same shape OpenAI's Responses API
   // wants, so there is one translation, not two.
   const tools = openAiTools();
+  // Streaming is the caller's choice (#924): with no onDelta every request and
+  // every read below is exactly the non-streaming one.
+  const streaming = typeof onDelta === 'function';
+  const streamFlag = streaming ? { stream: true } : {};
   const usage = { inputTokens: 0, outputTokens: 0 };
   let usageComplete = true;
   const timing = createTurnTiming();
@@ -463,6 +594,7 @@ export async function runGeminiTurn({
     generation_config: GEMINI_GENERATION_CONFIG,
     tools,
     input: geminiPrompt(messages),
+    ...streamFlag,
   };
   let lastText = '';
   // Tool output collected this turn, kept so the turn can be restarted as a
@@ -513,6 +645,7 @@ export async function runGeminiTurn({
         system_instruction: system,
         generation_config: GEMINI_GENERATION_CONFIG,
         input: geminiGroundedPrompt(messages, grounding),
+        ...streamFlag,
       };
       continue;
     }
@@ -531,10 +664,28 @@ export async function runGeminiTurn({
     }
 
     let body;
-    try {
-      body = await res.json();
-    } catch (e) {
-      throw new ProviderUnavailable('gemini', 'unreadable response', e);
+    // Whether this round put any text in front of the student. A round that
+    // writes a sentence and then asks for a tool has not answered yet, so the
+    // client is told to drop what it showed.
+    let roundWrote = false;
+    if (streaming) {
+      // The answer is written while this read runs, so it is model time —
+      // without it a streamed turn would book its model wait as nothing.
+      const readStartedAt = Date.now();
+      try {
+        body = await readGeminiStream(res, (text) => {
+          roundWrote = true;
+          onDelta(text);
+        });
+      } finally {
+        timing.modelMs += Date.now() - readStartedAt;
+      }
+    } else {
+      try {
+        body = await res.json();
+      } catch (e) {
+        throw new ProviderUnavailable('gemini', 'unreadable response', e);
+      }
     }
 
     const turnUsage = geminiUsage(body);
@@ -544,6 +695,7 @@ export async function runGeminiTurn({
 
     const calls = geminiSteps(body).filter((step) => step?.type === 'function_call');
     if (calls.length === 0) return { text: lastText || NO_ANSWER, usage, usageComplete, timing };
+    if (roundWrote && typeof onReset === 'function') onReset();
 
     // Arguments arrive parsed here, unlike OpenAI's JSON string — accept both
     // rather than assuming, since a malformed value is the model's mistake and
@@ -574,6 +726,7 @@ export async function runGeminiTurn({
       generation_config: GEMINI_GENERATION_CONFIG,
       tools,
       input: results,
+      ...streamFlag,
     };
   }
 
@@ -596,8 +749,16 @@ export function buildAssistantProviders(env, { fetchImpl } = {}) {
   if (env?.GEMINI_API_KEY) {
     providers.push({
       name: 'gemini',
-      run: ({ messages, ctx, system }) =>
-        runGeminiTurn({ apiKey: env.GEMINI_API_KEY, messages, ctx, system, fetchImpl }),
+      run: ({ messages, ctx, system, onDelta, onReset }) =>
+        runGeminiTurn({
+          apiKey: env.GEMINI_API_KEY,
+          messages,
+          ctx,
+          system,
+          fetchImpl,
+          onDelta,
+          onReset,
+        }),
     });
   }
   if (env?.ANTHROPIC_API_KEY) {
@@ -632,23 +793,53 @@ export function buildAssistantProviders(env, { fetchImpl } = {}) {
  * connection has no usage block to read — so the ledger cannot count what it
  * cannot see. It is one more reason the ceiling errs on the expensive side.
  *
+ * `onDelta(text)` / `onReset()` stream the answer (#924). A provider that can
+ * stream calls them while it writes; one that cannot simply returns, and its
+ * reply reaches the student whole. Omitted, nothing streams anywhere.
+ *
  * `system` is this turn's prompt (assistant.js assistantSystemFor), built once
  * by the caller so a fallback provider answers from the same student record
  * instead of reading it again. Omitted, every provider uses the shared rules.
  */
-export async function runAssistantTurn({ providers, messages, ctx, system, onFallback }) {
+export async function runAssistantTurn({
+  providers,
+  messages,
+  ctx,
+  system,
+  onFallback,
+  onDelta,
+  onReset,
+}) {
   if (!providers || providers.length === 0) {
     throw new Error('No assistant provider configured');
   }
+  const streaming = typeof onDelta === 'function';
   let lastFailure = null;
   for (const provider of providers) {
+    // Whether THIS attempt put text in front of the student. A provider that
+    // fails after writing leaves a half answer on screen, and the fallback's
+    // answer must not be appended to it — so the client is told to drop it.
+    let wrote = false;
+    const streamArgs = streaming
+      ? {
+          onDelta: (text) => {
+            wrote = true;
+            onDelta(text);
+          },
+          onReset: () => {
+            wrote = false;
+            if (typeof onReset === 'function') onReset();
+          },
+        }
+      : {};
     try {
-      const { text, usage, timing } = await provider.run({ messages, ctx, system });
+      const { text, usage, timing } = await provider.run({ messages, ctx, system, ...streamArgs });
       // A stub provider (and every unit test) may return no timing; the caller
       // logs whatever arrives, so an empty accumulator is the honest default
       // rather than a crash on the response path.
       return { reply: text, provider: provider.name, usage, timing: timing || createTurnTiming() };
     } catch (e) {
+      if (wrote && typeof onReset === 'function') onReset();
       if (!(e instanceof ProviderUnavailable)) throw e;
       lastFailure = e;
       if (typeof onFallback === 'function') onFallback(e);
