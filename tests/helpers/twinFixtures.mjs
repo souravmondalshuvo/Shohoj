@@ -139,6 +139,7 @@ const NORM_LAB = {
   ],
 };
 const NORM_LAB_ASSIGNED = { ...NORM_LAB, sectionId: 206, labFacultyInitials: 'THMD,ARFB' };
+const NORM_LAB_TERM = { ...NORM_LAB, classStartDate: '2026-06-09', classEndDate: '2026-09-08' };
 
 /** Two programs and a cross-department catalogue, for the relevance filter (#539). */
 const TWIN_PROGRAMS = {
@@ -743,7 +744,14 @@ export const FIXTURES = {
       [new Date('2026-08-03T00:00:00Z'), 'FRIDAY'],
       [new Date('2026-01-01T00:00:00Z'), 'MONDAY'],
     ],
-    buildRoutineICS: [[[]], [[SECTION]], [[SECTION, SECTION_B]]],
+    buildRoutineICS: [
+      [[]],
+      [[SECTION]],
+      [[SECTION, SECTION_B]],
+      // Normalized, with term dates, so class events are emitted: a lab with
+      // its faculty unassigned and one with it assigned.
+      [[NORM_LAB_TERM, { ...NORM_LAB_TERM, sectionId: 207, labFacultyInitials: 'THMD,ARFB' }], { now: new Date('2026-06-01T09:30:00Z') }],
+    ],
   },
 
   connectScheduleImport: {
