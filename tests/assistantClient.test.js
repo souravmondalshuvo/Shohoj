@@ -251,3 +251,93 @@ test('examplePromptsForTab offers three prompts for any tab, seat-first on Seats
   assert.deepEqual(examplePromptsForTab(undefined), fallback);
   assert.deepEqual(examplePromptsForTab('not-a-tab'), fallback);
 });
+
+// ── Streaming (#924) ──────────────────────────────────────────────────────────
+
+// The Worker's event stream, cut into small chunks that split frames, lines
+// and multi-byte characters — the reader must not care where TCP did.
+function sseResponse(events, { chunkSize = 5 } = {}) {
+  const text = events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join('');
+  const bytes = new TextEncoder().encode(text);
+  const body = new ReadableStream({
+    start(controller) {
+      for (let i = 0; i < bytes.length; i += chunkSize) controller.enqueue(bytes.slice(i, i + chunkSize));
+      controller.close();
+    },
+  });
+  return new Response(body, { headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } });
+}
+
+const streamTurn = (response, seen = []) =>
+  sendAssistantTurn([user('hi')], {
+    workerUrl: 'https://worker.example',
+    getToken: async () => 'id-token',
+    onPartialReply: (text) => seen.push(text),
+    fetchImpl: async (url, init) => {
+      seen.request = JSON.parse(init.body);
+      return response;
+    },
+  });
+
+test('streaming: the answer so far is handed over whole, then the final reply wins', async () => {
+  const seen = [];
+  const quota = { remaining: 39, limit: 40, resetsAt: '2026-10-19T00:00:00.000Z' };
+  const result = await streamTurn(
+    sseResponse([
+      ['delta', { text: 'Your CGPA ' }],
+      ['delta', { text: 'is ৩.৫০' }],
+      ['done', { reply: 'Your CGPA is 3.50.', quota }],
+    ], { chunkSize: 3 }),
+    seen,
+  );
+  assert.equal(seen.request.stream, true, 'the Worker is asked to stream');
+  assert.deepEqual([...seen], ['Your CGPA ', 'Your CGPA is ৩.৫০']);
+  assert.deepEqual(result, { ok: true, reply: 'Your CGPA is 3.50.', quota });
+});
+
+test('streaming: a reset hands over the empty string', async () => {
+  const seen = [];
+  await streamTurn(
+    sseResponse([
+      ['delta', { text: 'Let me check.' }],
+      ['reset', {}],
+      ['delta', { text: 'Not yet.' }],
+      ['done', { reply: 'Not yet.', quota: null }],
+    ]),
+    seen,
+  );
+  assert.deepEqual([...seen], ['Let me check.', '', 'Not yet.']);
+});
+
+test('streaming: an error event, or a stream cut before done, is unavailable and clears', async () => {
+  for (const events of [
+    [['delta', { text: 'Half' }], ['error', { error: 'assistant_unavailable' }]],
+    [['delta', { text: 'Half an answ' }]],
+  ]) {
+    const seen = [];
+    const result = await streamTurn(sseResponse(events), seen);
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'unavailable');
+    assert.equal(seen.at(-1), '', 'what was shown is not kept');
+  }
+});
+
+test('streaming: a Worker that answers JSON is handled as before', async () => {
+  const seen = [];
+  const result = await streamTurn(jsonResponse({ reply: 'Hello!', quota: null }), seen);
+  assert.deepEqual(result, { ok: true, reply: 'Hello!', quota: null });
+  assert.deepEqual([...seen], [], 'no partial text without a stream');
+});
+
+test('streaming: without onPartialReply the request carries no stream flag', async () => {
+  let body;
+  await sendAssistantTurn([user('hi')], {
+    workerUrl: 'https://worker.example',
+    getToken: async () => 'id-token',
+    fetchImpl: async (url, init) => {
+      body = JSON.parse(init.body);
+      return jsonResponse({ reply: 'Hello!' });
+    },
+  });
+  assert.deepEqual(body, { messages: [user('hi')] });
+});
