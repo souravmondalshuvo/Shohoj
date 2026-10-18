@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-MdWUwVUNmg/2vOhQTYOhHb3pUHl/swWqaD5xrm4Xgv8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-mWOvYfcsnuphTg2/i1C6crl8v5IAEe0tLp3twXKr9ls='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41451,9 +41451,92 @@ async function fetchAssistantAvailability(options) {
   return configured ? 'ready' : 'unconfigured';
 }
 
-/** POST one chat turn to the Worker; maps transport/HTTP failures to typed codes. */
+/**
+ * Read a streamed turn (#924): server-sent events from the Worker, as
+ *   delta {text}  reset {}  done {reply, quota}  error {error}
+ *
+ * `onPartialReply` is handed the WHOLE answer so far on every change — never a
+ * fragment to append — so a panel can simply re-render it, and a reset is just
+ * the empty string. What the turn resolves to is `done`'s reply, not this
+ * reassembly: a lost or repeated fragment can cost a flicker, never a wrong
+ * answer kept in the chat.
+ */
+async function readAssistantStream(res, onPartialReply) {
+  let partial = '';
+  let outcome = null;
+  const handle = (event, data) => {
+    if (event === 'delta' && typeof data?.text === 'string') {
+      partial += data.text;
+      onPartialReply(partial);
+    } else if (event === 'reset') {
+      partial = '';
+      onPartialReply('');
+    } else if (event === 'done') {
+      outcome = data && typeof data.reply === 'string' && data.reply.trim() ? data : null;
+      if (!outcome) outcome = { failed: true };
+    } else if (event === 'error') {
+      outcome = { failed: true };
+    }
+  };
+  const readFrame = frame => {
+    let event = 'message';
+    const data = [];
+    for (const line of frame.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''));
+    }
+    if (data.length === 0) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(data.join('\n'));
+    } catch (_e) {
+      return;
+    }
+    handle(event, parsed);
+  };
+
+  try {
+    // Bytes in, decoded here with TextDecoder's streaming mode rather than
+    // TextDecoderStream: the README promises Firefox 88+ and Safari 14+, and
+    // TextDecoderStream only arrived in Firefox 105 and Safari 14.1. `stream:
+    // true` holds back a multi-byte character split across two chunks.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (!outcome) {
+      const { value, done } = await reader.read();
+      const text = value ? decoder.decode(value, { stream: true }) : '';
+      const tail = done ? decoder.decode() : '';
+      if (text || tail) buffer = (buffer + text + tail).replace(/\r\n/g, '\n');
+      let cut;
+      while (!outcome && (cut = buffer.indexOf('\n\n')) !== -1) {
+        readFrame(buffer.slice(0, cut));
+        buffer = buffer.slice(cut + 2);
+      }
+      if (done) {
+        if (!outcome && buffer.trim()) readFrame(buffer);
+        break;
+      }
+    }
+    if (outcome) reader.cancel().catch(() => {});
+  } catch (_e) {
+    // A dropped connection mid-answer: whatever was shown is not an answer.
+  }
+  if (!outcome || outcome.failed) return null;
+  return outcome;
+}
+
+/**
+ * POST one chat turn to the Worker; maps transport/HTTP failures to typed codes.
+ *
+ * Pass `onPartialReply` to have the answer streamed (#924): it is called with
+ * the answer so far as the model writes it, and with '' when that text is to
+ * be dropped. A Worker that does not stream simply answers with JSON, which is
+ * handled exactly as before — so the option is safe against any deployment.
+ */
 async function sendAssistantTurn(transcript, options) {
-  const { workerUrl, getToken, fetchImpl = fetch, routine } = options || {};
+  const { workerUrl, getToken, fetchImpl = fetch, routine, onPartialReply } = options || {};
+  const streaming = typeof onPartialReply === 'function';
   if (!workerUrl) {
     return {
       ok: false,
@@ -41489,12 +41572,22 @@ async function sendAssistantTurn(transcript, options) {
       // only in this browser — the cloud snapshot the Worker reads carries
       // semesters, never the Routine Builder's selections. So they travel with
       // the turn (#543). Omitted entirely when nothing is picked.
-      body: JSON.stringify(routine ? { messages, routine } : { messages }),
+      body: JSON.stringify({
+        messages,
+        ...(routine ? { routine } : {}),
+        ...(streaming ? { stream: true } : {}),
+      }),
     });
   } catch (_e) {
     return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
   }
 
+  if (res.ok && streaming && (res.headers.get('content-type') || '').startsWith('text/event-stream')) {
+    const outcome = await readAssistantStream(res, onPartialReply);
+    if (outcome) return { ok: true, reply: outcome.reply, quota: outcome.quota ?? null };
+    onPartialReply('');
+    return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
+  }
   if (res.ok) {
     const body = await res.json().catch(() => null);
     if (body && typeof body.reply === 'string' && body.reply.trim()) {
@@ -42130,6 +42223,8 @@ let _sendEl = null;
 let _quotaHintEl = null;
 let _transcript = [];
 let _pending = false;
+// The answer so far while a turn streams (#924); '' when nothing is written yet.
+let _partial = '';
 let _error = null;
 // The Worker's daily allowance for this student (#746), last known from a
 // turn's response. Null until the first turn — the drawer opens with no
@@ -42284,8 +42379,13 @@ function renderLog() {
     _logEl.appendChild(renderEmptyState());
   } else {
     _transcript.forEach(m => _logEl.appendChild(bubble(m.role, m.content)));
-    if (_pending) _logEl.appendChild(pendingBubble());
+    if (_pending) {
+      _logEl.appendChild(
+        _partial ? bubble('assistant', _partial, 'assistant-bubble--streaming') : pendingBubble(),
+      );
+    }
   }
+  setStreamingBusy();
 
   if (_error) {
     const err = document.createElement('div');
@@ -42300,6 +42400,28 @@ function renderLog() {
   if (_sendEl) _sendEl.disabled = _pending || exhausted || !_inputEl?.value.trim();
   if (_inputEl) _inputEl.disabled = _pending;
   renderQuotaHint();
+}
+
+// While an answer streams the log is busy, so a screen reader waits for the
+// finished reply instead of reading every fragment as it lands. Only then:
+// "Thinking…" before the first word is still announced, as it always was.
+function setStreamingBusy() {
+  if (!_logEl) return;
+  if (_pending && _partial) _logEl.setAttribute('aria-busy', 'true');
+  else _logEl.removeAttribute('aria-busy');
+}
+
+// Show the answer so far (#924). The growing bubble is rewritten in place:
+// rebuilding the whole log for every fragment would re-render the transcript
+// many times a second and hand a screen reader the whole chat each time.
+function renderPartial() {
+  const live = _logEl?.querySelector('.assistant-bubble--streaming');
+  if (!live || !_partial) {
+    renderLog();
+    return;
+  }
+  live.replaceChildren(renderAssistantReply(_partial, document));
+  _logEl.scrollTo({ top: _logEl.scrollHeight });
 }
 
 // A quiet reminder once the allowance is running low, and the reason the send
@@ -42351,6 +42473,11 @@ async function ask(question) {
         return isCurrent() ? token : null;
       },
       routine: readRoutinePicks(),
+      onPartialReply: text => {
+        if (!isCurrent()) return;
+        _partial = text;
+        renderPartial();
+      },
     });
     if (!isCurrent()) return;
     if (result.ok) {
@@ -42366,6 +42493,7 @@ async function ask(question) {
   } finally {
     if (isCurrent()) {
       _pending = false;
+      _partial = '';
       renderLog();
       _inputEl?.focus();
     }
@@ -42396,6 +42524,7 @@ function buildDrawer() {
   clear.addEventListener('click', () => {
     _assistantGeneration += 1;
     _pending = false;
+    _partial = '';
     if (_inputEl) _inputEl.value = '';
     _transcript = [];
     _error = null;
@@ -42530,6 +42659,7 @@ function openDrawer() {
 function closeDrawer() {
   _assistantGeneration += 1;
   _pending = false;
+  _partial = '';
   if (!_drawer) return;
   const node = _drawer;
   document.removeEventListener('keydown', onKeydown);
