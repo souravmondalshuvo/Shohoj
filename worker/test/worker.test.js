@@ -77,6 +77,7 @@ import {
   GEMINI_URL,
   openAiTools,
   ProviderUnavailable,
+  readGeminiStream,
   runAssistantTurn,
   runClaudeTurn,
   runGeminiTurn,
@@ -2461,10 +2462,58 @@ async function makeServiceAccountJson() {
 
   // Drives one /api/assistant request with Firestore + both model APIs mocked.
   // `anthropic` and `openai` are handlers returning a Response (or throwing).
+  // ── Streaming helpers (#924) ──
+  // A Gemini Interactions stream, cut into chunks that deliberately split
+  // frames, lines and the CRLF pair — the parser must not care where TCP did.
+  function geminiStream(events, { chunkSize = 7, crlf = false, done = true } = {}) {
+    const nl = crlf ? '\r\n' : '\n';
+    let text = events
+      .map((e) => `event: ${e.event_type}${nl}data: ${JSON.stringify(e)}${nl}${nl}`)
+      .join('');
+    if (done) text += `event: done${nl}data: [DONE]${nl}${nl}`;
+    const bytes = new TextEncoder().encode(text);
+    const body = new ReadableStream({
+      start(controller) {
+        for (let i = 0; i < bytes.length; i += chunkSize) controller.enqueue(bytes.slice(i, i + chunkSize));
+        controller.close();
+      },
+    });
+    return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } });
+  }
+  // The events of one streamed answer: `text` written in `pieces`, ending
+  // the interaction as the API does.
+  function geminiAnswerEvents(id, pieces, { thought } = {}) {
+    const events = [{ event_type: 'interaction.created', interaction: { id, status: 'in_progress' } }];
+    let index = 0;
+    if (thought) {
+      events.push({ event_type: 'step.start', index, step: { type: 'thought' } });
+      events.push({ event_type: 'step.delta', index, delta: { type: 'text', text: thought } });
+      events.push({ event_type: 'step.stop', index });
+      index++;
+    }
+    events.push({ event_type: 'step.start', index, step: { type: 'model_output' } });
+    for (const text of pieces) events.push({ event_type: 'step.delta', index, delta: { type: 'text', text } });
+    events.push({ event_type: 'step.stop', index });
+    events.push({
+      event_type: 'interaction.completed',
+      interaction: { id, status: 'completed', usage: { total_input_tokens: 50, total_output_tokens: 9 } },
+    });
+    return events;
+  }
+  // Parse a whole SSE body back into [{event, data}].
+  function readSse(text) {
+    return text.split('\n\n').filter(Boolean).map((frame) => {
+      const event = /^event: (.*)$/m.exec(frame)?.[1];
+      const data = /^data: (.*)$/m.exec(frame)?.[1];
+      return { event, data: data ? JSON.parse(data) : null };
+    });
+  }
+
   // `users`, when given, answers the users/{uid} read instead of Alice's doc.
-  async function assistantRequest({ anthropic, openai, body, users }) {
+  // `gemini`, when given, arms GEMINI_API_KEY and answers its calls.
+  async function assistantRequest({ anthropic, openai, gemini, body, users }) {
     const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
-    const seen = { anthropic: 0, openai: 0, openaiBodies: [], users: 0 };
+    const seen = { anthropic: 0, openai: 0, openaiBodies: [], users: 0, gemini: 0, geminiBodies: [] };
     const mockFetch = async (input, init = {}) => {
       const call = await readFetchCall(input, init);
       if (call.url === 'https://oauth2.googleapis.com/token') {
@@ -2480,6 +2529,12 @@ async function makeServiceAccountJson() {
         return json({ fields: { data: { stringValue: ALICE_SNAPSHOT } } });
       }
       const host = new URL(call.url).hostname;
+      if (host === 'generativelanguage.googleapis.com') {
+        seen.gemini++;
+        seen.geminiBodies.push(JSON.parse(call.body));
+        if (!gemini) throw new Error('unexpected gemini call');
+        return gemini(seen.gemini, call);
+      }
       if (host === 'api.anthropic.com') {
         seen.anthropic++;
         if (!anthropic) throw new Error('unexpected anthropic call');
@@ -2500,8 +2555,18 @@ async function makeServiceAccountJson() {
         const res = await worker.fetch(req('POST', '/api/assistant', {
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(body ?? { messages: [{ role: 'user', content: 'what is my cgpa?' }] }),
-        }), { ...ENV, ANTHROPIC_API_KEY: 'sk-ant-test', OPENAI_API_KEY: 'sk-openai-test' });
-        return { res, seen };
+        }), {
+          ...ENV,
+          ANTHROPIC_API_KEY: 'sk-ant-test',
+          OPENAI_API_KEY: 'sk-openai-test',
+          ...(gemini ? { GEMINI_API_KEY: 'gemini-test' } : {}),
+        });
+        // A streamed turn keeps working after fetch() returns, so it is read
+        // to the end HERE, while the mocks are still installed.
+        const sse = (res.headers.get('content-type') || '').startsWith('text/event-stream')
+          ? readSse(await res.text())
+          : null;
+        return { res, seen, sse };
       });
     } finally {
       __setTestJwksForTests(null);
@@ -2644,6 +2709,84 @@ async function makeServiceAccountJson() {
     assertEq(res.status, 200);
     assertEq(seen.openai, 1);
     assertEq(JSON.parse(seen.openaiBodies[0]).input[0].content, ASSISTANT_SYSTEM, 'plain prompt');
+  });
+
+  // ── Streaming (#924) ──
+  const streamBody = (content) => ({ messages: [{ role: 'user', content }], stream: true });
+
+  await test('stream:true writes the answer as it arrives, then the whole reply', async () => {
+    const { res, seen, sse } = await assistantRequest({
+      gemini: () => geminiStream(geminiAnswerEvents('i1', ['You have ', 'earned ', '6 credits.'])),
+      body: streamBody('how many credits do I have?'),
+    });
+    assertEq(res.status, 200);
+    assert(res.headers.get('content-type').startsWith('text/event-stream'), 'an event stream');
+    assertEq(res.headers.get('cache-control'), 'no-store');
+    assertEq(res.headers.get('access-control-allow-origin'), ALLOWED_ORIGIN, 'CORS like any reply');
+    assertEq(sse.map((e) => e.event).join(','), 'delta,delta,delta,done');
+    assertEq(sse.filter((e) => e.event === 'delta').map((e) => e.data.text).join(''), 'You have earned 6 credits.');
+    const done = sse.at(-1).data;
+    assertEq(done.reply, 'You have earned 6 credits.', 'done carries the whole reply');
+    assert(Number.isFinite(done.quota.remaining), 'and the quota, as the JSON body does');
+    assertEq(seen.geminiBodies[0].stream, true, 'Gemini was asked to stream');
+  });
+
+  await test('a request without stream:true gets JSON, and Gemini is not asked to stream', async () => {
+    const { res, seen, sse } = await assistantRequest({
+      gemini: () => json({
+        id: 'i1',
+        steps: [{ type: 'model_generated', content: [{ type: 'text', text: 'Hi.' }] }],
+      }),
+    });
+    assertEq(res.status, 200);
+    assertEq(sse, null);
+    assertEq((await res.json()).reply, 'Hi.');
+    assertEq(seen.geminiBodies[0].stream, undefined, 'the non-streaming request is unchanged');
+  });
+
+  await test('a streamed turn that falls back to a non-streaming provider still ends in done', async () => {
+    const { sse, seen } = await assistantRequest({
+      gemini: () => new Response('quota', { status: 429 }),
+      anthropic: () => json(assistantMessage({ content: [{ type: 'text', text: 'Your CGPA is 3.50.' }] })),
+      body: streamBody('what is my cgpa?'),
+    });
+    assertEq(seen.anthropic, 1);
+    assertEq(sse.map((e) => e.event).join(','), 'done', 'no deltas from Claude, the reply arrives whole');
+    assertEq(sse[0].data.reply, 'Your CGPA is 3.50.');
+  });
+
+  await test('Gemini failing mid-answer resets the half answer before the fallback', async () => {
+    const { sse } = await assistantRequest({
+      gemini: () => geminiStream([
+        ...geminiAnswerEvents('i1', ['Your CGPA ']).slice(0, 3),
+        { event_type: 'error', error: { code: 'gateway_timeout', message: 'timeout' } },
+      ], { done: false }),
+      anthropic: () => json(assistantMessage({ content: [{ type: 'text', text: 'Your CGPA is 3.50.' }] })),
+      body: streamBody('what is my cgpa?'),
+    });
+    assertEq(sse.map((e) => e.event).join(','), 'delta,reset,done');
+    assertEq(sse.at(-1).data.reply, 'Your CGPA is 3.50.');
+  });
+
+  await test('a streamed turn every provider fails ends in an error event', async () => {
+    const { res, sse } = await assistantRequest({
+      gemini: () => new Response('down', { status: 503 }),
+      anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
+      openai: () => json({ error: 'server_error' }, { status: 500 }),
+      body: streamBody('hi'),
+    });
+    assertEq(res.status, 200, 'the stream was already open');
+    assertEq(sse.map((e) => e.event).join(','), 'error');
+    assertEq(sse[0].data.error, 'assistant_unavailable');
+  });
+
+  await test('a refused streamed turn is refused with a status code, before any stream', async () => {
+    const { res, sse } = await assistantRequest({
+      gemini: () => { throw new Error('must not be called'); },
+      body: { messages: [{ role: 'assistant', content: 'no user turn' }], stream: true },
+    });
+    assertEq(res.status, 400);
+    assertEq(sse, null);
   });
 
   await test('the first model call already carries the student record', async () => {
@@ -3142,6 +3285,120 @@ async function makeServiceAccountJson() {
     // The two buckets must not double-count each other: the tool runs BETWEEN
     // the model calls, so its time belongs to exactly one of them.
     assert(timing.toolMs < timing.modelMs + timing.toolMs, 'buckets overlap');
+  });
+
+  // ── Gemini streaming (#924) ──
+  await test('a streamed tool round rebuilds the call, and only the answer is written', async () => {
+    const bodies = [];
+    const written = [];
+    let resets = 0;
+    const { text, usage } = await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'can I take CSE370?' }],
+      ctx: { loadUserSnapshot: async () => JSON.parse(ALICE_SNAPSHOT) },
+      onDelta: (t) => written.push(t),
+      onReset: () => resets++,
+      fetchImpl: async (url, init) => {
+        bodies.push(JSON.parse(init.body));
+        if (bodies.length === 1) {
+          return geminiStream([
+            { event_type: 'interaction.created', interaction: { id: 'i1', status: 'in_progress' } },
+            { event_type: 'step.start', index: 0, step: { type: 'thought' } },
+            { event_type: 'step.delta', index: 0, delta: { type: 'text', text: 'SECRET THOUGHT' } },
+            { event_type: 'step.stop', index: 0 },
+            { event_type: 'step.start', index: 1,
+              step: { type: 'function_call', id: 'fc1', name: 'check_prerequisite', arguments: {} } },
+            // The argument JSON split mid-token, as the API is free to do.
+            { event_type: 'step.delta', index: 1, delta: { type: 'arguments_delta', arguments: '{"course_' } },
+            { event_type: 'step.delta', index: 1, delta: { type: 'arguments_delta', arguments: 'code": "CSE370"}' } },
+            { event_type: 'step.stop', index: 1 },
+            { event_type: 'interaction.completed',
+              interaction: { id: 'i1', status: 'requires_action', usage: { total_input_tokens: 40, total_output_tokens: 5 } } },
+          ], { crlf: true, chunkSize: 5 });
+        }
+        return geminiStream(geminiAnswerEvents('i2', ['Not yet: ', 'finish CSE220.']), { chunkSize: 3 });
+      },
+    });
+    assertEq(written.join(''), 'Not yet: finish CSE220.', 'the answer, and nothing from the thought');
+    assertEq(resets, 0, 'the tool round wrote nothing, so there was nothing to drop');
+    assertEq(text, 'Not yet: finish CSE220.');
+    assertEq(usage.inputTokens, 90, 'usage from both rounds\' interaction.completed');
+    assertEq(bodies[0].stream, true);
+    assertEq(bodies[1].stream, true, 'the continuation streams too');
+    assertEq(bodies[1].previous_interaction_id, 'i1');
+    const [result] = bodies[1].input;
+    assertEq(result.call_id, 'fc1');
+    assertEq(JSON.parse(result.result[0].text).course_code, 'CSE370', 'fragments reassembled into the arguments');
+  });
+
+  await test('a round that writes before asking for a tool tells the client to drop it', async () => {
+    const written = [];
+    const events = [];
+    let n = 0;
+    await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'can I take CSE370?' }],
+      ctx: { loadUserSnapshot: async () => JSON.parse(ALICE_SNAPSHOT) },
+      onDelta: (t) => { written.push(t); events.push('delta'); },
+      onReset: () => events.push('reset'),
+      fetchImpl: async () => {
+        n++;
+        if (n === 1) {
+          return geminiStream([
+            { event_type: 'interaction.created', interaction: { id: 'i1' } },
+            { event_type: 'step.start', index: 0, step: { type: 'model_output' } },
+            { event_type: 'step.delta', index: 0, delta: { type: 'text', text: 'Let me check. ' } },
+            { event_type: 'step.stop', index: 0 },
+            { event_type: 'step.start', index: 1,
+              step: { type: 'function_call', id: 'fc1', name: 'check_prerequisite', arguments: { course_code: 'CSE370' } } },
+            { event_type: 'step.stop', index: 1 },
+            { event_type: 'interaction.completed', interaction: { id: 'i1', status: 'requires_action' } },
+          ]);
+        }
+        return geminiStream(geminiAnswerEvents('i2', ['Not yet.']));
+      },
+    });
+    assertEq(events.join(','), 'delta,reset,delta');
+  });
+
+  await test('a broken Gemini stream is the provider failing, never an answer', async () => {
+    const turn = (response) => runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'hi' }],
+      ctx: {},
+      onDelta: () => {},
+      fetchImpl: async () => response,
+    });
+    const reasons = [];
+    for (const response of [
+      geminiStream([{ event_type: 'error', error: { code: 'gateway_timeout' } }], { done: false }),
+      // Cut off: no interaction.completed and no [DONE].
+      geminiStream(geminiAnswerEvents('i1', ['Half an ']).slice(0, 3), { done: false }),
+      new Response('event: step.delta\ndata: {not json\n\n', { headers: { 'Content-Type': 'text/event-stream' } }),
+    ]) {
+      try {
+        await turn(response);
+        reasons.push('answered');
+      } catch (e) {
+        reasons.push(e instanceof ProviderUnavailable ? e.reason : `threw ${e?.message}`);
+      }
+    }
+    assertEq(reasons.join(' | '), 'stream error: gateway_timeout | stream ended early | unreadable stream');
+  });
+
+  await test('the stream reader yields the shape the non-streaming loop reads', async () => {
+    const written = [];
+    const body = await readGeminiStream(
+      // One-byte chunks split every multi-byte character — Bangla included.
+      geminiStream(geminiAnswerEvents('i9', ['Hello ', 'ধন্যবাদ.'], { thought: 'hidden' }), { chunkSize: 1 }),
+      (t) => written.push(t),
+    );
+    assertEq(body.id, 'i9');
+    assertEq(body.status, 'completed');
+    assertEq(body.steps.length, 1, 'thought steps are dropped');
+    assertEq(body.steps[0].content[0].text, 'Hello ধন্যবাদ.');
+    assertEq(written.join(''), 'Hello ধন্যবাদ.');
+    assertEq(body.usage.total_output_tokens, 9);
   });
 
   // One round, two tools (#912). They run together, and the results go back in
