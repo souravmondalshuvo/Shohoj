@@ -11,6 +11,7 @@ data/campuses/<campus>/
   profile.json                 grading, retakes, standing, terms, days, buildings (required)
   programs.json                degree programs, total credits, program rules
   courses.json                 course catalogue
+  program-courses.json         each program's own course list, where codes repeat across programs (instead of courses.json)
   prerequisites.json           prerequisite rules, per source and optionally per program
   requirements.json            degree requirement groups (all of / choose n of / free credits)
   plans.json                   suggested semester-by-semester sequence per program
@@ -86,6 +87,26 @@ the program it names — every BBA major extends BBA's shared core.
 When a source has an obvious printing error, correct it on the record and say
 so in its `note` (see ARC273 section 2 in `sections/253-trimester.json`);
 never correct silently.
+
+### Courses and sections that belong to a program
+
+Where a campus's course codes repeat across programs with different meanings
+(DIU's CSE212; BUBT's GED1105 is *History of the Emergence of Bangladesh* in
+English and *Government and Politics* in LL.B), its courses go in
+`program-courses.json`, one record per program and code, not in `courses.json`.
+A program's own list may hold four-digit subject codes (`ENG1101`) and ISCED
+field codes (`0413-111`), and credits in quarters (BUBT's 0.75-credit labs).
+`credits` is `null` when no source publishes it (BUBT's routines give titles,
+not credits), and `0` only with a `note` saying why.
+
+A section may carry a `program` (BUBT: every program has its own intake-section
+`59-1`). Its course is then looked up in that program's list, the program must
+run on the file's term system, and the section key is program + course +
+section. A file whose source publishes neither section sizes nor seats sets
+`"capacityPublished": false` and says so in its `note`; otherwise each section
+needs a `capacity` or a `seatsAvailable`. In the database, `sections` and
+`meetings` carry `program` (`''` for a campus-wide section), and the `rooms`
+view counts a section per program.
 
 ## Provenance
 
