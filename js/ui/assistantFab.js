@@ -60,6 +60,8 @@ let _sendEl = null;
 let _quotaHintEl = null;
 let _transcript = [];
 let _pending = false;
+// The answer so far while a turn streams (#924); '' when nothing is written yet.
+let _partial = '';
 let _error = null;
 // The Worker's daily allowance for this student (#746), last known from a
 // turn's response. Null until the first turn — the drawer opens with no
@@ -214,8 +216,13 @@ function renderLog() {
     _logEl.appendChild(renderEmptyState());
   } else {
     _transcript.forEach(m => _logEl.appendChild(bubble(m.role, m.content)));
-    if (_pending) _logEl.appendChild(pendingBubble());
+    if (_pending) {
+      _logEl.appendChild(
+        _partial ? bubble('assistant', _partial, 'assistant-bubble--streaming') : pendingBubble(),
+      );
+    }
   }
+  setStreamingBusy();
 
   if (_error) {
     const err = document.createElement('div');
@@ -230,6 +237,28 @@ function renderLog() {
   if (_sendEl) _sendEl.disabled = _pending || exhausted || !_inputEl?.value.trim();
   if (_inputEl) _inputEl.disabled = _pending;
   renderQuotaHint();
+}
+
+// While an answer streams the log is busy, so a screen reader waits for the
+// finished reply instead of reading every fragment as it lands. Only then:
+// "Thinking…" before the first word is still announced, as it always was.
+function setStreamingBusy() {
+  if (!_logEl) return;
+  if (_pending && _partial) _logEl.setAttribute('aria-busy', 'true');
+  else _logEl.removeAttribute('aria-busy');
+}
+
+// Show the answer so far (#924). The growing bubble is rewritten in place:
+// rebuilding the whole log for every fragment would re-render the transcript
+// many times a second and hand a screen reader the whole chat each time.
+function renderPartial() {
+  const live = _logEl?.querySelector('.assistant-bubble--streaming');
+  if (!live || !_partial) {
+    renderLog();
+    return;
+  }
+  live.replaceChildren(renderAssistantReply(_partial, document));
+  _logEl.scrollTo({ top: _logEl.scrollHeight });
 }
 
 // A quiet reminder once the allowance is running low, and the reason the send
@@ -281,6 +310,11 @@ async function ask(question) {
         return isCurrent() ? token : null;
       },
       routine: readRoutinePicks(),
+      onPartialReply: text => {
+        if (!isCurrent()) return;
+        _partial = text;
+        renderPartial();
+      },
     });
     if (!isCurrent()) return;
     if (result.ok) {
@@ -296,6 +330,7 @@ async function ask(question) {
   } finally {
     if (isCurrent()) {
       _pending = false;
+      _partial = '';
       renderLog();
       _inputEl?.focus();
     }
@@ -326,6 +361,7 @@ function buildDrawer() {
   clear.addEventListener('click', () => {
     _assistantGeneration += 1;
     _pending = false;
+    _partial = '';
     if (_inputEl) _inputEl.value = '';
     _transcript = [];
     _error = null;
@@ -460,6 +496,7 @@ function openDrawer() {
 function closeDrawer() {
   _assistantGeneration += 1;
   _pending = false;
+  _partial = '';
   if (!_drawer) return;
   const node = _drawer;
   document.removeEventListener('keydown', onKeydown);
