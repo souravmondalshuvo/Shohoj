@@ -30,6 +30,9 @@ export const CAMPUS_DATA_DIR = path.join(ROOT, 'data', 'campuses');
 export const COURSE_CODE = /^[A-Z]{2,4}\d{3}[A-Z]{0,2}$/;
 // An ISCED field code with a course number, written with one hyphen (DIU).
 export const ISCED_COURSE_CODE = /^\d{4}-\d{3}[A-Z]?$/;
+// A subject with a four-digit course number, as BUBT's newer curricula number
+// theirs (ENG1101, GED1105). Like ISCED codes, only for a program's own list.
+export const FOUR_DIGIT_COURSE_CODE = /^[A-Z]{2,4}\d{4}[A-Z]?$/;
 // Term codes are the campus's own: NSU prints a two-digit year and a term digit
 // (252 = Summer 2025); BRACU's CONNECT session ids use the full year (20263 =
 // Fall 2026). Either way the last digit is 1 Spring, 2 Summer, 3 Fall.
@@ -47,6 +50,20 @@ const credits = z
   .min(0)
   .max(12)
   .refine((n) => Number.isInteger(n * 2), 'credits must be a multiple of 0.5');
+// A program's own list may go to quarters: BUBT's labs carry 0.75 credits
+// (half of their weekly contact hours).
+const quarterCredits = z
+  .number()
+  .min(0)
+  .max(12)
+  .refine((n) => Number.isInteger(n * 4), 'credits must be a multiple of 0.25');
+// Every shape a course code takes in a program's own list or a program-scoped
+// section.
+const programCourseCode = z.union([
+  courseCode,
+  z.string().regex(ISCED_COURSE_CODE, 'not a course code'),
+  z.string().regex(FOUR_DIGIT_COURSE_CODE, 'not a course code'),
+]);
 
 const sourcesSchema = z
   .object({
@@ -271,16 +288,23 @@ const programCoursesSchema = z
         z
           .object({
             program: z.string().regex(/^[A-Z]+(-[A-Z]+)?$/),
-            // A subject code, or an ISCED field code ("0413-111": field of
-            // study, then number) as fifteen DIU programs write theirs. Only
-            // here: a campus-wide courses.json keeps the subject shape the
-            // Worker and the Firestore rules check codes against.
-            code: z.union([courseCode, z.string().regex(ISCED_COURSE_CODE, 'not a course code')]),
+            // A subject code, an ISCED field code ("0413-111": field of study,
+            // then number) as fifteen DIU programs write theirs, or a
+            // four-digit subject code (BUBT). Only here: a campus-wide
+            // courses.json keeps the subject shape the Worker and the
+            // Firestore rules check codes against.
+            code: programCourseCode,
             title: z.string().min(1),
-            credits: credits.refine((n) => n > 0, 'a listed course carries credits'),
+            // null when no source publishes the course's credits (BUBT's
+            // routines give titles only); 0 only with a note saying why.
+            credits: quarterCredits.nullable(),
             source: sourceId,
+            note: z.string().min(1).optional(),
           })
-          .strict(),
+          .strict()
+          .refine((c) => c.credits !== 0 || c.note !== undefined, {
+            message: 'a listed course carries credits; a 0-credit course needs a note',
+          }),
       )
       .min(1),
   })
@@ -525,11 +549,23 @@ const sectionsSchema = z
     termSystem: z.string(),
     source: sourceId,
     note: z.string().optional(),
+    // false when the source publishes neither section sizes nor seats (BUBT's
+    // routines); the file's note must say so. Otherwise every section carries
+    // a capacity or a seat count.
+    capacityPublished: z.literal(false).optional(),
     records: z
       .array(
         z
           .object({
-            course: courseCode,
+            // Set where course codes and section names repeat across programs
+            // with different meanings (BUBT's GED1105; every BUBT program has
+            // an intake-section "59-1"): the section belongs to this program,
+            // and its course is looked up in that program's own list.
+            program: programCode.optional(),
+            // A program-scoped section may use any code its program's list
+            // holds (four-digit, ISCED); checkCampus holds the rest to the
+            // subject shape.
+            course: programCourseCode,
             // NSU numbers its sections; BRACU names them ("04", "07A",
             // "04-CLOSED"), and the name is kept exactly as printed.
             section: z.union([z.number().int().positive(), z.string().min(1)]),
@@ -1023,15 +1059,30 @@ function checkCampus(campus, problems) {
     cite(`sections/${term}`, file.source);
     if (!termSystems.has(file.termSystem))
       err(`sections/${term}: unknown term system "${file.termSystem}"`);
+    if (file.capacityPublished === false && !file.note)
+      err(`sections/${term}: capacity is unpublished with no note saying why`);
     const keys = new Set();
     const unlistedLabs = new Set();
     for (const s of file.records) {
-      const label = `sections/${term} ${s.course}.${s.section}`;
-      const key = `${s.course}#${s.section}`;
+      const label = `sections/${term} ${s.program ? `${s.program}:` : ''}${s.course}.${s.section}`;
+      const key = `${s.program ?? ''}|${s.course}#${s.section}`;
       if (keys.has(key)) err(`${label}: duplicate section`);
       keys.add(key);
-      if (!courses.has(s.course)) err(`${label}: course is not in courses.json`);
-      if (s.capacity === null && s.seatsAvailable === undefined)
+      if (s.program) {
+        const program = programs.get(s.program);
+        if (!program) err(`${label}: unknown program ${s.program}`);
+        else if (program.termSystem !== null && program.termSystem !== file.termSystem)
+          err(`${label}: ${s.program} runs on ${program.termSystem}, not ${file.termSystem}`);
+        if (campus.programCourses) {
+          if (!programCourseKeys.has(`${s.program}|${s.course}`))
+            err(`${label}: course is not in ${s.program}'s program-courses list`);
+        } else if (!courses.has(s.course)) err(`${label}: course is not in courses.json`);
+      } else {
+        if (!COURSE_CODE.test(s.course))
+          err(`${label}: only a program-scoped section may use this code shape`);
+        if (!courses.has(s.course)) err(`${label}: course is not in courses.json`);
+      }
+      if (s.capacity === null && s.seatsAvailable === undefined && file.capacityPublished !== false)
         err(`${label}: has neither a capacity nor a seat count`);
       const checkMeetings = (list, where) => {
         for (const mt of list) {
