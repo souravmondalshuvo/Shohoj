@@ -111,6 +111,48 @@ test('class events are skipped when semester dates are unknown (exams still emit
     assert(ics.includes('Mid Exam'), 'exam should still be present');
 });
 
+console.log('\nlab events:');
+// CSE221 Section 12 as the live feed has it: theory TAP in 08H-22C, a Saturday
+// lab in 09B-11L whose faculty isn't assigned yet.
+const labSection = (labFaculties) => parseFeed([
+    sec({
+        sectionId: 189534, courseCode: 'CSE221', courseName: 'Algorithms', sectionName: '12',
+        faculties: 'TAP', roomName: '08H-22C',
+        sectionSchedule: {
+            classSchedules: [{ day: 'SUNDAY', startTime: '11:00:00', endTime: '12:20:00' }],
+            classStartDate: '2026-06-09', classEndDate: '2026-09-08',
+        },
+        labSchedules: [{ day: 'SATURDAY', startTime: '14:00:00', endTime: '16:50:00' }],
+        labFaculties, labRoomName: '09B-11L',
+    }),
+]).sections;
+// Each VEVENT's own lines, keyed by property name, so a field is read from the
+// event it belongs to rather than from anywhere in the file. Cut at the VALARM:
+// the alarm carries a DESCRIPTION of its own (the summary).
+function events(ics) {
+    return ics.split('BEGIN:VEVENT').slice(1).map((block) => Object.fromEntries(
+        block.split('BEGIN:VALARM')[0].split('\r\n').filter((l) => /^[A-Z-]+[:;]/.test(l)).map((l) => {
+            const i = l.search(/[:;]/);
+            return [l.slice(0, i), l.slice(i + 1)];
+        }),
+    ));
+}
+test('a lab event names the lab faculty, its own room, and says lab', () => {
+    const [theory, lab] = events(buildRoutineICS(labSection('TBA'), { now: NOW }));
+    eq([theory.SUMMARY, theory.LOCATION, theory.DESCRIPTION],
+        ['CSE221 (Section 12) class', '08H-22C', 'Faculty: TAP']);
+    eq([lab.SUMMARY, lab.LOCATION, lab.DESCRIPTION],
+        ['CSE221 (Section 12) lab', '09B-11L', 'Lab faculty: TAP\\, TBA']);
+});
+test('an assigned lab lists every lab faculty, not the theory faculty', () => {
+    const [, lab] = events(buildRoutineICS(labSection('THMD,ARFB'), { now: NOW }));
+    eq(lab.DESCRIPTION, 'Lab faculty: THMD\\, ARFB');
+});
+test('a lab event keeps its UID, so a re-import updates rather than duplicates', () => {
+    const [, lab] = events(buildRoutineICS(labSection('TBA'), { now: NOW }));
+    eq(lab.UID, 'shohoj-189534-class-SATURDAY-840@shohoj.app');
+});
+
 console.log('\nexam events:');
 test('mid and final exams become one-off VEVENTs (no RRULE)', () => {
     const ics = buildRoutineICS(CSE110, { now: NOW });
