@@ -383,8 +383,16 @@ routine needs the whole list.
 **Only the running term is served.** Spring 2026's pools (`066,501,612,901`, still
 linked from the classic site) return an empty body, as do the single pools `066` and
 `067`. There is no routine archive on annex: a term that isn't captured while it runs
-is gone. To keep history, Shohoj has to save each term as BRACU's semester archive
-does (a Worker cron storing every term before the feed forgets it).
+is gone. To keep history, each term has to be saved while it runs.
+
+**Behind a bot check since October 2026.** By 2026-10-18 every routine page
+answered with a ~12 KB "One moment, please... Please wait while your request is
+being verified" challenge from a new `openresty` front, where LiteSpeed had served
+the timetable two days earlier; `bubt.edu.bd` itself was unaffected. That rules
+out an automated capture (a Worker cron was written for #927 and dropped before
+shipping): Shohoj does not get past bot checks. Each term is instead saved by
+hand from a browser and imported with `scripts/import_bubt_routine.mjs`
+(`data/campuses/README.md`, "Importing a BUBT term").
 
 - **Two slot grids** [official]:
   - **Day** — six 90-minute slots, 08:15–09:45, 09:45–11:15, 11:15–12:45,
@@ -410,8 +418,9 @@ does (a Worker cron storing every term before the feed forgets it).
   programmes are small graduate ones, so Free Rooms built from the endpoint is close
   to complete; it would understate occupancy only in the rooms those two book.
 - **Seats:** no seat or capacity data anywhere [unknown]. `seats` stays off.
-- **Etiquette for a cron:** 16 requests per refresh, spaced. Neither host serves a
-  `robots.txt` (both 404 on 2026-10-16), but ask BUBT IT before polling (question 9).
+- **No automated fetching.** Annex is behind a bot check (above); neither host
+  serves a `robots.txt` (both 404 on 2026-10-16). A scheduled capture would need
+  BUBT IT's permission or a feed (question 9).
 
 This is enough for **routine** (pick your intake-section) and **free rooms**. Both need
 the schema change DIU already needs (§17 there): sections that meet at different times
@@ -495,9 +504,9 @@ What the profile type can't say yet, that BUBT needs:
 7. Is there a **W** grade? How long does an **I** stay open?
 8. Can Shohoj get each programme's **current curriculum** (codes, titles, credits,
    prerequisites) and the old ↔ new course-code equivalences (3-digit → 4-digit)?
-9. May Shohoj read `annex.bubt.edu.bd/global_file/routine.php` on a schedule (16
-   requests per refresh)? Are past terms' routines kept anywhere public (annex serves
-   only the running term, §12)?
+9. Annex's routine pages are now behind a bot check (§12). Could Shohoj have a feed
+   of each term's routines, or permission to read `routine.php` on a schedule (16
+   requests a day)? Are past terms' routines kept anywhere public?
 10. Bus routes, stops and times? Is there a public schedule?
 11. Which buildings exist now (the routines use 1–5), and what do the room digits after
     the first encode?
@@ -542,8 +551,9 @@ Fall 2026 offer was found).
    settled, plus `tests/universityData.test.js` parity against `profile.json`.
 3. Build the routine and free-rooms screens for BUBT on the loaded sections, picking
    an intake-section rather than single sections (§5).
-4. Capture each term while it runs (annex keeps none, §12): a Worker cron or an
-   import script over the 16 programme ids, 16 requests per term.
+4. Save each term while it runs (annex keeps none, and is behind a bot check, §12):
+   a person saves the 16 routine pages from a browser and runs
+   `scripts/import_bubt_routine.mjs` (#927). Spring 2027 starts 2 Jan 2027.
 5. Ask BUBT the §16 questions, starting with 1, 2, 5 and 9.
 
 ## 18. What annex.bubt.edu.bd exposes (scanned 2026-10-16)
@@ -553,7 +563,7 @@ parameters. No form was submitted, no sign-in attempted, no path guessed.
 
 | Part | Access | Use to Shohoj |
 |---|---|---|
-| `global_file/routine.php` | Public HTML, no login | **The source for routine, free rooms and faculty names** (§11, §12). Running term only. `&print=true` is the same data. |
+| `global_file/routine.php` | No login, but behind a bot check since about 2026-10-17 | **The source for routine, free rooms and faculty names** (§11, §12). Running term only. `&print=true` is the same data. Saved by hand from a browser, never fetched by Shohoj. |
 | BUBT-NX (the portal behind the annex login) | Student ID + password | By its own *About* page, it shows each student's registered courses and class schedule, marks, grades and attendance, fees, and "all the courses along with information of prerequisite courses of each program". That catalogue is what §8 lacks, but it is reachable only by a signed-in student: the way in is the CONNECT model, a student pasting their own page, never Shohoj holding credentials. |
 | Sign-up, forgot-password, login forms | Public pages, but each takes a student's ID, ID-card serial, email or phone | None. Pages loaded, nothing submitted. |
 | `global_file/action/pwdsinfo_hints_action.php?forgtID=<id>` | Called by the forgot-password page as soon as an ID is typed, before any check | **Off-limits.** It returns account hints for whatever ID it is given, so querying other students' IDs would be collecting personal data. Never called; raised with BUBT as question 13. |
