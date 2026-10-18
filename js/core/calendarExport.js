@@ -10,6 +10,7 @@
 // date-times (BRACU = Asia/Dhaka, no DST). Pure + UI-agnostic.
 
 import { termLastClassDate, termNoClassDates } from './termCalendar.js';
+import { slotFaculties } from './connectFeed.js';
 
 const BYDAY = {
     SUNDAY: 'SU', MONDAY: 'MO', TUESDAY: 'TU', WEDNESDAY: 'WE',
@@ -124,6 +125,9 @@ export function buildRoutineICS(sections, options = {}) {
 
         if (s.classStartDate && s.classEndDate) {
             for (const slot of s.classSlots) {
+                // A lab is its own meeting: its own room, and its own faculty —
+                // the lab's list, or the theory faculty plus TBA until assigned.
+                const isLab = slot.kind === 'lab';
                 const startDate = firstOnOrAfter(s.classStartDate, slot.day);
                 const lastDate = term ? termLastClassDate(term, slot.day) : s.classEndDate;
                 const untilDate = lastDate < s.classEndDate ? lastDate : s.classEndDate;
@@ -132,10 +136,12 @@ export function buildRoutineICS(sections, options = {}) {
                     ? termNoClassDates(term, slot.day).filter((d) => d >= startDate && d <= untilDate)
                     : [];
                 lines.push(...vevent({
+                    // The UID keeps "class" for labs too: a re-import then updates
+                    // the event already in the calendar instead of adding a second.
                     uid: `shohoj-${s.sectionId}-class-${slot.day}-${slot.startMin}@shohoj.app`,
-                    summary: `${tag} class`,
-                    location: s.roomName,
-                    description: faculty,
+                    summary: `${tag} ${isLab ? 'lab' : 'class'}`,
+                    location: (isLab && slot.room) || s.roomName,
+                    description: isLab ? `Lab faculty: ${slotFaculties(s, slot).join(', ')}` : faculty,
                     startDate,
                     startMin: slot.startMin,
                     endMin: slot.endMin,
