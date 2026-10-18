@@ -98,9 +98,10 @@ CREATE TABLE courses (
   PRIMARY KEY (campus, code));
 -- A campus whose codes repeat across departments lists courses per program
 -- (data/campuses/diu/program-courses.json): the same code is one row per program.
+-- credits is NULL where no source publishes them (BUBT's routines give titles only).
 CREATE TABLE program_courses (
   campus TEXT NOT NULL, program TEXT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL,
-  credits REAL NOT NULL, position INTEGER NOT NULL, source TEXT NOT NULL,
+  credits REAL, position INTEGER NOT NULL, source TEXT NOT NULL, note TEXT,
   PRIMARY KEY (campus, program, code));
 -- A course can carry rules from several documents, some scoped to one program,
 -- so each rule has its own id.
@@ -160,23 +161,25 @@ CREATE TABLE requirement_options (
   PRIMARY KEY (campus, grp, option, code));
 -- section is untyped on purpose: NSU numbers sections, BRACU names them ("04",
 -- "07A", "04-CLOSED"), and a typed column would turn "04" into 4.
+-- program is '' for a campus-wide section, else the program it belongs to (BUBT's
+-- codes and section names repeat across programs).
 CREATE TABLE sections (
-  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, course TEXT NOT NULL,
-  section NOT NULL, faculty TEXT, days TEXT, start TEXT, "end" TEXT, room TEXT,
+  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, program TEXT NOT NULL,
+  course TEXT NOT NULL, section NOT NULL, faculty TEXT, days TEXT, start TEXT, "end" TEXT, room TEXT,
   capacity INTEGER, seats_taken INTEGER, seats_available INTEGER, department TEXT, section_id INTEGER, type TEXT,
   title TEXT, lab_course TEXT, lab_section_id INTEGER, lab_title TEXT, lab_faculty TEXT,
   lab_room TEXT, mid_exam_date TEXT, mid_exam_start TEXT, mid_exam_end TEXT,
   final_exam_date TEXT, final_exam_start TEXT, final_exam_end TEXT, class_start TEXT,
   class_end TEXT, note TEXT, source TEXT NOT NULL,
-  PRIMARY KEY (campus, term, term_system, course, section));
+  PRIMARY KEY (campus, term, term_system, program, course, section));
 -- Every weekly meeting of a section, one row per day: its class meetings and,
 -- where a section has one, its lab's. This is what free-room and clash queries
 -- join on. Sections with no fixed schedule have none.
 CREATE TABLE meetings (
-  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, course TEXT NOT NULL,
-  section NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL, start TEXT NOT NULL,
-  "end" TEXT NOT NULL, room TEXT,
-  PRIMARY KEY (campus, term, term_system, course, section, kind, day, start));
+  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, program TEXT NOT NULL,
+  course TEXT NOT NULL, section NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL,
+  start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT,
+  PRIMARY KEY (campus, term, term_system, program, course, section, kind, day, start));
 CREATE TABLE calendar_events (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, date TEXT NOT NULL,
   end_date TEXT, kind TEXT NOT NULL, event TEXT NOT NULL, source TEXT NOT NULL);
@@ -217,10 +220,11 @@ CREATE INDEX requirement_options_code ON requirement_options (campus, code);
 CREATE VIEW rooms AS
   SELECT m.campus, m.term, m.term_system, m.room,
          CASE WHEN m.room GLOB '[A-Z]*[0-9]' THEN rtrim(m.room, '0123456789') ELSE NULL END AS building,
-         COUNT(DISTINCT m.course || '#' || m.section) AS sections, MAX(s.capacity) AS largest_section
+         COUNT(DISTINCT m.program || '|' || m.course || '#' || m.section) AS sections,
+         MAX(s.capacity) AS largest_section
   FROM meetings m JOIN sections s
     ON s.campus = m.campus AND s.term = m.term AND s.term_system = m.term_system
-   AND s.course = m.course AND s.section = m.section
+   AND s.program = m.program AND s.course = m.course AND s.section = m.section
   WHERE m.room IS NOT NULL GROUP BY m.campus, m.term, m.term_system, m.room;
 `;
 
@@ -548,7 +552,7 @@ function campusStatements(c) {
   if (c.programCourses) {
     add(
       'program_courses',
-      ['campus', 'program', 'code', 'title', 'credits', 'position', 'source'],
+      ['campus', 'program', 'code', 'title', 'credits', 'position', 'source', 'note'],
       c.programCourses.records.map((r, i) => [
         id,
         r.program,
@@ -557,6 +561,7 @@ function campusStatements(c) {
         r.credits,
         i + 1,
         r.source,
+        r.note ?? null,
       ]),
     );
   }
@@ -790,13 +795,14 @@ function campusStatements(c) {
   // ── Sections and their weekly meetings ─────────────────────────────────────
   for (const key of Object.keys(c.sections).sort()) {
     const file = c.sections[key];
-    const rows = [...file.records].sort(byKey('course', 'section'));
+    const rows = [...file.records].sort(byKey('program', 'course', 'section'));
     add(
       'sections',
       [
         'campus',
         'term',
         'term_system',
+        'program',
         'course',
         'section',
         'faculty',
@@ -831,6 +837,7 @@ function campusStatements(c) {
         id,
         file.term,
         file.termSystem,
+        s.program ?? '',
         s.course,
         s.section,
         s.faculty,
@@ -864,7 +871,7 @@ function campusStatements(c) {
     );
     const meetingRows = [];
     for (const s of rows) {
-      const base = [id, file.term, file.termSystem, s.course, s.section];
+      const base = [id, file.term, file.termSystem, s.program ?? '', s.course, s.section];
       if (s.meetings) {
         for (const mt of s.meetings)
           meetingRows.push([...base, 'class', mt.day, mt.start, mt.end, mt.room]);
@@ -876,7 +883,19 @@ function campusStatements(c) {
     }
     add(
       'meetings',
-      ['campus', 'term', 'term_system', 'course', 'section', 'kind', 'day', 'start', 'end', 'room'],
+      [
+        'campus',
+        'term',
+        'term_system',
+        'program',
+        'course',
+        'section',
+        'kind',
+        'day',
+        'start',
+        'end',
+        'room',
+      ],
       meetingRows,
     );
   }
