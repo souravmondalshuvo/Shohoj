@@ -53,6 +53,13 @@ export interface AssistantClientOptions {
    * cloud snapshot the Worker reads (#543). Omit when nothing is picked.
    */
   readonly routine?: { readonly picks: Record<string, number | null> } | null;
+  /**
+   * Stream the answer (#924): called with the WHOLE answer so far each time
+   * the model writes more, and with '' when what was shown is to be dropped.
+   * The turn still resolves with the final reply, which is what to keep.
+   * Against a Worker that does not stream, it is simply never called.
+   */
+  readonly onPartialReply?: (textSoFar: string) => void;
 }
 
 /**
