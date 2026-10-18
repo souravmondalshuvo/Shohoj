@@ -1915,79 +1915,155 @@ async function handleAssistant(request, env, origin, execCtx) {
     },
   };
 
-  const turnStartedAt = Date.now();
-  try {
-    // The student's own numbers, ready before the first model call (#915), so
-    // a CGPA or degree-progress question is answered in one call, not two.
-    // Built once here rather than per provider: a fallback answers from the
-    // same record without reading it again. No record → the plain prompt.
-    const system = assistantSystemFor(await loadStudentBrief(ctx));
-    const briefAt = Date.now();
-    const { reply, provider, usage, timing } = await runAssistantTurn({
-      providers: meter.providers,
-      messages,
-      ctx,
-      system,
-      // A fallback is a real operational event — the primary provider is
-      // failing for someone — so it is logged even though the student sees a
-      // normal answer. No transcript, no uid: the reason only.
-      onFallback: (failure) =>
-        console.warn(
-          JSON.stringify({
-            level: 'warn',
-            event: 'assistant_provider_fallback',
-            provider: failure.provider,
-            reason: failure.reason,
-          }),
-        ),
-    });
-    // Where the student's wait actually went. One line per answered turn, so a
-    // week of `wrangler tail` says whether the model, our own Firestore reads,
-    // or the round-trip count is the thing worth fixing.
-    const finishedAt = Date.now();
-    console.log(
-      JSON.stringify({
-        level: 'info',
-        event: 'assistant_turn_timing',
-        provider,
-        totalMs: finishedAt - startedAt,
-        authMs: authAt - startedAt,
-        budgetMs: budgetAt - authAt,
-        turnMs: finishedAt - turnStartedAt,
-        briefMs: briefAt - turnStartedAt,
-        modelMs: timing?.modelMs ?? 0,
-        toolMs: timing?.toolMs ?? 0,
-        modelCalls: timing?.modelCalls ?? 0,
-        toolCalls: timing?.toolCalls ?? 0,
-        rounds: timing?.rounds ?? 0,
-        outputTokens: usage?.outputTokens ?? 0,
-      }),
-    );
-    await finishAiAdmission(store, admission, meter, true, execCtx);
-    return jsonResponse(
-      {
+  // One turn, delivered two ways (#924). Everything above — origin, auth,
+  // campus, rate limit, body, quota and budget — has already answered with a
+  // status code, so a refused turn looks exactly the same to every client. What
+  // remains is the turn itself: settled and logged identically, then returned
+  // whole as JSON, or written to the student as it happens.
+  const runTurn = async ({ onDelta, onReset } = {}) => {
+    const turnStartedAt = Date.now();
+    // When the first words reached the student — the wait streaming exists to
+    // shorten, so the number that says whether it did.
+    let firstTextAt = null;
+    const streamText =
+      typeof onDelta === 'function'
+        ? (text) => {
+            firstTextAt ??= Date.now();
+            onDelta(text);
+          }
+        : undefined;
+    try {
+      // The student's own numbers, ready before the first model call (#915), so
+      // a CGPA or degree-progress question is answered in one call, not two.
+      // Built once here rather than per provider: a fallback answers from the
+      // same record without reading it again. No record → the plain prompt.
+      const system = assistantSystemFor(await loadStudentBrief(ctx));
+      const briefAt = Date.now();
+      const { reply, provider, usage, timing } = await runAssistantTurn({
+        providers: meter.providers,
+        messages,
+        ctx,
+        system,
+        onDelta: streamText,
+        onReset,
+        // A fallback is a real operational event — the primary provider is
+        // failing for someone — so it is logged even though the student sees a
+        // normal answer. No transcript, no uid: the reason only.
+        onFallback: (failure) =>
+          console.warn(
+            JSON.stringify({
+              level: 'warn',
+              event: 'assistant_provider_fallback',
+              provider: failure.provider,
+              reason: failure.reason,
+            }),
+          ),
+      });
+      // Where the student's wait actually went. One line per answered turn, so a
+      // week of `wrangler tail` says whether the model, our own Firestore reads,
+      // or the round-trip count is the thing worth fixing.
+      const finishedAt = Date.now();
+      console.log(
+        JSON.stringify({
+          level: 'info',
+          event: 'assistant_turn_timing',
+          provider,
+          totalMs: finishedAt - startedAt,
+          authMs: authAt - startedAt,
+          budgetMs: budgetAt - authAt,
+          turnMs: finishedAt - turnStartedAt,
+          briefMs: briefAt - turnStartedAt,
+          streamed: streamText !== undefined,
+          firstTextMs: firstTextAt === null ? undefined : firstTextAt - startedAt,
+          modelMs: timing?.modelMs ?? 0,
+          toolMs: timing?.toolMs ?? 0,
+          modelCalls: timing?.modelCalls ?? 0,
+          toolCalls: timing?.toolCalls ?? 0,
+          rounds: timing?.rounds ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
+        }),
+      );
+      await finishAiAdmission(store, admission, meter, true, execCtx);
+      return {
         reply,
         quota: {
           remaining: Math.max(0, quotaLimit - admission.count),
           limit: quotaLimit,
           resetsAt: resetsAtIso(),
         },
-      },
-      { status: 200 },
-      env,
-      origin,
-    );
-  } catch (e) {
-    await finishAiAdmission(store, admission, meter, false, execCtx);
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'assistant_error',
-        errorMessage: e?.message || String(e),
-      }),
-    );
-    return jsonResponse({ error: 'assistant_unavailable' }, { status: 502 }, env, origin);
+      };
+    } catch (e) {
+      await finishAiAdmission(store, admission, meter, false, execCtx);
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'assistant_error',
+          errorMessage: e?.message || String(e),
+        }),
+      );
+      throw e;
+    }
+  };
+
+  if (body?.stream !== true) {
+    try {
+      return jsonResponse(await runTurn(), { status: 200 }, env, origin);
+    } catch {
+      return jsonResponse({ error: 'assistant_unavailable' }, { status: 502 }, env, origin);
+    }
   }
+  return streamAssistantTurn(runTurn, env, origin, execCtx);
+}
+
+/**
+ * Write one Assistant turn to the student as it happens (#924), as server-sent
+ * events on a 200 that is already open:
+ *
+ *   delta {text}     answer text as the model writes it
+ *   reset {}         drop the text shown so far — that round asked for a tool
+ *                    after all, or the provider failed and a fallback took over
+ *   done  {reply, quota}  the whole answer, authoritative; the stream ends
+ *   error {error}    the turn failed after the stream opened; the stream ends
+ *
+ * `done` repeats the full reply on purpose: what the student keeps is that
+ * string, never a reassembly of deltas, so a dropped or duplicated fragment can
+ * cost them a flicker but never a wrong answer. And a provider that cannot
+ * stream simply sends no deltas — its reply arrives here whole.
+ *
+ * A student who closes the panel stops reading, but the turn still finishes and
+ * settles: a write that fails is dropped rather than thrown, and the work rides
+ * waitUntil so the runtime does not cut it off with the connection.
+ */
+function streamAssistantTurn(runTurn, env, origin, execCtx) {
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+  const send = (event, data) =>
+    writer
+      .write(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+      .catch(() => {});
+  const work = (async () => {
+    try {
+      const outcome = await runTurn({
+        onDelta: (text) => send('delta', { text }),
+        onReset: () => send('reset', {}),
+      });
+      await send('done', outcome);
+    } catch {
+      await send('error', { error: 'assistant_unavailable' });
+    } finally {
+      await writer.close().catch(() => {});
+    }
+  })();
+  if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(work);
+  return new Response(readable, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-store',
+      ...corsHeaders(env, origin),
+    },
+  });
 }
 
 /**
