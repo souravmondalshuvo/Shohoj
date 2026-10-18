@@ -3386,6 +3386,31 @@ async function makeServiceAccountJson() {
     assertEq(reasons.join(' | '), 'stream error: gateway_timeout | stream ended early | unreadable stream');
   });
 
+  // The API's thinking guide opens an output step with its first words inside
+  // step.start — dropping them loses the start of the answer, or all of a
+  // short one (Codex review on #925).
+  await test('words carried by step.start are part of the answer', async () => {
+    const written = [];
+    const body = await readGeminiStream(
+      geminiStream([
+        { event_type: 'interaction.created', interaction: { id: 'i1' } },
+        { event_type: 'step.start', index: 0,
+          step: { type: 'thought', signature: '', summary: [{ type: 'text', text: 'PRIVATE' }] } },
+        { event_type: 'step.delta', index: 0, delta: { type: 'thought_signature', signature: 'sig' } },
+        { event_type: 'step.stop', index: 0 },
+        { event_type: 'step.start', index: 1,
+          step: { type: 'model_output', content: [{ type: 'text', text: 'Based on the clues, here' }] } },
+        { event_type: 'step.delta', index: 1, delta: { type: 'text', text: ' is the answer.' } },
+        { event_type: 'step.stop', index: 1 },
+        { event_type: 'interaction.completed', interaction: { id: 'i1', status: 'completed' } },
+      ]),
+      (t) => written.push(t),
+    );
+    assertEq(written.join(''), 'Based on the clues, here is the answer.');
+    assertEq(body.steps.length, 1, 'the thought, summary and all, is not kept');
+    assertEq(body.steps[0].content[0].text, 'Based on the clues, here is the answer.');
+  });
+
   await test('the stream reader yields the shape the non-streaming loop reads', async () => {
     const written = [];
     const body = await readGeminiStream(
