@@ -138,6 +138,9 @@ function AssistantDrawer({
   const [transcript, setTranscript] = useState<readonly AssistantMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
+  // The answer so far while a turn streams (#924); '' until the first word.
+  // Twin of _partial in js/ui/assistantFab.js — change both.
+  const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
   // The Worker's daily allowance for this student (#746), last known from a
   // turn's response. Null until the first turn — the drawer opens with no
@@ -198,7 +201,7 @@ function AssistantDrawer({
   // Keep the newest message in view as turns land.
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-  }, [transcript, pending]);
+  }, [transcript, pending, partial]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -268,6 +271,9 @@ function AssistantDrawer({
           return isCurrent() ? token : null;
         },
         routine: readRoutinePicks(),
+        onPartialReply: (text) => {
+          if (isCurrent()) setPartial(text);
+        },
       });
       if (!isCurrent()) return;
       if (result.ok) {
@@ -287,6 +293,7 @@ function AssistantDrawer({
       if (isCurrent()) {
         pendingRef.current = false;
         setPending(false);
+        setPartial('');
       }
     }
   };
@@ -319,6 +326,7 @@ function AssistantDrawer({
             generationRef.current += 1;
             pendingRef.current = false;
             setPending(false);
+            setPartial('');
             setDraft('');
             setTranscript([]);
             setError(null);
@@ -344,7 +352,15 @@ function AssistantDrawer({
         nothing is uploaded, and “Clear chat” deletes them.
       </p>
 
-      <div className="assistant-log" ref={logRef} aria-live="polite">
+      {/* Busy only while an answer streams: a screen reader then waits for the
+          finished reply instead of reading every fragment as it lands, and
+          "Thinking…" before the first word is still announced. */}
+      <div
+        className="assistant-log"
+        ref={logRef}
+        aria-live="polite"
+        aria-busy={pending && partial ? true : undefined}
+      >
         {transcript.length === 0 && (
           <div className="assistant-empty">
             <p>
@@ -383,7 +399,12 @@ function AssistantDrawer({
             </div>
           ),
         )}
-        {pending && (
+        {pending && partial && (
+          <div className="assistant-bubble assistant-bubble--reply assistant-bubble--rich assistant-bubble--streaming">
+            <ReplyBody text={partial} />
+          </div>
+        )}
+        {pending && !partial && (
           <div className="assistant-bubble assistant-bubble--reply assistant-bubble--pending">
             {/* Motion, not a static word: several seconds of unchanging text
                 reads as a frozen panel. The word stays for screen readers,
