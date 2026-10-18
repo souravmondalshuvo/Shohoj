@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Igjhn7sKIp6sNHHdyBqgcKUahjruAHc9C7ZQOQG31jo='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-+3FPXJM/C0OeLltXhaFoqBOc50kDt+5V1jkt3AfSyh0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6283,6 +6283,17 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 
 .routine-section-name { font-weight: 700; }
 .routine-section-faculty { color: var(--text2); letter-spacing: 0.4px; font-weight: 600; }
+/* A section with a lab names its lab faculty on a second line of the 56px
+   faculty cell, quieter than the theory faculty above it. */
+.routine-section-labfac {
+  display: block; margin-top: 2px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.2px; color: var(--text3);
+  overflow-wrap: anywhere;
+}
+.routine-lab-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text3);
+}
 .routine-section-schedule { color: var(--text1); }
 .routine-section-room { color: var(--text3); font-size: 11px; }
 .routine-section-seats { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; text-align: center; }
@@ -6405,6 +6416,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 }
 .routine-collapsed-sec   { font-weight: 700; color: var(--text1); }
 .routine-collapsed-fac   { font-weight: 600; letter-spacing: 0.3px; }
+.routine-collapsed-labfac { font-weight: 600; letter-spacing: 0.3px; }
 .routine-collapsed-sched { color: var(--text2); }
 /* Room of the picked section — a quiet pill so it reads apart from the
    schedule text it follows. */
@@ -25140,6 +25152,9 @@ function normalizeSection(raw) {
         consumedSeat,
         isFull: capacity > 0 && consumedSeat >= capacity,
         facultyInitials: (raw.faculties || '').trim().toUpperCase(),
+        // The lab's own faculty list ("THMD,ARFB", or "TBA" until assigned);
+        // null when the feed publishes none. Read through slotFaculties.
+        labFacultyInitials: (raw.labFaculties || '').trim().toUpperCase() || null,
         roomName,
         semesterSessionId:
             typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
@@ -25152,6 +25167,32 @@ function normalizeSection(raw) {
         // (#478), and normalizing it here would put a grammar in the feed layer.
         prerequisiteCourses: (raw.prerequisiteCourses ?? '').trim(),
     };
+}
+
+// A feed faculty string as a list of initials: "THMD, ARFB" → ["THMD", "ARFB"].
+// Placeholders (TBA) and repeats are dropped, so an unassigned section reads as
+// an empty list.
+function splitFacultyInitials(value) {
+    const out = [];
+    for (const part of String(value ?? '').split(',')) {
+        const initials = part.trim().toUpperCase();
+        if (initials && initials !== 'TBA' && !out.includes(initials)) out.push(initials);
+    }
+    return out;
+}
+
+// Who teaches one meeting of a section, for display: never empty, TBA standing
+// in for anyone not yet assigned. A theory slot is the section's faculty; a lab
+// slot is the lab's own list — often two people, not always including the
+// theory faculty. Until the university assigns it (TBA), the lab shows the
+// theory faculty plus TBA. A source with no lab faculty at all (null) leaves
+// the lab with the theory faculty, as before.
+function slotFaculties(section, slot) {
+    const theory = splitFacultyInitials(section.facultyInitials);
+    const labRaw = section.labFacultyInitials ?? null;
+    if (slot.kind !== 'lab' || labRaw === null) return theory.length > 0 ? theory : ['TBA'];
+    const lab = splitFacultyInitials(labRaw);
+    return lab.length > 0 ? lab : [...theory, 'TBA'];
 }
 
 function parseFeed(payload) {
@@ -26960,11 +27001,16 @@ function computeGridLayout(routine, options = {}) {
             if (localEnd <= localStart) continue;
             const rowStart = Math.floor((localStart - startMin) / rowMinutes);
             const rowEnd = Math.ceil((localEnd - startMin) / rowMinutes);
+            // Who teaches this meeting: a lab names its own faculty (often
+            // two), TBA for anyone unassigned.
+            const faculties = slotFaculties(s, slot);
             blocks.push({
                 sectionId: s.sectionId,
                 courseCode: s.courseCode,
                 sectionName: s.sectionName,
-                facultyInitials: s.facultyInitials,
+                kind: slot.kind,
+                faculties,
+                facultyInitials: faculties.join(', '),
                 // The slot's own room (a lab meets elsewhere than its theory
                 // class); the section room is the fallback when it's blank.
                 roomName: slot.room || s.roomName,
@@ -31257,7 +31303,7 @@ function _agendaItemHTML(block, clashMap, hueMap) {
       <div class="routine-agenda-time">${_min2hhmm(block.startMin)}<span>${_min2hhmm(block.endMin)}</span></div>
       <div class="routine-agenda-body">
         <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">Section ${escHtml(block.sectionName)}</span>${clashPill}</div>
-        <div class="routine-agenda-meta">${escHtml(block.facultyInitials || 'TBA')}${_facultyBadgeHTML(block)} · ${escHtml(block.roomName || '—')}</div>
+        <div class="routine-agenda-meta">${_blockFacultiesHTML(block, (f) => _facultyBadgeHTML({ facultyInitials: f }))} · ${escHtml(block.roomName || '—')}</div>
       </div>
     </div>`;
 }
@@ -31300,17 +31346,21 @@ function _gridBlockHTML(block, clashMap, hueMap) {
     styleParts.push(`--sub-x: calc(100% * ${block.subCol})`);
   }
   const styles = styleParts.join('; ');
-  const rating = _store.ratingLoaded
-    ? getRatingForSection({ facultyInitials: block.facultyInitials }, _store.ratingMap)
-    : null;
-  const ratingBadge = (rating && rating.tier !== 'unknown')
-    ? ` <span class="routine-grid-block-rating routine-faculty-badge--${rating.tier}">★ ${escHtml(formatRatingScore(rating.overall))}</span>`
-    : '';
-  const ratingTitle = rating && rating.tier !== 'unknown'
-    ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
-    : '';
+  const ratingBadge = (f) => {
+    const rating = _knownRating(f);
+    return rating
+      ? ` <span class="routine-grid-block-rating routine-faculty-badge--${rating.tier}">★ ${escHtml(formatRatingScore(rating.overall))}</span>`
+      : '';
+  };
+  const facultyTitle = _blockFaculties(block).map((f) => {
+    const rating = _knownRating(f);
+    return rating
+      ? `${f} ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
+      : f;
+  }).join(', ');
   const clashLabel = isClash ? ' — clashes with another class' : '';
-  const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
+  const kindLabel = block.kind === 'lab' ? ' lab' : '';
+  const title = `${block.courseCode} Section ${block.sectionName}${kindLabel} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${facultyTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone. It
   // rides the time line, not the code line: 12px of mark there would push a
   // 7-character room onto the ellipsis at a 1280 window, and the time line has
@@ -31331,10 +31381,33 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code"><span class="routine-grid-block-codetext">${escHtml(block.courseCode)}</span>${roomLabel}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-meta">${_blockFacultiesHTML(block, ratingBadge)} · Sec ${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${clashMark}<span class="routine-grid-block-timetext">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</span></div>
     </div>
   `;
+}
+
+// Who teaches one grid block. A lab names its own faculty — often two, and
+// "TAP, TBA" until the university assigns them (core/connectFeed.js
+// slotFaculties) — so each name is listed with its own rating rather than the
+// section's theory faculty standing in for all of them.
+function _blockFaculties(block) {
+  if (Array.isArray(block.faculties) && block.faculties.length > 0) return block.faculties;
+  return [block.facultyInitials || 'TBA'];
+}
+
+function _blockFacultiesHTML(block, badgeFor) {
+  return _blockFaculties(block)
+    .map((f) => `${escHtml(f)}${f === 'TBA' ? '' : badgeFor(f)}`)
+    .join(', ');
+}
+
+// A faculty's rating when there is one worth showing; null while reviews load,
+// for TBA, and for the "unknown" tier the badges never render.
+function _knownRating(initials) {
+  if (!_store.ratingLoaded || initials === 'TBA') return null;
+  const r = getRatingForSection({ facultyInitials: initials }, _store.ratingMap);
+  return r && r.tier !== 'unknown' ? r : null;
 }
 
 // Build a courseCode -> hue map by walking the grid blocks in first-appearance
@@ -31687,6 +31760,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
           <span class="routine-collapsed-pick">
             <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+            ${_collapsedLabFacultyHTML(section)}
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
             <span class="routine-collapsed-room" title="Room">${escHtml(_formatRooms(section))}</span>
             ${clashPill}
@@ -31776,7 +31850,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
-      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+      <span class="routine-section-faculty" title="${escAttr(_sectionFacultyTitle(section))}">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}${_sectionLabFacultyHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
       ${bare ? '' : `<span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
@@ -31799,6 +31873,42 @@ function _facultyBadgeHTML(section) {
     ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
     : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
   return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
+}
+
+// Who teaches a section's lab, or null when it has none. Its own list — often
+// two people, not always the theory faculty — or "TAP, TBA" until assigned
+// (core/connectFeed.js slotFaculties), the same names the grid's lab block shows.
+function _labFaculties(section) {
+  const hasLab = (section.classSlots || []).some((slot) => slot.kind === 'lab');
+  return hasLab ? slotFaculties(section, { kind: 'lab' }) : null;
+}
+
+// The folded course row has width to spare, so each lab faculty gets a badge.
+function _collapsedLabFacultyHTML(section) {
+  const lab = _labFaculties(section);
+  if (!lab) return '';
+  const names = lab
+    .map((f) => `${escHtml(f)}${f === 'TBA' ? '' : _facultyBadgeHTML({ facultyInitials: f })}`)
+    .join(', ');
+  return `<span class="routine-collapsed-labfac" title="Lab faculty"><span class="routine-lab-tag">Lab</span> ${names}</span>`;
+}
+
+// The section list's faculty column is 56px — a second, quieter line under the
+// theory faculty, names only; their ratings ride the cell's title.
+function _sectionLabFacultyHTML(section) {
+  const lab = _labFaculties(section);
+  if (!lab) return '';
+  return `<span class="routine-section-labfac"><span class="routine-lab-tag">Lab</span> ${escHtml(lab.join(', '))}</span>`;
+}
+
+function _sectionFacultyTitle(section) {
+  const named = (f) => {
+    const r = _knownRating(f);
+    return r ? `${f} ★${formatRatingScore(r.overall)}` : f;
+  };
+  const theory = `Faculty: ${named(section.facultyInitials || 'TBA')}`;
+  const lab = _labFaculties(section);
+  return lab ? `${theory} · Lab: ${lab.map(named).join(', ')}` : theory;
 }
 
 // Rooms for a picked section, de-duplicated in slot order — a section with a

@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-8Nm5XE11SvU4D72kRUSaPtwSHV0U3uYoaHh6pPWu/9Y='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-PDq9u9sAlxfg6i6ry0cC6IN9hcyg6GmOrGL+Ep5FoSc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -6265,6 +6265,17 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 
 .routine-section-name { font-weight: 700; }
 .routine-section-faculty { color: var(--text2); letter-spacing: 0.4px; font-weight: 600; }
+/* A section with a lab names its lab faculty on a second line of the 56px
+   faculty cell, quieter than the theory faculty above it. */
+.routine-section-labfac {
+  display: block; margin-top: 2px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.2px; color: var(--text3);
+  overflow-wrap: anywhere;
+}
+.routine-lab-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text3);
+}
 .routine-section-schedule { color: var(--text1); }
 .routine-section-room { color: var(--text3); font-size: 11px; }
 .routine-section-seats { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; text-align: center; }
@@ -6387,6 +6398,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 }
 .routine-collapsed-sec   { font-weight: 700; color: var(--text1); }
 .routine-collapsed-fac   { font-weight: 600; letter-spacing: 0.3px; }
+.routine-collapsed-labfac { font-weight: 600; letter-spacing: 0.3px; }
 .routine-collapsed-sched { color: var(--text2); }
 /* Room of the picked section — a quiet pill so it reads apart from the
    schedule text it follows. */
@@ -14760,6 +14772,9 @@ function normalizeSection(raw) {
         consumedSeat,
         isFull: capacity > 0 && consumedSeat >= capacity,
         facultyInitials: (raw.faculties || '').trim().toUpperCase(),
+        // The lab's own faculty list ("THMD,ARFB", or "TBA" until assigned);
+        // null when the feed publishes none. Read through slotFaculties.
+        labFacultyInitials: (raw.labFaculties || '').trim().toUpperCase() || null,
         roomName,
         semesterSessionId:
             typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
@@ -14772,6 +14787,32 @@ function normalizeSection(raw) {
         // (#478), and normalizing it here would put a grammar in the feed layer.
         prerequisiteCourses: (raw.prerequisiteCourses ?? '').trim(),
     };
+}
+
+// A feed faculty string as a list of initials: "THMD, ARFB" → ["THMD", "ARFB"].
+// Placeholders (TBA) and repeats are dropped, so an unassigned section reads as
+// an empty list.
+function splitFacultyInitials(value) {
+    const out = [];
+    for (const part of String(value ?? '').split(',')) {
+        const initials = part.trim().toUpperCase();
+        if (initials && initials !== 'TBA' && !out.includes(initials)) out.push(initials);
+    }
+    return out;
+}
+
+// Who teaches one meeting of a section, for display: never empty, TBA standing
+// in for anyone not yet assigned. A theory slot is the section's faculty; a lab
+// slot is the lab's own list — often two people, not always including the
+// theory faculty. Until the university assigns it (TBA), the lab shows the
+// theory faculty plus TBA. A source with no lab faculty at all (null) leaves
+// the lab with the theory faculty, as before.
+function slotFaculties(section, slot) {
+    const theory = splitFacultyInitials(section.facultyInitials);
+    const labRaw = section.labFacultyInitials ?? null;
+    if (slot.kind !== 'lab' || labRaw === null) return theory.length > 0 ? theory : ['TBA'];
+    const lab = splitFacultyInitials(labRaw);
+    return lab.length > 0 ? lab : [...theory, 'TBA'];
 }
 
 function parseFeed(payload) {
