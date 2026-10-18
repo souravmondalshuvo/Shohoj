@@ -123,3 +123,27 @@ test('the section list and the folded course row name the lab faculty too', asyn
   const eee = page.locator('.routine-course-block--collapsed', { hasText: 'EEE103' });
   await expect(eee.locator('.routine-collapsed-labfac')).toHaveText('Lab AHFA, SMC');
 });
+
+test('the calendar export gives a lab its own faculty, room and title', async ({ page }) => {
+  await boot(page);
+  await pick(page, 'CSE221', 9201);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('[data-action="routine:calendar"]').click(),
+  ]);
+  const fs = await import('node:fs/promises');
+  const ics = await fs.readFile(await download.path(), 'utf8');
+  // The event's own lines, before its alarm (which has a DESCRIPTION too).
+  const events = ics.split('BEGIN:VEVENT').slice(1).map((e) => e.split('BEGIN:VALARM')[0]);
+  const lab = events.find((e) => e.includes('SUMMARY:CSE221 (Section 12) lab'));
+  expect(lab).toBeTruthy();
+  expect(lab).toContain('LOCATION:09B-11L');
+  expect(lab).toContain('DESCRIPTION:Lab faculty: TAP\\, TBA');
+  const theory = events.filter((e) => e.includes('SUMMARY:CSE221 (Section 12) class'));
+  expect(theory).toHaveLength(2);
+  for (const e of theory) {
+    expect(e).toContain('LOCATION:08H-22C');
+    expect(e).toContain('DESCRIPTION:Faculty: TAP');
+  }
+});
