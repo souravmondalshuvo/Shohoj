@@ -1249,7 +1249,7 @@ function runSupportHelp(btn) {
   const help = btn.dataset.help;
   if (help === 'share') { shareShohoj(btn); return; }
   if (modal) modal.style.display = 'none';
-  if (help === 'bug') { openFeedbackModal(); return; }
+  if (help === 'bug') { openFeedbackModal('bug'); return; }
   switchCalcTab(help);
   scrollToCalculator();
 }
