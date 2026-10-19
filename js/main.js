@@ -1223,9 +1223,56 @@ function _wireInlineReplacements() {
     a.addEventListener('click', e => {
       e.preventDefault();
       const m = document.getElementById('coffeeModal');
-      if (m) m.style.display = 'flex';
+      if (!m) return;
+      syncSupportHelpPills(m);
+      m.style.display = 'flex';
     });
   });
+  document.querySelectorAll('#coffeeModal [data-help]').forEach(btn => {
+    btn.addEventListener('click', () => runSupportHelp(btn));
+  });
+}
+
+// ── Coffee modal: other ways to help ─────────────────────────────────────────
+// Reviews and papers live inside the calculator, which a signed-out visitor
+// cannot reach, and not every campus has them — so those pills show only when
+// the tab would actually open.
+function syncSupportHelpPills(modal) {
+  const signedIn = typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
+  modal.querySelectorAll('[data-help="reviews"], [data-help="papers"]').forEach(btn => {
+    btn.hidden = !(signedIn && campusAllowsTab(getActiveCampus(), btn.dataset.help));
+  });
+}
+
+function runSupportHelp(btn) {
+  const modal = document.getElementById('coffeeModal');
+  const help = btn.dataset.help;
+  if (help === 'share') { shareShohoj(btn); return; }
+  if (modal) modal.style.display = 'none';
+  if (help === 'bug') { openFeedbackModal(); return; }
+  switchCalcTab(help);
+  scrollToCalculator();
+}
+
+function shareShohoj(btn) {
+  const url = location.origin + location.pathname;
+  if (navigator.share) {
+    navigator.share({ title: 'Shohoj', text: 'University life, made simple.', url })
+      .catch(() => {}); // the student closing the share sheet is not an error
+    return;
+  }
+  // Kept on the button so a second tap mid-flash doesn't adopt the flash text.
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+  const done = text => {
+    btn.textContent = text;
+    clearTimeout(btn._shareTimer);
+    btn._shareTimer = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1600);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(() => done('✓ Link copied'), () => done(url));
+  } else {
+    done(url);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
