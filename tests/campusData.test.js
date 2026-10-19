@@ -110,6 +110,21 @@ const friday = diu.bus.records.find((r) => r.route.startsWith('Friday Schedule :
 assert.deepEqual(friday.departCampus, ['14:20', '18:30'], 'the 12-hour Friday times are read as afternoon');
 assert.match(friday.note, /Printed as 02:20, 06:30/);
 
+// DIU: CSE's Fall 2026 routine, and the codes only it names as title-less stubs.
+const diuCse = diu.sections['263-trimester'];
+assert.equal(diuCse.records.length, 975);
+assert.ok(diuCse.records.every((s) => s.program === 'CSE' && s.meetings.length > 0));
+assert.equal(diuCse.source, 'diu-cse-routine-263-v41', 'V4.1, not the stale V3.1 copy');
+const diuStubs = diu.programCourses.records.filter((r) => r.title === null);
+assert.equal(diuStubs.length, 35);
+assert.ok(diuStubs.every((r) => r.program === 'CSE' && r.credits === null && r.note));
+const corrected = diuCse.records.find((s) => s.course === 'CSE416');
+assert.equal(corrected.section, 'RE_A(2C)');
+assert.match(corrected.note, /Printed "RE_A\(2C" in the routine/);
+const shared = diuCse.records.find((s) => s.course === 'CSE215' && s.section === 'RE_B(3C)');
+assert.equal(shared.faculty, null, 'two teachers: neither is picked');
+assert.match(shared.note, /Two teachers share this section/);
+
 // BUBT: sections belong to a program, and a code means what its program says.
 const bubt = real.campuses.find((c) => c.id === 'bubt');
 assert.equal(bubt.courses, undefined, 'no campus-wide course table for BUBT');
@@ -344,6 +359,14 @@ expectError('sections with no capacity and no flag', (dir) => editJson(bubtTrime
 expectError("program credits off the quarter grid", (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
   d.records.find((r) => r.credits === 0.75).credits = 0.3;
 }), /multiple of 0\.25/, 'bubt');
+
+expectError('a title-less course that carries credits', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  d.records.find((r) => r.title === null).credits = 3;
+}), /a course with no title is a stub/, 'diu');
+
+expectError('a title-less course with no note', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  delete d.records.find((r) => r.title === null).note;
+}), /a course with no title is a stub/, 'diu');
 
 expectError('a 0-credit course with no note', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
   delete d.records.find((r) => r.credits === 0).note;
