@@ -175,14 +175,17 @@ CREATE TABLE sections (
   PRIMARY KEY (campus, term, term_system, program, course, section));
 -- Every weekly meeting of a section, one row per day: its class meetings and,
 -- where a section has one, its lab's. This is what free-room and clash queries
--- join on. Sections with no fixed schedule have none. room is in the key: a
--- section split between two teachers can meet in two rooms at once (DIU's
--- retake CSE215 RE_B(3C)).
+-- join on. Sections with no fixed schedule have none. room is part of what
+-- makes a meeting unique: a section split between two teachers can meet in two
+-- rooms at once (DIU's retake CSE215 RE_B(3C)). room may be NULL, and SQLite
+-- treats NULLs in a key as distinct, so uniqueness is a unique index on
+-- COALESCE(room, '') instead: two roomless meetings at one hour still collide.
 CREATE TABLE meetings (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, program TEXT NOT NULL,
   course TEXT NOT NULL, section NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL,
-  start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT,
-  PRIMARY KEY (campus, term, term_system, program, course, section, kind, day, start, room));
+  start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT);
+CREATE UNIQUE INDEX meetings_unique ON meetings
+  (campus, term, term_system, program, course, section, kind, day, start, COALESCE(room, ''));
 CREATE TABLE calendar_events (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, date TEXT NOT NULL,
   end_date TEXT, kind TEXT NOT NULL, event TEXT NOT NULL, source TEXT NOT NULL);
