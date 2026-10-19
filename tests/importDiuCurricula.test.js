@@ -131,6 +131,28 @@ test('a code that means two things is left out, and two wordings of one title ar
   assert.ok(results.conflicts.report.dropped.some((d) => d.startsWith('ICE225')), 'NIL is not a title');
 });
 
+test('stubs a routine left survive a re-run, in code order, until the page lists them', () => {
+  const out = JSON.parse(execFileSync('python3', ['-c', `
+import json, sys
+sys.path.insert(0, ${JSON.stringify(resolve(root, 'scripts'))})
+import import_diu_curricula as m
+page = [{'program': 'CSE', 'code': 'CSE112', 'title': 'A', 'credits': 3, 'source': 'p'},
+        {'program': 'CSE', 'code': 'CSE441', 'title': 'IoT', 'credits': 3, 'source': 'p'},
+        {'program': 'SWE', 'code': 'SE111', 'title': 'B', 'credits': 3, 'source': 'p'}]
+existing = page[:2] + [
+    {'program': 'CSE', 'code': 'CSE328', 'title': None, 'credits': None, 'source': 'r', 'note': 'n'},
+    {'program': 'CSE', 'code': 'CSE441', 'title': None, 'credits': None, 'source': 'r', 'note': 'n'},
+    {'program': 'CSE', 'code': 'CSE112', 'title': 'Old title', 'credits': 3, 'source': 'p'}]
+print(json.dumps([[r['program'], r['code'], r['title']] for r in m.merge_stubs(page, existing)]))
+`]).toString());
+  assert.deepEqual(out, [
+    ['CSE', 'CSE112', 'A'],
+    ['CSE', 'CSE328', null],
+    ['CSE', 'CSE441', 'IoT'],
+    ['SWE', 'SE111', 'B'],
+  ]);
+});
+
 test('a program id from the API names a file inside the directory, or nothing', () => {
   const out = execFileSync('python3', ['-c', `
 import sys
