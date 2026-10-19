@@ -79,9 +79,13 @@ function _timeAgo(ts) {
 }
 
 // ── Open / Close ──────────────────────────────────────────────────────────────
-export function openFeedbackModal() {
+// `type` preselects a category for entry points that already know it (the coffee
+// modal's "Report a bug"). Anything else — no argument, or an Event from a bare
+// listener — keeps the last choice.
+export function openFeedbackModal(type) {
   const modal = document.getElementById('feedbackModal');
   if (!modal) return;
+  if (['bug', 'feature', 'general'].includes(type)) _selType = type;
   _activeTab   = 'submit';
   _boardLoaded = false;
   _boardFilter = 'all';
