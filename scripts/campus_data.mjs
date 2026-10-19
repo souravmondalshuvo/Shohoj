@@ -294,7 +294,9 @@ const programCoursesSchema = z
             // courses.json keeps the subject shape the Worker and the
             // Firestore rules check codes against.
             code: programCourseCode,
-            title: z.string().min(1),
+            // null for a stub: a code only a routine names (DIU's CSE routine
+            // gives codes, not titles), so a section can still point at it.
+            title: z.string().min(1).nullable(),
             // null when no source publishes the course's credits (BUBT's
             // routines give titles only); 0 only with a note saying why.
             credits: quarterCredits.nullable(),
@@ -304,6 +306,10 @@ const programCoursesSchema = z
           .strict()
           .refine((c) => c.credits !== 0 || c.note !== undefined, {
             message: 'a listed course carries credits; a 0-credit course needs a note',
+          })
+          .refine((c) => c.title !== null || (c.credits === null && c.note !== undefined), {
+            message:
+              'a course with no title is a stub: credits null, and a note saying where the code comes from',
           }),
       )
       .min(1),
