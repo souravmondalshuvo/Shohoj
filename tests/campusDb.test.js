@@ -145,6 +145,21 @@ try {
                          WHERE t.campus='diu' AND r.service='friday' AND t.direction='depart' AND t.time < '07:00'`);
   assert.equal(fridayBus.length, 0, 'no Friday bus leaves campus before dawn');
 
+  // DIU: CSE's routine, including a retake section split between two teachers
+  // in two rooms at once — two meetings with one day and start.
+  const diuSections = Object.values(diu.sections).flatMap((f) => f.records);
+  assert.equal(one("SELECT COUNT(*) AS n FROM sections WHERE campus='diu'").n, diuSections.length);
+  assert.equal(
+    one("SELECT COUNT(*) AS n FROM meetings WHERE campus='diu'").n,
+    diuSections.reduce((n, s) => n + s.meetings.length, 0),
+  );
+  assert.deepEqual(
+    all(`SELECT room FROM meetings WHERE campus='diu' AND course='CSE215' AND section='RE_B(3C)'
+           AND day='S' AND start='10:00' ORDER BY room`).map((r) => r.room),
+    ['ANX1-201', 'ANX1-307'],
+  );
+  assert.ok(one("SELECT COUNT(*) AS n FROM program_courses WHERE campus='diu' AND title IS NULL").n > 0, 'stubs load');
+
   // BUBT: sections belong to a program, so the same course and intake-section
   // in two programs are two rows, and every meeting keeps its program.
   const bubt = campuses.find((c) => c.id === 'bubt');
