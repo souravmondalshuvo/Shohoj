@@ -97,7 +97,11 @@ English and *Government and Politics* in LL.B), its courses go in
 A program's own list may hold four-digit subject codes (`ENG1101`) and ISCED
 field codes (`0413-111`), and credits in quarters (BUBT's 0.75-credit labs).
 `credits` is `null` when no source publishes it (BUBT's routines give titles,
-not credits), and `0` only with a `note` saying why.
+not credits), and `0` only with a `note` saying why. A course with no `title` is
+a stub: a code only a routine names (35 of DIU's CSE codes), with `credits` null
+and a `note` saying where it comes from. Stubs let a section point at its course;
+DIU's course autocomplete leaves them out, and `scripts/import_diu_curricula.py`
+keeps them on a re-run until DIU's page lists the code.
 
 A section may carry a `program` (BUBT: every program has its own intake-section
 `59-1`). Its course is then looked up in that program's list, the program must
