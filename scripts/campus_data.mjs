@@ -1091,9 +1091,15 @@ function checkCampus(campus, problems) {
       if (s.capacity === null && s.seatsAvailable === undefined && file.capacityPublished !== false)
         err(`${label}: has neither a capacity nor a seat count`);
       const checkMeetings = (list, where) => {
+        const seen = new Set();
         for (const mt of list) {
           if (!dayCodes.has(mt.day)) err(`${where}: unknown day code "${mt.day}"`);
           if (mt.start >= mt.end) err(`${where}: meets ${mt.start}-${mt.end}`);
+          // Two rooms at one hour is a split section; one room twice is a slip.
+          const key = `${mt.day} ${mt.start} ${mt.room ?? ''}`;
+          if (seen.has(key))
+            err(`${where}: meets twice on ${mt.day} at ${mt.start} in ${mt.room ?? 'no room'}`);
+          seen.add(key);
         }
       };
       if (s.lab) {
