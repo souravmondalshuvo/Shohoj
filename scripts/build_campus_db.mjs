@@ -98,9 +98,10 @@ CREATE TABLE courses (
   PRIMARY KEY (campus, code));
 -- A campus whose codes repeat across departments lists courses per program
 -- (data/campuses/diu/program-courses.json): the same code is one row per program.
--- credits is NULL where no source publishes them (BUBT's routines give titles only).
+-- credits is NULL where no source publishes them (BUBT's routines give titles only);
+-- title too for a stub, a code only a routine names (DIU's CSE routine).
 CREATE TABLE program_courses (
-  campus TEXT NOT NULL, program TEXT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL,
+  campus TEXT NOT NULL, program TEXT NOT NULL, code TEXT NOT NULL, title TEXT,
   credits REAL, position INTEGER NOT NULL, source TEXT NOT NULL, note TEXT,
   PRIMARY KEY (campus, program, code));
 -- A course can carry rules from several documents, some scoped to one program,
@@ -174,12 +175,14 @@ CREATE TABLE sections (
   PRIMARY KEY (campus, term, term_system, program, course, section));
 -- Every weekly meeting of a section, one row per day: its class meetings and,
 -- where a section has one, its lab's. This is what free-room and clash queries
--- join on. Sections with no fixed schedule have none.
+-- join on. Sections with no fixed schedule have none. room is in the key: a
+-- section split between two teachers can meet in two rooms at once (DIU's
+-- retake CSE215 RE_B(3C)).
 CREATE TABLE meetings (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, program TEXT NOT NULL,
   course TEXT NOT NULL, section NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL,
   start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT,
-  PRIMARY KEY (campus, term, term_system, program, course, section, kind, day, start));
+  PRIMARY KEY (campus, term, term_system, program, course, section, kind, day, start, room));
 CREATE TABLE calendar_events (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, date TEXT NOT NULL,
   end_date TEXT, kind TEXT NOT NULL, event TEXT NOT NULL, source TEXT NOT NULL);
