@@ -159,6 +159,16 @@ try {
     ['ANX1-201', 'ANX1-307'],
   );
   assert.ok(one("SELECT COUNT(*) AS n FROM program_courses WHERE campus='diu' AND title IS NULL").n > 0, 'stubs load');
+  // A meeting with no room is still unique: NULLs in a key would not be.
+  {
+    const writable = new DatabaseSync(dbPath);
+    const insert = writable.prepare('INSERT INTO meetings VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+    const row = ['test', '263', 'trimester', 'CSE', 'CSE101', '1', 'class', 'S', '08:30', '10:00', null];
+    insert.run(...row);
+    assert.throws(() => insert.run(...row), /UNIQUE/, 'a duplicate roomless meeting is rejected');
+    writable.exec("DELETE FROM meetings WHERE campus='test'");
+    writable.close();
+  }
 
   // BUBT: sections belong to a program, so the same course and intake-section
   // in two programs are two rows, and every meeting keeps its program.
