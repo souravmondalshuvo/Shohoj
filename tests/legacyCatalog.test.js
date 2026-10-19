@@ -209,9 +209,11 @@ assert.equal(
   'js/core/catalogDiu.generated.js is out of date — run: npm run generate:legacy-catalog',
 );
 const diuData = campus('diu');
+// Stubs (codes only a routine names, no title or credits) have nothing for
+// autocomplete to fill in, so the feed leaves them out.
 const listed = (program) =>
   diuData.programCourses.records
-    .filter((r) => r.program === program)
+    .filter((r) => r.program === program && r.title !== null && r.credits !== null)
     .map((r) => [r.code, r.title, r.credits])
     .sort(([a], [b]) => (a < b ? -1 : 1));
 
@@ -220,6 +222,11 @@ const listed = (program) =>
 assert.deepEqual(getCatalogFor('diu', 'CSE').allCourses, [], 'nothing before the lists arrive');
 const diuCourses = JSON.parse(fs.readFileSync(DIU_COURSES_PATH, 'utf8'));
 assert.equal(fs.readFileSync(DIU_COURSES_PATH, 'utf8'), renderDiuCourses(), 'feeds/diu-courses.json is current');
+assert.ok(
+  diuData.programCourses.records.some((r) => r.title === null) &&
+    !Object.values(diuCourses.programs).flat().some(([, title]) => title === null),
+  'DIU has stubs, and none reaches the autocomplete feed',
+);
 setDiuProgramCourses(diuCourses.programs);
 
 // No program picked: programs to pick from, and no courses.
