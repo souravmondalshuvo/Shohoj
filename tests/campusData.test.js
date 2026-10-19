@@ -360,6 +360,11 @@ expectError("program credits off the quarter grid", (dir) => editJson(path.join(
   d.records.find((r) => r.credits === 0.75).credits = 0.3;
 }), /multiple of 0\.25/, 'bubt');
 
+expectError('a section meeting twice at one hour in one room', (dir) => editJson(path.join(dir, 'sections', '263-trimester.json'), (d) => {
+  const s = d.records.find((r) => r.meetings.length > 0);
+  s.meetings.push({ ...s.meetings[0] });
+}), /meets twice on/, 'diu');
+
 expectError('a title-less course that carries credits', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
   d.records.find((r) => r.title === null).credits = 3;
 }), /a course with no title is a stub/, 'diu');
