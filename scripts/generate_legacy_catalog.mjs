@@ -272,6 +272,9 @@ export const DIU_COURSES_URL = ${JSON.stringify(DIU_COURSES_URL)};
 function diuCourseLists(campus) {
   const lists = {};
   for (const r of campus.programCourses?.records ?? []) {
+    // Autocomplete fills in a course's title and credits, so a stub (a code
+    // only a routine names) has nothing to offer and stays out.
+    if (r.title === null || r.credits === null) continue;
     (lists[r.program] ??= []).push([r.code, r.title, r.credits]);
   }
   const sorted = {};
