@@ -2,6 +2,20 @@ name = "shohoj-papers"
 main = "index.js"
 compatibility_date = "2025-09-01"
 
+# Workers Logs (#939): keep the Worker's own console output — the structured
+# events like assistant_turn_timing and assistant_provider_fallback, which carry
+# no transcript and no uid — so a turn can be looked up after the fact instead
+# of only while someone has `wrangler tail` open. Invocation logs stay OFF: they
+# record every request URL, and a /feeds/tasks/<token>.ics URL is the
+# subscriber's credential, which this Worker already refuses to log
+# (redactFeedPath). Free plan: 200,000 events/day, 3 days' retention.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = false
+
 # Cron trigger for seat-drop email alerts. The scheduled() handler polls the
 # CONNECT feed once for everyone, edge-detects watched sections going full→open,
 # and emails via Resend. Every 2 minutes balances responsiveness during
