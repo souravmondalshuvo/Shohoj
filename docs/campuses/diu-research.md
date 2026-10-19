@@ -493,7 +493,7 @@ On the legacy site, as of 2026-10-09:
 | planner | ❌ | Lists a catalogue's courses and prerequisites; DIU publishes neither (§8). |
 | groups, papers, reviews | ❌ | Each names a course, and the page and the Worker both check it against the campus's catalogue. Needs §8 first; reviews also need §11 and an answer to staff sharing `diu.edu.bd` (§9). |
 | **bus** | ✅ on | `bus/?campus=diu` (`src/app/routes/BusRouteDiu.tsx`), from `bus.json`: 10 regular routes, 5 shuttles, 5 on Fridays. Shown under DIU's own title for the schedule ("Special Transport Schedule for Exam-2026", Summer 2026) and the day it was last read, with no clock-derived "next bus". Granted in `js/core/campusFeatures.js`, not the registry, as NSU's is. |
-| routine | 🔶 | Official files exist; needs a per-department parser and a batch-section UI (§12) |
+| routine | 🔶 | CSE's Fall 2026 sections are loaded (V4.1, Data files); needs a batch-section UI, and the other departments' routines |
 | transcript | ❌ | Paste import needs a real portal sample (§10). The "Import Transcript" button is hidden. |
 | rooms | ❌ for now | Needs every department's routine, not CSE's alone (§12) |
 | seats | ❌ | No seat market, no seat data (§12) |
@@ -551,18 +551,25 @@ In `data/campuses/diu/` (validated by `npm run check:campus-data`):
 | `programs.json` | 33 undergraduate programmes and total credits; four `conflicts` | [official] |
 | `calendar/*.json` | All five 2026 calendars (bi-semester and trimester) | [official]; bi-semester Fall's term code assumed |
 | `bus.json` | 20 routes: stops, times, off-days | [official]; five Friday return times corrected, each with a note |
+| `sections/263-trimester.json` | CSE Class Routine **V4.1** (effective 3 Oct 2026): 975 batch-sections, 1,633 meetings (1,961 slots, consecutive lab slots merged), 77 rooms; `program: "CSE"`, `capacityPublished: false` | [official]; 10 mistyped section names corrected and 14 two-teacher sections given `faculty: null`, each with a note |
+| `program-courses.json` → 35 CSE stubs | Codes only the routine names (3rd/4th-year electives, retakes): `title` and `credits` null | [official]; kept out of the course autocomplete |
 
-Retrieved 2026-09-28 (identity: 2026-10-09). The routine and transport data change
-during a term; re-pull before relying on them — the notice feed already lists a CSE
-routine **V4.1** for Fall 2026, newer than the V3.1 parsed here.
+Retrieved 2026-09-28 (identity: 2026-10-09; CSE routine V4.1: 2026-10-19). The
+routine and transport data change during a term; re-pull before relying on them. V4.1
+was the newest CSE routine on DIU's notice board on 2026-10-19 (V3.1, parsed in
+September, is superseded and not loaded). It was parsed with pdfplumber; every
+course token in the PDF's text is accounted for (1,961), no room is double-booked and
+no teacher is in two rooms at once. Two retake sections are split between two
+teachers in two rooms at the same hour (`CSE215 RE_B(3C)`, `CSE221 RE_A(3C)`), which
+is why the database's `meetings` key includes the room.
 
 ## 17. Not loaded yet, and why
 
-- **Sections (CSE Fall 2026, 1,922 class slots)** — parsed and verified (below), but
-  the campus schema can't hold DIU's shape: sections are strings (`68_D`,
-  `RE_A(3C)`), a section meets at different times on different days, there is no
-  capacity, and the routine gives course codes without titles, which `courses.json`
-  requires. Needs a schema change of its own.
+- **Sections of every department but CSE.** Only CSE's routine is loaded. Other
+  departments book the same buildings (KT, G1, ANX1), so a free-room answer from CSE's
+  file alone overstates vacancy; Free Rooms needs the other departments' routines first.
+- **Titles and credits of the 35 CSE stub codes.** The routine gives codes only, and
+  CSE's programme page lists none of them.
 - **Course catalogue** — only per-department Fall 2026 offers with four layouts and
   EEE's numeric codes (§8); needs per-campus code handling first.
 - **School per program** — no public DIU page maps programs to faculties, so
