@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-mWOvYfcsnuphTg2/i1C6crl8v5IAEe0tLp3twXKr9ls='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-NG+Rfh+k3usGCgL9bRryJMzDbsDXBlwKnj7bqS/u3+M='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5990,6 +5990,55 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 .wallet-note { font-size: 12px; color: rgba(255, 255, 255, 0.35); margin-top: 14px; }
 .wallet-note span { color: var(--wallet); }
 
+/* Below the wallets: what donations pay for, and the free ways to help. */
+.support-costs {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.45);
+}
+.support-help {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(46, 204, 113, 0.18);
+}
+.support-help-title {
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.support-help-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.support-help-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid rgba(46, 204, 113, 0.28);
+  border-radius: 999px;
+  background: rgba(46, 204, 113, 0.08);
+  color: #d6f5e0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.support-help-pill[hidden] { display: none; }
+.support-help-pill:hover { background: rgba(46, 204, 113, 0.18); border-color: rgba(46, 204, 113, 0.5); }
+.support-help-pill:focus-visible { outline: 2px solid #2ecc71; outline-offset: 2px; }
+.support-campus { margin: 14px 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+.support-campus a { color: #2ecc71; font-weight: 700; text-decoration: none; }
+.support-campus a:hover { text-decoration: underline; }
+
 .start-form-select {
   background: var(--input-bg);
   backdrop-filter: blur(8px);
@@ -10809,6 +10858,20 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
           <button type="button" class="wallet-copy" data-copy="01732972046" aria-label="Copy Upay number">Copy</button>
         </div>
         <div class="wallet-note">Even ৳20 means a lot <span>♥</span></div>
+      </div>
+      <p class="support-costs">Donations pay for the Assistant's AI, the Cloudflare servers and Firebase sign-in &amp; sync, the bills that keep Shohoj free.</p>
+      <!-- Free ways to help. Review / paper pills show only when signed in on a
+           campus that has that tab (js/main.js syncs them each time this opens). -->
+      <div class="support-help">
+        <div class="support-help-title">Other ways to help</div>
+        <div class="support-help-grid">
+          <button type="button" class="support-help-pill" data-help="reviews" hidden>✍️ Review a faculty</button>
+          <button type="button" class="support-help-pill" data-help="papers" hidden>📄 Upload a paper</button>
+          <button type="button" class="support-help-pill" data-help="share">🔗 Share Shohoj</button>
+          <a class="support-help-pill" href="https://github.com/souravmondalshuvo/Shohoj" target="_blank" rel="noopener">⭐ Star on GitHub</a>
+          <button type="button" class="support-help-pill" data-help="bug">🐞 Report a bug</button>
+        </div>
+        <p class="support-campus">Don't see your university? <a href="mailto:admin.shohoj@gmail.com?subject=Add%20my%20university%20to%20Shohoj&amp;body=Hi%21%20I%27d%20like%20Shohoj%20at%20my%20university.%0A%0AUniversity%3A%0AMy%20department%20and%20batch%3A%0A%0AWhat%20I%20can%20share%20%28any%20of%20these%20helps%29%3A%0A-%20Academic%20calendar%0A-%20Course%20list%20/%20curriculum%0A-%20Class%20routine%0A-%20Grading%20rules%0A">Help add it</a></p>
       </div>
     </div>
   </div>
@@ -41006,9 +41069,13 @@ function _timeAgo(ts) {
 }
 
 // ── Open / Close ──────────────────────────────────────────────────────────────
-function openFeedbackModal() {
+// `type` preselects a category for entry points that already know it (the coffee
+// modal's "Report a bug"). Anything else — no argument, or an Event from a bare
+// listener — keeps the last choice.
+function openFeedbackModal(type) {
   const modal = document.getElementById('feedbackModal');
   if (!modal) return;
+  if (['bug', 'feature', 'general'].includes(type)) _selType = type;
   _activeTab   = 'submit';
   _boardLoaded = false;
   _boardFilter = 'all';
@@ -44210,9 +44277,56 @@ function _wireInlineReplacements() {
     a.addEventListener('click', e => {
       e.preventDefault();
       const m = document.getElementById('coffeeModal');
-      if (m) m.style.display = 'flex';
+      if (!m) return;
+      syncSupportHelpPills(m);
+      m.style.display = 'flex';
     });
   });
+  document.querySelectorAll('#coffeeModal [data-help]').forEach(btn => {
+    btn.addEventListener('click', () => runSupportHelp(btn));
+  });
+}
+
+// ── Coffee modal: other ways to help ─────────────────────────────────────────
+// Reviews and papers live inside the calculator, which a signed-out visitor
+// cannot reach, and not every campus has them — so those pills show only when
+// the tab would actually open.
+function syncSupportHelpPills(modal) {
+  const signedIn = typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
+  modal.querySelectorAll('[data-help="reviews"], [data-help="papers"]').forEach(btn => {
+    btn.hidden = !(signedIn && campusAllowsTab(getActiveCampus(), btn.dataset.help));
+  });
+}
+
+function runSupportHelp(btn) {
+  const modal = document.getElementById('coffeeModal');
+  const help = btn.dataset.help;
+  if (help === 'share') { shareShohoj(btn); return; }
+  if (modal) modal.style.display = 'none';
+  if (help === 'bug') { openFeedbackModal('bug'); return; }
+  switchCalcTab(help);
+  scrollToCalculator();
+}
+
+function shareShohoj(btn) {
+  const url = location.origin + location.pathname;
+  if (navigator.share) {
+    navigator.share({ title: 'Shohoj', text: 'University life, made simple.', url })
+      .catch(() => {}); // the student closing the share sheet is not an error
+    return;
+  }
+  // Kept on the button so a second tap mid-flash doesn't adopt the flash text.
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+  const done = text => {
+    btn.textContent = text;
+    clearTimeout(btn._shareTimer);
+    btn._shareTimer = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1600);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(() => done('✓ Link copied'), () => done(url));
+  } else {
+    done(url);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
