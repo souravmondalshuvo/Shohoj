@@ -108,7 +108,9 @@ A section may carry a `program` (BUBT: every program has its own intake-section
 run on the file's term system, and the section key is program + course +
 section. A file whose source publishes neither section sizes nor seats sets
 `"capacityPublished": false` and says so in its `note`; otherwise each section
-needs a `capacity` or a `seatsAvailable`. In the database, `sections` and
+needs a `capacity` or a `seatsAvailable`. A term file can gather several
+departments' routines (DIU's CSE and SWE): a section may then cite its own
+`source`, which overrides the file's. In the database, `sections` and
 `meetings` carry `program` (`''` for a campus-wide section), and the `rooms`
 view counts a section per program.
 
