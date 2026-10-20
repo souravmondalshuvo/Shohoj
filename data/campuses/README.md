@@ -94,8 +94,9 @@ Where a campus's course codes repeat across programs with different meanings
 (DIU's CSE212; BUBT's GED1105 is *History of the Emergence of Bangladesh* in
 English and *Government and Politics* in LL.B), its courses go in
 `program-courses.json`, one record per program and code, not in `courses.json`.
-A program's own list may hold four-digit subject codes (`ENG1101`) and ISCED
-field codes (`0413-111`), and credits in quarters (BUBT's 0.75-credit labs).
+A program's own list may hold four-digit subject codes (`ENG1101`), ISCED
+field codes (`0413-111`) and subject-plus-field codes (DIU English's
+`ENG0232-03`), and credits in quarters (BUBT's 0.75-credit labs).
 `credits` is `null` when no source publishes it (BUBT's routines give titles,
 not credits), and `0` only with a `note` saying why. A course with no `title` is
 a stub: a code only a routine names (35 of DIU's CSE codes), with `credits` null
