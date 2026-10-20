@@ -572,6 +572,9 @@ const sectionsSchema = z
             // holds (four-digit, ISCED); checkCampus holds the rest to the
             // subject shape.
             course: programCourseCode,
+            // Where a term file gathers several departments' routines (DIU's
+            // CSE and SWE), each record cites its own; otherwise the file's.
+            source: sourceId.optional(),
             // NSU numbers its sections; BRACU names them ("04", "07A",
             // "04-CLOSED"), and the name is kept exactly as printed.
             section: z.union([z.number().int().positive(), z.string().min(1)]),
@@ -1074,6 +1077,7 @@ function checkCampus(campus, problems) {
       const key = `${s.program ?? ''}|${s.course}#${s.section}`;
       if (keys.has(key)) err(`${label}: duplicate section`);
       keys.add(key);
+      cite(label, s.source);
       if (s.program) {
         const program = programs.get(s.program);
         if (!program) err(`${label}: unknown program ${s.program}`);
