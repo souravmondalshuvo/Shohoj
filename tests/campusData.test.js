@@ -111,16 +111,26 @@ assert.deepEqual(friday.departCampus, ['14:20', '18:30'], 'the 12-hour Friday ti
 assert.match(friday.note, /Printed as 02:20, 06:30/);
 
 // DIU: CSE's Fall 2026 routine, and the codes only it names as title-less stubs.
-const diuCse = diu.sections['263-trimester'];
+const diuTerm = diu.sections['263-trimester'];
+const diuCse = { ...diuTerm, records: diuTerm.records.filter((s) => s.program === 'CSE') };
 assert.equal(diuCse.records.length, 975);
-assert.ok(diuCse.records.every((s) => s.program === 'CSE' && s.meetings.length > 0));
+assert.ok(diuCse.records.every((s) => s.source === undefined && s.meetings.length > 0), 'CSE records use the file source');
 assert.equal(diuCse.source, 'diu-cse-routine-263-v41', 'V4.1, not the stale V3.1 copy');
 const diuStubs = diu.programCourses.records.filter((r) => r.title === null);
-assert.equal(diuStubs.length, 35);
-assert.ok(diuStubs.every((r) => r.program === 'CSE' && r.credits === null && r.note));
+assert.equal(diuStubs.filter((r) => r.program === 'CSE').length, 35);
+assert.equal(diuStubs.filter((r) => r.program === 'SWE').length, 11);
+assert.ok(diuStubs.every((r) => r.credits === null && r.note));
 const corrected = diuCse.records.find((s) => s.course === 'CSE416');
 assert.equal(corrected.section, 'RE_A(2C)');
 assert.match(corrected.note, /Printed "RE_A\(2C" in the routine/);
+// SWE's routine in the same file: each record cites its own source; online
+// classes have no room; a printed slip is corrected with a note.
+const diuSwe = diuTerm.records.filter((s) => s.program === 'SWE');
+assert.equal(diuSwe.length, 766);
+assert.ok(diuSwe.every((s) => s.source === 'diu-swe-routine-263-v5'));
+const online = diuSwe.filter((s) => s.meetings.some((m) => m.room === null));
+assert.ok(online.length > 0 && online.every((s) => /Meets online/.test(s.note)));
+assert.match(diuSwe.find((s) => s.course === 'RE424').note, /Printed "RE424--41-REA1"/);
 const shared = diuCse.records.find((s) => s.course === 'CSE215' && s.section === 'RE_B(3C)');
 assert.equal(shared.faculty, null, 'two teachers: neither is picked');
 assert.match(shared.note, /Two teachers share this section/);
@@ -359,6 +369,10 @@ expectError('sections with no capacity and no flag', (dir) => editJson(bubtTrime
 expectError("program credits off the quarter grid", (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
   d.records.find((r) => r.credits === 0.75).credits = 0.3;
 }), /multiple of 0\.25/, 'bubt');
+
+expectError('a section citing an unknown source', (dir) => editJson(path.join(dir, 'sections', '263-trimester.json'), (d) => {
+  d.records.find((r) => r.source).source = 'made-up-routine';
+}), /cites unknown source "made-up-routine"/, 'diu');
 
 expectError('a section meeting twice at one hour in one room', (dir) => editJson(path.join(dir, 'sections', '263-trimester.json'), (d) => {
   const s = d.records.find((r) => r.meetings.length > 0);
