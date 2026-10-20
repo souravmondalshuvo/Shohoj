@@ -413,9 +413,25 @@ before DIU ships anything that stores codes.
 - **Rooms:** 76 rooms the CSE routine books
   [derived]. Codes: `KT-201`, `G1-001`, `ANX1-101`, `SH-103`, `KT-318(A)`/`(B)` split
   rooms, `LAB-KT-301`. What the building prefixes stand for is [unknown].
-  - ⚠ **Free Rooms can't ship from one department's routine.** Other departments book
-    the same buildings; a CSE-only dataset would show rooms as free that aren't. Free
-    Rooms needs every department's routine first.
+  - ⚠ **Free Rooms stays off: public data can't make it complete** (surveyed
+    2026-10-20, from the 300 newest notices). Three reasons:
+    1. Many departments publish no routine on the notice board (Business,
+       Pharmacy, Law, Public Health, Textile and ICE among them). Those that do:
+       CSE (V4.1), EEE (V4.0), Civil (V2), SWE (V5), English (V-0.7), AGS (V-4),
+       ITM (V4), Fisheries and Tourism (V5). MCT and Real Estate post only a link,
+       and Architecture a July draft.
+    2. Departments name rooms in incompatible ways, with no public mapping: CSE
+       `KT-201`, `G1-026`, `ANX1-101`; SWE `G1-005`, `AB3-104`, `Annex-107` and
+       bare `611`; AGS `AB-4 919`, `Annex 104`, `FL 01`; English bare `1202`,
+       `517B`; ITM bare `602`; Tourism `R-1303`; EEE `301` in its own building.
+       Whether "Annex 104" is CSE's `ANX1-104`, or English's "1202" some
+       building's 202, is a guess.
+    3. Civil's 24-page routine is images, readable only by OCR.
+
+    Where two departments do name rooms alike, they agree: in the 14 G1 computer
+    labs CSE and SWE both use, the two routines never book one room at the same
+    hour. A complete room picture needs DIU IT (a central room schedule, or a
+    room-code mapping). Per-department routines still serve the Routine feature.
 
 ## 13. Campus life (`bus`, `cafeteria`, `campus`, `lostFound`)
 
@@ -495,7 +511,7 @@ On the legacy site, as of 2026-10-09:
 | **bus** | ✅ on | `bus/?campus=diu` (`src/app/routes/BusRouteDiu.tsx`), from `bus.json`: 10 regular routes, 5 shuttles, 5 on Fridays. Shown under DIU's own title for the schedule ("Special Transport Schedule for Exam-2026", Summer 2026) and the day it was last read, with no clock-derived "next bus". Granted in `js/core/campusFeatures.js`, not the registry, as NSU's is. |
 | routine | 🔶 | CSE's Fall 2026 sections are loaded (V4.1, Data files); needs a batch-section UI, and the other departments' routines |
 | transcript | ❌ | Paste import needs a real portal sample (§10). The "Import Transcript" button is hidden. |
-| rooms | ❌ for now | Needs every department's routine, not CSE's alone (§12) |
+| rooms | ❌ | Not from public data: missing departments, incompatible room names (§12) |
 | seats | ❌ | No seat market, no seat data (§12) |
 | tasks | ❌ | Needs course codes in every program, ISCED ones included (§8) |
 | lostFound | 🔶 | Room codes fit; needs the full room list |
@@ -552,6 +568,8 @@ In `data/campuses/diu/` (validated by `npm run check:campus-data`):
 | `calendar/*.json` | All five 2026 calendars (bi-semester and trimester) | [official]; bi-semester Fall's term code assumed |
 | `bus.json` | 20 routes: stops, times, off-days | [official]; five Friday return times corrected, each with a note |
 | `sections/263-trimester.json` | CSE Class Routine **V4.1** (effective 3 Oct 2026): 975 batch-sections, 1,633 meetings (1,961 slots, consecutive lab slots merged), 77 rooms; `program: "CSE"`, `capacityPublished: false` | [official]; 10 mistyped section names corrected and 14 two-teacher sections given `faculty: null`, each with a note |
+| same file, `program: "SWE"` | SWE Class Routine **V5** (effective 10 Oct 2026, Excel): 766 sections, 1,216 meetings; each record cites `diu-swe-routine-263-v5` | [official]; rooms as printed (lab tags dropped); 47 online sections with no room; one double-hyphen slip corrected |
+| `program-courses.json` → 11 SWE stubs | Codes only SWE's routine names (general courses such as ENG101, and ST421-424) | [official]; kept out of the course autocomplete |
 | `program-courses.json` → 35 CSE stubs | Codes only the routine names (3rd/4th-year electives, retakes): `title` and `credits` null | [official]; kept out of the course autocomplete |
 
 Retrieved 2026-09-28 (identity: 2026-10-09; CSE routine V4.1: 2026-10-19). The
@@ -565,9 +583,9 @@ is why the database's `meetings` key includes the room.
 
 ## 17. Not loaded yet, and why
 
-- **Sections of every department but CSE.** Only CSE's routine is loaded. Other
-  departments book the same buildings (KT, G1, ANX1), so a free-room answer from CSE's
-  file alone overstates vacancy; Free Rooms needs the other departments' routines first.
+- **Sections of departments other than CSE and SWE.** EEE, ITM, AGS, Fisheries and
+  Tourism publish PDFs and English an Excel file; each is a layout of its own. Civil's
+  is images. Free Rooms stays off whatever is loaded (§12).
 - **Titles and credits of the 35 CSE stub codes.** The routine gives codes only, and
   CSE's programme page lists none of them.
 - **Course catalogue** — only per-department Fall 2026 offers with four layouts and
