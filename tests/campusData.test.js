@@ -123,6 +123,18 @@ assert.ok(diuStubs.every((r) => r.credits === null && r.note));
 const corrected = diuCse.records.find((s) => s.course === 'CSE416');
 assert.equal(corrected.section, 'RE_A(2C)');
 assert.match(corrected.note, /Printed "RE_A\(2C" in the routine/);
+// English's routine in the same file: subject-plus-field codes, all stubs, and
+// a retake class printed with an old and a new code is a record for each.
+const diuEng = diuTerm.records.filter((s) => s.program === 'ENG');
+assert.equal(diuEng.length, 143);
+assert.ok(diuEng.every((s) => s.source === 'diu-eng-routine-263-v07'));
+assert.ok(diuEng.some((s) => s.course === 'ENG0232-03'), 'subject-plus-field codes load');
+assert.equal(diuStubs.filter((r) => r.program === 'ENG').length, 33);
+const paired = diuEng.filter((s) => s.course === 'GED0223-15' || s.course === 'ENG221');
+assert.equal(paired.length, 2);
+assert.ok(paired.every((s) => /Taught in one class with/.test(s.note)));
+assert.deepEqual(paired[0].meetings, paired[1].meetings, 'a paired retake shares its meetings');
+
 // SWE's routine in the same file: each record cites its own source; online
 // classes have no room; a printed slip is corrected with a note.
 const diuSwe = diuTerm.records.filter((s) => s.program === 'SWE');
@@ -369,6 +381,10 @@ expectError('sections with no capacity and no flag', (dir) => editJson(bubtTrime
 expectError("program credits off the quarter grid", (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
   d.records.find((r) => r.credits === 0.75).credits = 0.3;
 }), /multiple of 0\.25/, 'bubt');
+
+expectError('a subject-plus-field code with a one-digit course number', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  d.records.find((r) => r.code === 'ENG0232-03').code = 'ENG0232-3';
+}), /not a course code/, 'diu');
 
 expectError('a section citing an unknown source', (dir) => editJson(path.join(dir, 'sections', '263-trimester.json'), (d) => {
   d.records.find((r) => r.source).source = 'made-up-routine';
