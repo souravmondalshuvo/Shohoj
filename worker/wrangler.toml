@@ -2,6 +2,18 @@ name = "shohoj-papers"
 main = "index.js"
 compatibility_date = "2025-09-01"
 
+# Run request handling next to Firestore (#943). Without a hint the Worker runs
+# in whichever data center the student reached, and Bangladeshi traffic lands
+# in DAC, SIN or HKG depending on the ISP. Gemini refuses every call made from
+# Hong Kong ("User location is not supported for the API use"), so a student
+# routed through HKG could never get an answer. Firestore lives in asia-south1
+# (Mumbai) and India is a supported Gemini region, so pinning there fixes the
+# Assistant and puts every Firestore-backed route beside its database. Applies
+# to the fetch handler only; the cron runs where it always has and never calls
+# Gemini.
+[placement]
+region = "gcp:asia-south1"
+
 # Cron trigger for seat-drop email alerts. The scheduled() handler polls the
 # CONNECT feed once for everyone, edge-detects watched sections going full→open,
 # and emails via Resend. Every 2 minutes balances responsiveness during
