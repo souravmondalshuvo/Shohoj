@@ -159,6 +159,14 @@ try {
     ['ANX1-201', 'ANX1-307'],
   );
   assert.ok(one("SELECT COUNT(*) AS n FROM program_courses WHERE campus='diu' AND title IS NULL").n > 0, 'stubs load');
+  // Two departments' routines in one term file: each section keeps its own source.
+  assert.deepEqual(
+    all("SELECT program, source FROM sections WHERE campus='diu' GROUP BY program, source ORDER BY program"),
+    [
+      { program: 'CSE', source: 'diu-cse-routine-263-v41' },
+      { program: 'SWE', source: 'diu-swe-routine-263-v5' },
+    ],
+  );
   // A meeting with no room is still unique: NULLs in a key would not be.
   {
     const writable = new DatabaseSync(dbPath);
