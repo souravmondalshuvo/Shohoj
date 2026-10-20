@@ -33,6 +33,10 @@ export const ISCED_COURSE_CODE = /^\d{4}-\d{3}[A-Z]?$/;
 // A subject with a four-digit course number, as BUBT's newer curricula number
 // theirs (ENG1101, GED1105). Like ISCED codes, only for a program's own list.
 export const FOUR_DIGIT_COURSE_CODE = /^[A-Z]{2,4}\d{4}[A-Z]?$/;
+// A subject, an ISCED field and a course number, as DIU's English department
+// numbers its newer curriculum (ENG0232-03, GED0031-07). The subject stays:
+// ENG0232-14 and GED0232-14 are different courses. Program lists only.
+export const SUBJECT_FIELD_COURSE_CODE = /^[A-Z]{2,4}\d{4}-\d{2,3}$/;
 // Term codes are the campus's own: NSU prints a two-digit year and a term digit
 // (252 = Summer 2025); BRACU's CONNECT session ids use the full year (20263 =
 // Fall 2026). Either way the last digit is 1 Spring, 2 Summer, 3 Fall.
@@ -59,11 +63,15 @@ const quarterCredits = z
   .refine((n) => Number.isInteger(n * 4), 'credits must be a multiple of 0.25');
 // Every shape a course code takes in a program's own list or a program-scoped
 // section.
-const programCourseCode = z.union([
-  courseCode,
-  z.string().regex(ISCED_COURSE_CODE, 'not a course code'),
-  z.string().regex(FOUR_DIGIT_COURSE_CODE, 'not a course code'),
-]);
+const programCourseCode = z.union(
+  [
+    courseCode,
+    z.string().regex(ISCED_COURSE_CODE, 'not a course code'),
+    z.string().regex(FOUR_DIGIT_COURSE_CODE, 'not a course code'),
+    z.string().regex(SUBJECT_FIELD_COURSE_CODE, 'not a course code'),
+  ],
+  { error: 'not a course code' },
+);
 
 const sourcesSchema = z
   .object({
