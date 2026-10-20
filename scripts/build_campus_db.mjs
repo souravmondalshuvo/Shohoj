@@ -872,7 +872,7 @@ function campusStatements(c) {
         s.classDates?.start ?? null,
         s.classDates?.end ?? null,
         s.note ?? null,
-        file.source,
+        s.source ?? file.source,
       ]),
     );
     const meetingRows = [];
