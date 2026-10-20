@@ -135,6 +135,18 @@ assert.equal(paired.length, 2);
 assert.ok(paired.every((s) => /Taught in one class with/.test(s.note)));
 assert.deepEqual(paired[0].meetings, paired[1].meetings, 'a paired retake shares its meetings');
 
+// EEE's routine: sections are level-term plus the course's own section, a
+// class taught to two groups at once is a record per group, and a section
+// with a lecturer and a session teacher names neither.
+const diuEee = diuTerm.records.filter((s) => s.program === 'EEE');
+assert.equal(diuEee.length, 307);
+assert.ok(diuEee.every((s) => s.source === 'diu-eee-routine-263-v40' && /^\d-\d [A-Z]\d?$/.test(s.section)));
+assert.equal(diuStubs.filter((r) => r.program === 'EEE').length, 10);
+const e1 = diuEee.find((s) => s.course === '0713-121' && s.section === '1-2 E1');
+assert.match(e1.note, /Taught in one class with 1-2 A/);
+assert.equal(diuEee.find((s) => s.course === '0713-121' && s.section === '1-2 A').faculty, null);
+assert.match(diuEee.find((s) => s.course === '0714-322' && s.section === '3-3 A2').note, /no section/);
+
 // SWE's routine in the same file: each record cites its own source; online
 // classes have no room; a printed slip is corrected with a note.
 const diuSwe = diuTerm.records.filter((s) => s.program === 'SWE');
