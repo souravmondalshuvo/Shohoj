@@ -175,9 +175,15 @@ test('the committed lists are what the importer writes', () => {
   // Program, then code order within it, as the importer writes them.
   const keys = file.records.map((r) => `${r.program}|${r.code}`);
   for (const program of new Set(file.records.map((r) => r.program))) {
-    const codes = file.records.filter((r) => r.program === program).map((r) => r.code);
+    const records = file.records.filter((r) => r.program === program);
+    const codes = records.map((r) => r.code);
     assert.deepEqual(codes, [...codes].sort(), `${program} is in code order`);
-    assert.ok(codes.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|\d{4}-\d{3}[A-Z]?)$/.test(c)), `${program}'s codes`);
+    // What the importer reads from a program page …
+    const read = records.filter((r) => r.title !== null).map((r) => r.code);
+    assert.ok(read.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|\d{4}-\d{3}[A-Z]?)$/.test(c)), `${program}'s codes`);
+    // … and stubs, which carry a routine's own code shapes (English's ENG0232-03).
+    const stubs = records.filter((r) => r.title === null).map((r) => r.code);
+    assert.ok(stubs.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|[A-Z]{2,4}\d{4}-\d{2,3})$/.test(c)), `${program}'s stub codes`);
   }
   assert.equal(new Set(keys).size, keys.length);
 
