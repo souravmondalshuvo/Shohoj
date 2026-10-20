@@ -164,6 +164,7 @@ try {
     all("SELECT program, source FROM sections WHERE campus='diu' GROUP BY program, source ORDER BY program"),
     [
       { program: 'CSE', source: 'diu-cse-routine-263-v41' },
+      { program: 'ENG', source: 'diu-eng-routine-263-v07' },
       { program: 'SWE', source: 'diu-swe-routine-263-v5' },
     ],
   );
