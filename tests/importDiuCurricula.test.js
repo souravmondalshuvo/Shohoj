@@ -181,9 +181,13 @@ test('the committed lists are what the importer writes', () => {
     // What the importer reads from a program page …
     const read = records.filter((r) => r.title !== null).map((r) => r.code);
     assert.ok(read.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|\d{4}-\d{3}[A-Z]?)$/.test(c)), `${program}'s codes`);
-    // … and stubs, which carry a routine's own code shapes (English's ENG0232-03).
+    // … and stubs, which carry a routine's own code shapes (EEE's 0222-131,
+    // English's ENG0232-03).
     const stubs = records.filter((r) => r.title === null).map((r) => r.code);
-    assert.ok(stubs.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|[A-Z]{2,4}\d{4}-\d{2,3})$/.test(c)), `${program}'s stub codes`);
+    assert.ok(
+      stubs.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|\d{4}-\d{3}[A-Z]?|[A-Z]{2,4}\d{4}-\d{2,3})$/.test(c)),
+      `${program}'s stub codes`,
+    );
   }
   assert.equal(new Set(keys).size, keys.length);
 
