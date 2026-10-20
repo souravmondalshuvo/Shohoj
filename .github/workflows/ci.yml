@@ -410,14 +410,32 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # Reads past main runs' jobs to find the last successful Worker deploy.
+      actions: read
     outputs:
-      worker: ${{ steps.filter.outputs.worker }}
+      # On main, the Worker answer comes from the last DEPLOY, not the last push
+      # (#946); on PRs nothing deploys, so the path filter's answer stands.
+      worker: ${{ steps.since-deploy.outputs.changed || steps.filter.outputs.worker }}
       firestore: ${{ steps.filter.outputs.firestore }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The last deployed commit can be any distance back.
+          fetch-depth: 0
       # dorny/paths-filter reliably diffs against the push base (or PR base) and
       # falls back to "changed" on ambiguous history, so an unrelated frontend
       # change never redeploys the Worker or Firestore rules.
+      #
+      # For the Worker, "the push base" is the wrong baseline on main (#946): a
+      # Worker change whose run is superseded before it deploys is never
+      # deployed by the newer run either, and the bundle also draws on js/core
+      # and src/, which the filter never saw. The step below diffs every path
+      # the bundle is built from against the commit the Worker was last deployed
+      # from, and answers "changed" whenever it is unsure.
+      #
+      # Firestore has the same superseded-push gap, deliberately left as is:
+      # its deploy fails until #759, and judging it against the last successful
+      # deploy would run that failing job on every push until then.
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
@@ -430,6 +448,12 @@ jobs:
               - 'firestore.indexes.json'
               - 'firebase.json'
               - '.github/workflows/ci.yml'
+      - name: Has the Worker changed since its last deploy?
+        id: since-deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/worker-changed-since-deploy.mjs
 
   # ========================= Deploy (main pushes only) =======================
   # Every deploy job:
