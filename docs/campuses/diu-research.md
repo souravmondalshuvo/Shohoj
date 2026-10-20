@@ -570,6 +570,8 @@ In `data/campuses/diu/` (validated by `npm run check:campus-data`):
 | `sections/263-trimester.json` | CSE Class Routine **V4.1** (effective 3 Oct 2026): 975 batch-sections, 1,633 meetings (1,961 slots, consecutive lab slots merged), 77 rooms; `program: "CSE"`, `capacityPublished: false` | [official]; 10 mistyped section names corrected and 14 two-teacher sections given `faculty: null`, each with a note |
 | same file, `program: "SWE"` | SWE Class Routine **V5** (effective 10 Oct 2026, Excel): 766 sections, 1,216 meetings; each record cites `diu-swe-routine-263-v5` | [official]; rooms as printed (lab tags dropped); 47 online sections with no room; one double-hyphen slip corrected |
 | same file, `program: "ENG"` | English's class schedule **V-0.7** (14 Oct 2026, Excel): 143 sections, 292 meetings; each record cites `diu-eng-routine-263-v07` | [official]; 50 empty "Tutorial" slots left out; three retake classes printed with an old and a new code are a record per code, noting the pairing |
+| same file, `program: "EEE"` | EEE Class Routine **V4.0** (effective 3 Oct 2026, PDF): 307 sections, 565 meetings (741 one-hour cells, every code counted against the raw text); each record cites `diu-eee-routine-263-v40` | [official]; a section is level-term plus the course's own section (`4-2 D`, labs `1-1 B1`); rooms numbered within the EEE building as printed; classes taught to two groups at once are a record per group; 4 sections with two teachers have `faculty: null`; one missing section letter and three mismatched group letters are noted; the teachers' contact pages are left out |
+| `program-courses.json` → 10 EEE stubs | ISCED codes only EEE's routine names (`0222-131`, `0713-313` …) | [official]; kept out of the course autocomplete |
 | `program-courses.json` → 33 ENG stubs | English's newer codes, subject plus ISCED field plus course number (`ENG0232-03`, `GED0031-07`); none is on English's programme page, which lists the older `ENG111`-style curriculum | [official]; kept out of the course autocomplete |
 | `program-courses.json` → 11 SWE stubs | Codes only SWE's routine names (general courses such as ENG101, and ST421-424) | [official]; kept out of the course autocomplete |
 | `program-courses.json` → 35 CSE stubs | Codes only the routine names (3rd/4th-year electives, retakes): `title` and `credits` null | [official]; kept out of the course autocomplete |
@@ -585,7 +587,7 @@ is why the database's `meetings` key includes the room.
 
 ## 17. Not loaded yet, and why
 
-- **Sections of departments other than CSE, SWE and English.** EEE, ITM, AGS,
+- **Sections of departments other than CSE, SWE, English and EEE.** ITM, AGS,
   Fisheries and Tourism publish PDFs, each a layout of its own; Civil's is images.
   Free Rooms stays off whatever is loaded (§12).
 - **Titles and credits of the 35 CSE stub codes.** The routine gives codes only, and
