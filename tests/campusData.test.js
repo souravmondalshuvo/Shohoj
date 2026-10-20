@@ -139,13 +139,17 @@ assert.deepEqual(paired[0].meetings, paired[1].meetings, 'a paired retake shares
 // class taught to two groups at once is a record per group, and a section
 // with a lecturer and a session teacher names neither.
 const diuEee = diuTerm.records.filter((s) => s.program === 'EEE');
-assert.equal(diuEee.length, 307);
+assert.equal(diuEee.length, 308);
 assert.ok(diuEee.every((s) => s.source === 'diu-eee-routine-263-v40' && /^\d-\d [A-Z]\d?$/.test(s.section)));
 assert.equal(diuStubs.filter((r) => r.program === 'EEE').length, 10);
 const e1 = diuEee.find((s) => s.course === '0713-121' && s.section === '1-2 E1');
 assert.match(e1.note, /Taught in one class with 1-2 A/);
 assert.equal(diuEee.find((s) => s.course === '0713-121' && s.section === '1-2 A').faculty, null);
 assert.match(diuEee.find((s) => s.course === '0714-322' && s.section === '3-3 A2').note, /no section/);
+// A subgroup printed twice is read as its missing sibling, with a note.
+const g2 = diuEee.find((s) => s.course === '0713-224' && s.section === '2-2 G2');
+assert.match(g2.note, /Printed "0713-224 G1"/);
+assert.equal(diuEee.find((s) => s.course === '0713-224' && s.section === '2-2 G1').meetings.length, 1);
 
 // SWE's routine in the same file: each record cites its own source; online
 // classes have no room; a printed slip is corrected with a note.
