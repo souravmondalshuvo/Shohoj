@@ -1090,7 +1090,7 @@ export const FIXTURES = {
     ],
     emptyRoutineState: [[]],
     encodeRoutinePicks: [[{}], [{ CSE220: 101 }], [{ picks: { 'ENG0232-01': 5, CSE115L: null, CSE220: 3 } }]],
-    decodeRoutinePicks: [[''], ['CSE220:101'], [null], ['ENG0232.01-5~CSE115L~CSE220-3~ENG0232-01']],
+    decodeRoutinePicks: [[''], ['CSE220:101'], [null], ['ENG0232.01-5~CSE115L~CSE220-3~ENG0232-01'], ['0713.111-7~0541.111~0713-99']],
     pickedCourseCodes: [[{ CSE220: 101 }], [{}]],
     buildClashMap: [[FEED], [[]]],
     selectedSections: [

@@ -77,9 +77,10 @@ export function pickedCourseCodes(state: RoutineState): string[] {
 export const MAX_SHARE_COURSES = 15;
 /**
  * A subject and number, an optional letter (NSU's labs, CSE115L), and an
- * optional field part after a hyphen (DIU's English, ENG0232-01).
+ * optional field part after a hyphen (DIU's English, ENG0232-01); or an ISCED
+ * field code, field and number (DIU's EEE, 0713-111).
  */
-const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}[A-Z]?(-\d{1,4})?$/;
+const SHARE_CODE_RE = /^(?:[A-Z]{2,6}\d{2,4}[A-Z]?(?:-\d{1,4})?|\d{4}-\d{3})$/;
 
 /**
  * Encode picks into a compact, URL-safe string: `CODE` or `CODE-sectionId`

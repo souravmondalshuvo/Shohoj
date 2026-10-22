@@ -36,7 +36,7 @@ test('a DIU student gets DIU’s sections, labelled as a snapshot of some depart
 
   await expect(page.locator('.routine-source-badge')).toHaveText(/As of 14 Oct 2026/);
   const note = page.getByTestId('routine-snapshot-note');
-  await expect(note).toContainText('Only CSE, ENG and SWE routines are loaded so far.');
+  await expect(note).toContainText('Only CSE, EEE, ENG and SWE routines are loaded so far.');
   await expect(note).toContainText('Final exams run from 17 Dec 2026 to 24 Dec 2026.');
   await expect(page.locator('.routine-semester-badge')).toContainText('Fall 2026');
 
@@ -73,4 +73,21 @@ test('a shared link restores a section whose code has a hyphen', async ({ page }
   const blocks = page.locator('.routine-grid-block');
   await expect(blocks).toHaveCount(pick.meetings);
   await expect(blocks.first()).toContainText('ENG0232-01');
+});
+
+test('an EEE course, written as an ISCED code, is found, picked and shared', async ({ page }) => {
+  await boot(page);
+  const pick = await page.evaluate(async () => {
+    const feed = await (await fetch('feeds/diu-263.json')).json();
+    const s = feed.find((x) => x.courseCode === '0713-111' && x.sectionSchedule.classSchedules.length > 0);
+    return { sid: s.sectionId, meetings: s.sectionSchedule.classSchedules.length };
+  });
+  // Typing the field finds it, like any other code's prefix.
+  await page.locator('#routineCourseInput').fill('0713');
+  await expect(page.locator('[data-action="routine:addFromSuggest"][data-code="0713-111"]')).toBeVisible();
+
+  await page.goto(`/?routine=0713.111-${pick.sid}#calculator/routine`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof window.switchCalcTab === 'function');
+  await expect(page.locator('.routine-grid-block')).toHaveCount(pick.meetings);
+  await expect(page.locator('.routine-grid-block').first()).toContainText('0713-111');
 });

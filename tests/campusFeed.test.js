@@ -205,7 +205,7 @@ test('DIU: titles and credits come from the section’s own program, never anoth
 });
 
 test('DIU: the snapshot names the programs it covers, and does not serve Free Rooms', () => {
-  assert.deepEqual(diuMeta.programs, ['CSE', 'ENG', 'SWE']);
+  assert.deepEqual(diuMeta.programs, ['CSE', 'EEE', 'ENG', 'SWE']);
   assert.equal(diuMeta.freeRooms, false);
   assert.equal(nsuMeta.programs, null);
   assert.equal(nsuMeta.freeRooms, true);
@@ -226,7 +226,7 @@ test('DIU: dated from its calendar, classes ending no later than the eve of fina
 });
 
 test('DIU: capturedOn is the newest routine the file gathers', () => {
-  // CSE V4.1 (3 Oct), SWE V5 (10 Oct), English V-0.7 (14 Oct): the file is
+  // CSE V4.1 and EEE V4.0 (3 Oct), SWE V5 (10 Oct), English V-0.7 (14 Oct): the file is
   // true once the last of them is out.
   assert.equal(diuMeta.capturedOn, '2026-10-14');
   assert.ok(diuSnapshot.note.includes('V-0.7 (14 Oct 2026)'), 'the note no longer dates English’s schedule');
