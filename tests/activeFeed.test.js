@@ -13,7 +13,7 @@ globalThis.CustomEvent = class { constructor(type, init) { this.type = type; thi
 globalThis.dispatchEvent = () => true;
 
 const { setActiveCampusForEmail } = await import('../js/core/activeCampus.js');
-const { campusHasFeedSnapshot, feedSnapshotFor, getActiveFeedSnapshot } = await import('../js/core/activeFeed.js');
+const { campusFeedSnapshotHasRooms, campusHasFeedSnapshot, feedSnapshotFor, getActiveFeedSnapshot } = await import('../js/core/activeFeed.js');
 const { DEFAULT_CACHE_KEY, DEFAULT_FEED_URL } = await import('../js/core/connectFeedClient.js');
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -44,8 +44,19 @@ test('a snapshot has its own cache slot and never the live feed’s URL', () => 
   assert.ok(fetchOptions.ttlMs >= 60 * 60 * 1000);
 });
 
+test('DIU has a snapshot too, one that cannot serve Free Rooms', () => {
+  const snapshot = feedSnapshotFor('diu');
+  assert.equal(snapshot.campusId, 'diu');
+  assert.equal(snapshot.semesterSessionId, 20263);
+  assert.ok(snapshot.fetchOptions.cacheKey.includes('diu'));
+  assert.ok(existsSync(new URL(`../${snapshot.fetchOptions.url}`, import.meta.url)), 'the file the URL names exists');
+  assert.equal(campusFeedSnapshotHasRooms('diu'), false);
+  assert.equal(campusFeedSnapshotHasRooms('nsu'), true);
+  assert.equal(campusFeedSnapshotHasRooms('bracu'), false);
+});
+
 test('an unknown campus, or a prototype key, has no snapshot', () => {
-  assert.equal(feedSnapshotFor('diu'), null);
+  assert.equal(feedSnapshotFor('bubt'), null);
   assert.equal(feedSnapshotFor('constructor'), null);
   assert.equal(feedSnapshotFor('__proto__'), null);
 });
