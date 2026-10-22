@@ -1482,8 +1482,13 @@ function _pickerHTML() {
   // A snapshot says what it cannot tell you every time, not on hover: a
   // timetable that looks live and is not is how a student ends up in the
   // wrong room. Class times are the part that holds; the rest moves.
+  // A snapshot of some departments' routines has to say whose, or a student
+  // in another one is left wondering why their course isn't listed.
+  const coverage = snapshot && snapshot.programs
+    ? `Only ${_routineProgramList(snapshot.programs)} routines are loaded so far. `
+    : '';
   const snapshotNote = snapshot
-    ? `Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and each course's exam date aren't available. ${termExamNote(snapshot, (date) => formatSemesterDate(date) || date)}`.trim()
+    ? `${coverage}Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and each course's exam date aren't available. ${termExamNote(snapshot, (date) => formatSemesterDate(date) || date)}`.trim()
     : '';
   const archiveNote = (gap || snapshotNote)
     ? `<div class="routine-archive-note" role="status" data-testid="${snapshot ? 'routine-snapshot-note' : 'routine-archive-note'}">${escHtml(gap || snapshotNote)}</div>`
@@ -1852,6 +1857,11 @@ function _formatRooms(section) {
     return fallback || 'Room TBA';
   }
   return rooms.join(' · ');
+}
+
+// "CSE, ENG and SWE".
+function _routineProgramList(codes) {
+  return codes.length < 2 ? codes.join('') : `${codes.slice(0, -1).join(', ')} and ${codes[codes.length - 1]}`;
 }
 
 function _formatSchedule(section) {
