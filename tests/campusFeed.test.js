@@ -1,7 +1,7 @@
 /**
  * tests/campusFeed.test.js
  * The section feed generated for a campus whose routine comes from the campus
- * database (NSU): it is current with data/campuses/, it parses through the
+ * database (NSU, DIU): it is current with data/campuses/, it parses through the
  * same parser the Routine tab uses for BRACU's live feed, and it carries
  * nothing a snapshot cannot vouch for.
  */
@@ -124,6 +124,98 @@ test('capturedOn is the date the snapshot’s own note gives it', () => {
 test('the mapping rejects a day letter it does not know', () => {
   assert.throws(
     () => buildCampusFeed({ term: '263', records: [{ course: 'X101', section: 1, days: 'Q', start: '08:00', end: '09:00' }] }, null, []),
+    /unknown day letter 'Q'/,
+  );
+});
+
+// ── DIU: per-day meetings, program-scoped codes, a few departments ───────────
+
+const diuConfig = CAMPUS_FEEDS.find((f) => f.campus === 'diu');
+const diuMeta = CAMPUS_FEED_SNAPSHOTS.diu;
+const diuRaw = JSON.parse(readFileSync(feedPath('diu', diuMeta.term), 'utf8'));
+const diu = loadCampuses().campuses.find((c) => c.id === 'diu');
+const diuSnapshot = diu.sections[diuConfig.termKey];
+const diuKey = (r) => `${r.program}|${r.course}|${r.section}`;
+
+test('DIU: every section parses, none dropped, ids unique', () => {
+  const { sections, dropped } = parseFeed(diuRaw);
+  assert.equal(dropped.length, 0);
+  assert.equal(sections.length, diuSnapshot.records.length);
+  assert.equal(sections.length, diuMeta.sectionCount);
+  assert.equal(new Set(diuRaw.map((s) => s.sectionId)).size, diuRaw.length);
+  // The program is part of a program-scoped section's id; a campus-wide one's
+  // id is what it always was.
+  assert.notEqual(feedSectionId('263', 'MAT101', '67_A', 'CSE'), feedSectionId('263', 'MAT101', '67_A', 'SWE'));
+  assert.equal(feedSectionId('263', 'ACT201', 1, undefined), feedSectionId('263', 'ACT201', 1));
+});
+
+test('DIU: each meeting keeps its own day, time and room', () => {
+  const records = new Map(diuSnapshot.records.map((r) => [feedSectionId('263', r.course, r.section, r.program), r]));
+  const { sections } = parseFeed(diuRaw);
+  let multiRoom = 0;
+  for (const section of sections) {
+    const record = records.get(section.sectionId);
+    assert.ok(record, `${section.courseCode} ${section.sectionName} comes from the snapshot`);
+    assert.equal(section.classSlots.length, record.meetings.length);
+    const rooms = new Set(record.meetings.map((m) => m.room).filter(Boolean));
+    if (rooms.size > 1) multiRoom++;
+    record.meetings.forEach((m, i) => {
+      const slot = section.classSlots[i];
+      assert.equal(slot.room, m.room ?? section.roomName, `${diuKey(record)} meeting ${i}`);
+    });
+    assert.equal(section.roomName, [...rooms].join(' · '));
+  }
+  assert.ok(multiRoom > 0, 'some DIU sections meet in more than one room');
+});
+
+test('DIU: titles and credits come from the section’s own program, never another’s', () => {
+  const titled = diuRaw.find((s) => s.courseCode === 'MAT101' && s.courseName !== '');
+  assert.equal(titled.courseName, 'Mathematics - I');
+  assert.equal(titled.courseCredit, 3);
+  // SWE's MAT101 is a stub in SWE's list: no title, no credits, rather than CSE's.
+  const sweIds = new Set(
+    diuSnapshot.records
+      .filter((r) => r.program === 'SWE' && r.course === 'MAT101')
+      .map((r) => feedSectionId('263', r.course, r.section, r.program)),
+  );
+  assert.ok(sweIds.size > 0);
+  for (const s of diuRaw.filter((x) => sweIds.has(x.sectionId))) {
+    assert.equal(s.courseName, '');
+    assert.equal(s.courseCredit, 0);
+  }
+});
+
+test('DIU: the snapshot names the programs it covers, and does not serve Free Rooms', () => {
+  assert.deepEqual(diuMeta.programs, ['CSE', 'ENG', 'SWE']);
+  assert.equal(diuMeta.freeRooms, false);
+  assert.equal(nsuMeta.programs, null);
+  assert.equal(nsuMeta.freeRooms, true);
+});
+
+test('DIU: dated from its calendar, classes ending no later than the eve of finals', () => {
+  assert.equal(semesterNameFromSessionId(diuMeta.semesterSessionId), 'Fall 2026');
+  // DIU names no last day of classes; finals start 17 Dec and run to 24 Dec.
+  assert.deepEqual(classDates(diu.calendars[diuConfig.termKey]), {
+    classStartDate: '2026-09-09',
+    classEndDate: '2026-12-16',
+  });
+  assert.equal(diuMeta.examStartDate, '2026-12-17');
+  assert.equal(diuMeta.examEndDate, '2026-12-24');
+  const identity = describeSemester(parseFeed(diuRaw).sections, '2026-10-22');
+  assert.equal(identity.name, 'Fall 2026');
+  assert.equal(identity.status, 'running');
+});
+
+test('DIU: capturedOn is the newest routine the file gathers', () => {
+  // CSE V4.1 (3 Oct), SWE V5 (10 Oct), English V-0.7 (14 Oct): the file is
+  // true once the last of them is out.
+  assert.equal(diuMeta.capturedOn, '2026-10-14');
+  assert.ok(diuSnapshot.note.includes('V-0.7 (14 Oct 2026)'), 'the note no longer dates English’s schedule');
+});
+
+test('the mapping rejects a meeting day letter it does not know', () => {
+  assert.throws(
+    () => buildCampusFeed({ term: '263', records: [{ course: 'X101', section: 1, days: null, start: null, end: null, meetings: [{ day: 'Q', start: '08:00', end: '09:00', room: null }] }] }, null, []),
     /unknown day letter 'Q'/,
   );
 });
