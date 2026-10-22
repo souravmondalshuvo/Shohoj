@@ -61,10 +61,15 @@ export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/inte
 // turn — pick the tool, then answer. These questions are grounded in our own
 // executors: the CGPA, the prerequisite verdict and the seat counts are
 // computed by Shohoj and handed to the model, so deep reasoning buys nothing
-// and costs the student seconds of waiting (#553). Mirrors the `low` reasoning
-// effort already set on the OpenAI path. Never send this alongside the legacy
-// thinking_budget parameter — together they are a 400.
-export const GEMINI_THINKING_LEVEL = 'low';
+// and costs the student seconds of waiting (#553). Never send this alongside
+// the legacy thinking_budget parameter — together they are a 400.
+//
+// `minimal`, not `low` (#956): the first live streamed turns spent 5–9 s in
+// each gemini-3.6-flash call against ~0.4 s for everything Shohoj does, and
+// the thinking guide names a lower thinking_level as the way to cut latency.
+// gemini-3.6-flash accepts minimal | low | medium | high. If tool choice or
+// answers get worse, this is the line to put back to 'low'.
+export const GEMINI_THINKING_LEVEL = 'minimal';
 
 // It rides inside generation_config, NOT at the top level of the payload. Sent
 // top-level the API answers "Unknown parameter 'thinking_level'" and rejects
