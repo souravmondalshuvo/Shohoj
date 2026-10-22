@@ -5,7 +5,7 @@
 // sections come from the campus database, and the small module that tells the
 // bundle where that feed is and what it is:
 //
-//   feeds/nsu-<term>.json              the sections, in the CONNECT feed's raw
+//   feeds/<campus>-<term>.json         the sections, in the CONNECT feed's raw
 //                                      shape, fetched on demand — never bundled
 //   js/core/campusFeeds.generated.js   one entry per campus: the URL, the
 //                                      semester, and how old the snapshot is
@@ -36,9 +36,20 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * `note`), so it is restated here where code can read it;
  * tests/campusFeed.test.js holds the two together. It is what the tab shows
  * the student, because this data goes stale: NSU's Fall 2026 page changed in
- * about one section in eight in the five days after advising closed.
+ * about one section in eight in the five days after advising closed. A file
+ * gathering several routines is true once the last of them is published:
+ * DIU's English schedule V-0.7 is dated 14 Oct, after CSE's V4.1 (3 Oct) and
+ * SWE's V5 (10 Oct).
+ *
+ * `freeRooms` is whether the snapshot can also say which rooms are free. NSU's
+ * is the whole university's list. DIU's holds a few departments' routines,
+ * which name rooms in incompatible ways and leave every other department's
+ * classes out, so a room it shows empty may not be (#936).
  */
-export const CAMPUS_FEEDS = [{ campus: 'nsu', termKey: '263-trimester', capturedOn: '2026-09-28' }];
+export const CAMPUS_FEEDS = [
+  { campus: 'nsu', termKey: '263-trimester', capturedOn: '2026-09-28', freeRooms: true },
+  { campus: 'diu', termKey: '263-trimester', capturedOn: '2026-10-14', freeRooms: false },
+];
 
 export const META_PATH = resolve(repoRoot, 'js/core/campusFeeds.generated.js');
 export const feedPath = (campus, term) => resolve(repoRoot, `feeds/${campus}-${term}.json`);
@@ -58,7 +69,7 @@ export function renderCampusFeeds() {
 
   const files = [];
   const entries = [];
-  for (const { campus: id, termKey, capturedOn } of CAMPUS_FEEDS) {
+  for (const { campus: id, termKey, capturedOn, freeRooms } of CAMPUS_FEEDS) {
     const campus = campuses.find((c) => c.id === id);
     if (!campus) throw new Error(`no campus '${id}' in data/campuses`);
     const snapshot = campus.sections?.[termKey];
@@ -66,12 +77,12 @@ export function renderCampusFeeds() {
     const { sections, meta } = buildCampusFeed(
       snapshot,
       campus.calendars?.[termKey] ?? null,
-      campus.courses?.records ?? [],
+      campus.courses?.records ?? campus.programCourses?.records ?? [],
     );
     if (sections.length === 0) throw new Error(`refusing to generate an empty feed for ${id}`);
 
     files.push({ path: feedPath(id, meta.term), text: renderSections(sections) });
-    entries.push([id, { url: feedUrl(id, meta.term), capturedOn, ...meta }]);
+    entries.push([id, { url: feedUrl(id, meta.term), capturedOn, freeRooms, ...meta }]);
   }
 
   const body = entries
@@ -89,8 +100,10 @@ export function renderCampusFeeds() {
 //
 // \`capturedOn\` is the day the snapshot was true. Nothing here is live: no
 // seat count is carried, and faculty and rooms are as published on that day.
+// \`freeRooms\` is whether it holds enough of the timetable to say which rooms
+// are free; \`programs\`, when set, are the only programs whose sections it has.
 
-/** campus id → { url, capturedOn, term, semesterSessionId, source, … }. */
+/** campus id → { url, capturedOn, freeRooms, term, semesterSessionId, source, … }. */
 export const CAMPUS_FEED_SNAPSHOTS = {
 ${body}
 };
