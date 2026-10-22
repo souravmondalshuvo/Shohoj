@@ -27,7 +27,7 @@ import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { openModal } from './modal.js';
-import { getActiveFeedSnapshot } from '../core/activeFeed.js';
+import { getActiveFeedSnapshot, pruneFeedSnapshotCaches } from '../core/activeFeed.js';
 import { termDayNote, termDayStatus } from '../core/termCalendar.js';
 import { withPhysicalRooms } from '../core/snapshotRooms.js';
 
@@ -127,8 +127,10 @@ async function _frRefresh(force = false) {
   try {
     // Any saved copy paints at once and refreshes behind it (#761).
     let feedOptions;
-    if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
-    else feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+    if (snapshot) {
+      pruneFeedSnapshotCaches();
+      feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+    } else feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
     const result = await fetchConnectFeed(feedOptions);
     if (seq !== _frRefreshSeq) return;
     // A snapshot's room names are the university's spellings, some of which
