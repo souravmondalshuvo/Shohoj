@@ -3,7 +3,9 @@
 // DIU publishes its grading rules and its programs, and no course catalogue.
 // So the calculator scores on DIU's scale and counts towards DIU's totals, the
 // student types each course and its credits by hand, and every tab that needs
-// a catalogue, a section feed or a transcript reader is not offered.
+// a catalogue, a live section feed or a transcript reader is not offered.
+// Routine is: it reads the departments' routines loaded into the campus
+// database (e2e/diu-routine.spec.js).
 //
 // Identity comes through the seam the auth layer publishes it on
 // (window._shohoj_userProfile and shohoj:auth-changed), as in
@@ -39,13 +41,13 @@ async function signInAs(page, email) {
 
 const tab = (page, id) => page.locator(`#calcTabs [data-tab="${id}"]`);
 
-test('a DIU student gets the calculator, the playground and DIU\'s buses, and nothing DIU has no data for', async ({ page }) => {
+test('a DIU student gets the calculator, the playground, Routine and DIU\'s buses, and nothing DIU has no data for', async ({ page }) => {
   await boot(page);
   // Both of the domains DIU's students sign in from are DIU.
   for (const email of ['rahim15-1234@diu.edu.bd', 'rahim@s.diu.edu.bd']) {
     await signInAs(page, email);
-    for (const id of ['calculator', 'playground']) await expect(tab(page, id)).toHaveJSProperty('hidden', false);
-    for (const id of ['planner', 'routine', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'campus', 'groups']) {
+    for (const id of ['calculator', 'playground', 'routine']) await expect(tab(page, id)).toHaveJSProperty('hidden', false);
+    for (const id of ['planner', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'campus', 'groups']) {
       await expect(tab(page, id)).toHaveJSProperty('hidden', true);
     }
     // Of the standalone pages DIU has one: Bus opens DIU's own routes, so the
