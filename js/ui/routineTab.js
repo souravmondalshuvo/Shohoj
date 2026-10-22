@@ -71,7 +71,7 @@ import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { saveState } from '../core/state.js';
-import { getActiveFeedSnapshot } from '../core/activeFeed.js';
+import { getActiveFeedSnapshot, pruneFeedSnapshotCaches } from '../core/activeFeed.js';
 
 // Named ROUTINE_STORAGE_KEY (not STORAGE_KEY) to avoid colliding with
 // js/core/state.js's STORAGE_KEY once build3.py concatenates every module
@@ -824,8 +824,10 @@ async function _refresh(force = false) {
   // The live feed paints any saved copy at once, however old, and refreshes
   // behind it — its origin can take 20 s to answer (#761).
   let feedOptions;
-  if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
-  else if (archiveUrl === null) feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+  if (snapshot) {
+    pruneFeedSnapshotCaches();
+    feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+  } else if (archiveUrl === null) feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
   else feedOptions = { forceRefresh: !!force, url: archiveUrl, cacheKey: archiveCacheKey(session) };
   const feedPromise = fetchConnectFeed(feedOptions);
   const reviewsPromise = _loadFacultyRatings(force);
