@@ -6,6 +6,8 @@
 export interface CampusFeedSnapshot {
   /** Relative to the site root, e.g. "feeds/nsu-263.json". */
   url: string;
+  /** A hash of the file's contents: part of its cache key and its fetch URL. */
+  revision: string;
   /** ISO date the snapshot was true on. Nothing in it is live. */
   capturedOn: string;
   /** Whether it holds enough of the timetable to say which rooms are free. */
