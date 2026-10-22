@@ -8,13 +8,18 @@ export interface CampusFeedSnapshot {
   url: string;
   /** ISO date the snapshot was true on. Nothing in it is live. */
   capturedOn: string;
+  /** Whether it holds enough of the timetable to say which rooms are free. */
+  freeRooms: boolean;
   term: string;
   semesterSessionId: number;
   source: string;
+  /** The only programs whose sections it has, or null for the whole campus. */
+  programs: string[] | null;
   sectionCount: number;
   courseCount: number;
   untimedCount: number;
   classStartDate: string;
+  /** The calendar's last day of classes, or the eve of finals where it names none (DIU). */
   classEndDate: string;
   /** Holidays and "No Classes" days inside the term, in date order. */
   noClassDays: { date: string; event: string }[];
@@ -26,7 +31,7 @@ export interface CampusFeedSnapshot {
 }
 
 /** campus id → its snapshot. Only campuses fed from a snapshot have an entry. */
-export const CAMPUS_FEED_SNAPSHOTS: { nsu: CampusFeedSnapshot } & Record<
+export const CAMPUS_FEED_SNAPSHOTS: { nsu: CampusFeedSnapshot; diu: CampusFeedSnapshot } & Record<
   string,
   CampusFeedSnapshot | undefined
 >;
