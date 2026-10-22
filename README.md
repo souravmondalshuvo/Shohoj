@@ -815,7 +815,7 @@ plan: three campuses sign in today, on both frontends.
   | Degree, Planner, Transcript import | ✅ both | ✅ both | — the shell's degree tracker counts towards BRACU's programs, DIU publishes no prerequisites, and no DIU transcript has been seen |
   | Reviews, Papers, Groups | ✅ both | ✅ both (empty until NSU students post) | — each names a course, and DIU's departments write codes five different ways |
   | Feedback, Profile | ✅ both | ✅ both | ✅ both |
-  | Routine | ✅ both, live feed | ✅ root only, from a dated section snapshot | ✅ root only, from a dated snapshot of the departments loaded so far (CSE, SWE, English); each class names its own room |
+  | Routine | ✅ both, live feed | ✅ root only, from a dated section snapshot | ✅ root only, from a dated snapshot of the departments loaded so far (CSE, EEE, SWE, English); each class names its own room |
   | Free Rooms | ✅ both, live feed | ✅ root only, from the same snapshot | — only some departments' routines are loaded, and they name rooms in incompatible ways |
   | Seat Status | ✅ both | — no public seat counts | — |
   | Campus Map | ✅ both | ✅ root only, NSU's own model | — |
