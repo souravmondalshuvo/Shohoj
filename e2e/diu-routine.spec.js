@@ -59,3 +59,18 @@ test('each meeting of a section lands in its own room', async ({ page }) => {
   const rooms = await page.locator('.routine-grid-block-room').allInnerTexts();
   expect(rooms.sort()).toEqual(['KT-303', 'KT-304']);
 });
+
+test('a shared link restores a section whose code has a hyphen', async ({ page }) => {
+  await boot(page);
+  // English's codes carry a field part (ENG0232-01); the link writes it ENG0232.01.
+  const pick = await page.evaluate(async () => {
+    const feed = await (await fetch('feeds/diu-263.json')).json();
+    const s = feed.find((x) => x.courseCode === 'ENG0232-01' && x.sectionSchedule.classSchedules.length > 0);
+    return { sid: s.sectionId, meetings: s.sectionSchedule.classSchedules.length };
+  });
+  await page.goto(`/?routine=ENG0232.01-${pick.sid}#calculator/routine`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof window.switchCalcTab === 'function');
+  const blocks = page.locator('.routine-grid-block');
+  await expect(blocks).toHaveCount(pick.meetings);
+  await expect(blocks.first()).toContainText('ENG0232-01');
+});
