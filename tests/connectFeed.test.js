@@ -439,6 +439,21 @@ const ROOM_FIXTURE = [
         },
     },
     {
+        // A snapshot's meetings name their own rooms; a blank one falls back
+        // to the section's.
+        sectionId: 2005,
+        courseCode: 'CSE115',
+        sectionName: '67_A',
+        roomName: 'KT-303 · KT-304',
+        sectionSchedule: {
+            classSchedules: [
+                { day: 'TUESDAY', startTime: '16:00', endTime: '17:30', roomName: 'KT-303' },
+                { day: 'THURSDAY', startTime: '10:00', endTime: '11:30', roomName: ' KT-304 ' },
+                { day: 'SATURDAY', startTime: '10:00', endTime: '11:30', roomName: '' },
+            ],
+        },
+    },
+    {
         // No room information at all → empty tag, not undefined.
         sectionId: 2004,
         courseCode: 'PHY110',
@@ -469,8 +484,12 @@ test('an empty roomName falls through to roomNumber', () => {
     eq(s.roomName, '08A-01C');
     eq(s.classSlots.map(x => x.room), ['08A-01C']);
 });
-test('no room information yields an empty tag, not undefined', () => {
+test('a meeting that names its own room keeps it; a blank one takes the section\'s', () => {
     const s = tsNormalizeSection(ROOM_FIXTURE[3]);
+    eq(s.classSlots.map(x => x.room), ['KT-303', 'KT-304', 'KT-303 · KT-304']);
+});
+test('no room information yields an empty tag, not undefined', () => {
+    const s = tsNormalizeSection(ROOM_FIXTURE[4]);
     eq(s.roomName, '');
     eq(s.classSlots.map(x => x.room), ['']);
 });
