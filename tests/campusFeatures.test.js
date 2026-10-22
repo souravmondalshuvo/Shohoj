@@ -90,7 +90,7 @@ test("DIU's calculator and playground are granted by this page, not by the share
   for (const feature of ['calculator', 'playground', 'degree']) {
     assert.equal(UNIVERSITIES.diu.features.includes(feature), false, `${feature} is not in DIU's registry features`);
   }
-  assert.deepEqual(campusTabIds(UNIVERSITIES.diu), ['calculator', 'playground']);
+  assert.deepEqual(campusTabIds(UNIVERSITIES.diu), ['calculator', 'playground', 'routine']);
   // By name, for DIU alone: nothing else comes with them.
   assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'planner'), false);
   assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'toString'), false);
@@ -108,6 +108,15 @@ test('Routine and Free Rooms are granted to NSU by this page, not by the shared 
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'freerooms'), true);
   // Seats is not: a snapshot carries no seat counts.
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'seats'), false);
+});
+
+test("DIU's Routine is granted from its snapshot, and its Free Rooms is not", () => {
+  assert.equal(UNIVERSITIES.diu.features.includes('routine'), false);
+  assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'routine'), true);
+  // Its snapshot is a few departments' routines: a room empty in them may be
+  // booked by a department not loaded (#936).
+  assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'freerooms'), false);
+  assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'seats'), false);
 });
 
 test('the Campus Map is a tab, and NSU\'s is granted by this page', () => {
