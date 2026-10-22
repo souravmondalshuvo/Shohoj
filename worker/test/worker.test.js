@@ -3200,7 +3200,7 @@ async function makeServiceAccountJson() {
       'Your CGPA is 3.50.');
   });
 
-  await test('Gemini turns ask for low thinking effort, on every round', async () => {
+  await test('Gemini turns ask for minimal thinking effort, on every round', async () => {
     const bodies = [];
     await runGeminiTurn({
       apiKey: 'k',
@@ -3220,10 +3220,10 @@ async function makeServiceAccountJson() {
       },
     });
     // Medium is the default and applies to the tool-pick round too, which is
-    // pure plumbing — both rounds must ask for low (#553).
+    // pure plumbing — both rounds must ask for the lowest level (#553, #956).
     assertEq(bodies.length, 2);
-    assertEq(bodies[0].generation_config.thinking_level, 'low');
-    assertEq(bodies[1].generation_config.thinking_level, 'low');
+    assertEq(bodies[0].generation_config.thinking_level, 'minimal');
+    assertEq(bodies[1].generation_config.thinking_level, 'minimal');
     // ...and it must ride INSIDE generation_config. Asserted top-level, this
     // test passed against a mocked fetch while the real API rejected every
     // turn with "Unknown parameter 'thinking_level'" (#563), so the location
