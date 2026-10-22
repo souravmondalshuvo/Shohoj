@@ -24,9 +24,12 @@
 //
 // A section whose days meet at different times or in different rooms (DIU)
 // carries per-day `meetings`; each becomes a class slot that names its own
-// room, and the section's room is every room it uses. Where codes repeat
-// across programs (DIU's), a section's course is looked up in its own
-// program's list, never another's.
+// room, and the section's room is every room it uses. A meeting with no room
+// beside ones that have one (SWE's online classes) says so, rather than
+// inheriting the rooms of the others. Where codes repeat across programs
+// (DIU's), a section's course is looked up in its own program's list, never
+// another's, and its name carries the program, so a student choosing among a
+// shared course's sections can tell whose each is.
 
 /** RDS day letters. R is Thursday and A is Saturday, as NSU writes them. */
 const DAY_NAMES = {
@@ -81,13 +84,20 @@ function dayName(record, letter, written) {
   return day;
 }
 
+/**
+ * The room a roomless meeting shows when the section's other meetings have
+ * one. A blank room would fall back to the section's, which lists those.
+ */
+export const NO_ROOM = 'No room';
+
 function classSchedules(record) {
   if (record.meetings) {
+    const anyRoom = record.meetings.some((m) => m.room);
     return record.meetings.map((m) => ({
       day: dayName(record, m.day, m.day),
       startTime: m.start,
       endTime: m.end,
-      ...(m.room ? { roomName: m.room } : {}),
+      ...(m.room ? { roomName: m.room } : anyRoom ? { roomName: NO_ROOM } : {}),
     }));
   }
   if (!record.days || !record.start || !record.end) return [];
@@ -204,6 +214,13 @@ export function buildCampusFeed(snapshot, calendar, courses) {
   const semesterSessionId = feedSessionId(term);
   const byCode = new Map(courses.map((c) => [courseKey(c.program, c.code), c]));
   const { classStartDate, classEndDate } = classDates(calendar);
+  const programsOf = new Map();
+  for (const r of snapshot.records) {
+    if (!r.program) continue;
+    if (!programsOf.has(r.course)) programsOf.set(r.course, new Set());
+    programsOf.get(r.course).add(r.program);
+  }
+  const shared = (record) => record.program && programsOf.get(record.course).size > 1;
 
   const seen = new Map();
   const sections = snapshot.records.map((record) => {
@@ -221,7 +238,7 @@ export function buildCampusFeed(snapshot, calendar, courses) {
       courseCode: record.course,
       courseName: course?.title ?? '',
       courseCredit: Number.isFinite(course?.credits) ? course.credits : 0,
-      sectionName: String(record.section),
+      sectionName: shared(record) ? `${record.program} ${record.section}` : String(record.section),
       capacity: 0,
       consumedSeat: 0,
       faculties: record.faculty ?? '',
