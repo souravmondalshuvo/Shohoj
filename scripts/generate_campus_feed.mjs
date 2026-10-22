@@ -39,7 +39,8 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * the student, because this data goes stale: NSU's Fall 2026 page changed in
  * about one section in eight in the five days after advising closed. A file
  * gathering several routines is true once the last of them is published:
- * DIU's English schedule V-0.7 is dated 14 Oct, after CSE's V4.1 (3 Oct) and
+ * DIU's English schedule V-0.7 is dated 14 Oct, after CSE's V4.1 and EEE's
+ * V4.0 (both 3 Oct) and
  * SWE's V5 (10 Oct).
  *
  * `freeRooms` is whether the snapshot can also say which rooms are free. NSU's
