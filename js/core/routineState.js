@@ -50,16 +50,20 @@ export function pickedCourseCodes(state) {
 
 // Cap on courses decoded from a shared link — guards against abusive payloads.
 export const MAX_SHARE_COURSES = 15;
-const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}$/;
+// A subject and number, an optional letter (NSU's labs, CSE115L), and an
+// optional field part after a hyphen (DIU's English, ENG0232-01).
+const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}[A-Z]?(-\d{1,4})?$/;
 
 // Encode picks into a compact, URL-safe string: `CODE` or `CODE-sectionId`
 // pairs joined by `~`. Sorted for a stable link; a null pick encodes as the
-// bare code.
+// bare code. A hyphen inside a code is written `.`, since the first hyphen
+// ends the code; a code without one encodes as it always has.
 export function encodeRoutinePicks(state) {
     const parts = [];
     for (const code of pickedCourseCodes(state)) {
         const sid = state.picks[code];
-        parts.push(sid == null ? code : `${code}-${sid}`);
+        const written = code.replace(/-/g, '.');
+        parts.push(sid == null ? written : `${written}-${sid}`);
     }
     return parts.join('~');
 }
@@ -72,7 +76,7 @@ export function decodeRoutinePicks(encoded) {
     for (const part of encoded.split('~').slice(0, MAX_SHARE_COURSES)) {
         if (!part) continue;
         const dash = part.indexOf('-');
-        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash));
+        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash)).replace(/\./g, '-');
         if (!SHARE_CODE_RE.test(code)) continue;
         let sid = null;
         if (dash !== -1) {
