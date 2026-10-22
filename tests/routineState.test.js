@@ -256,6 +256,14 @@ test('a code with a hyphen or a letter suffix round-trips', () => {
     eq(encoded, 'CSE115L-42~ENG0232.01-1304825493~GED0031.07');
     eq(decodeRoutinePicks(encoded).picks, { CSE115L: 42, 'ENG0232-01': 1304825493, 'GED0031-07': null });
 });
+test('an ISCED field code round-trips', () => {
+    // DIU's EEE writes its courses as field and number.
+    const s = pickSection(pickCourse(emptyRoutineState(), '0541-111'), '0713-111', 99);
+    eq(encodeRoutinePicks(s), '0541.111~0713.111-99');
+    eq(decodeRoutinePicks('0541.111~0713.111-99').picks, { '0541-111': null, '0713-111': 99 });
+    // A bare number is not a code.
+    eq(decodeRoutinePicks('0713-99').picks, {});
+});
 test('a link made before hyphenated codes still decodes the same', () => {
     eq(decodeRoutinePicks('CSE220-123~MAT215~PHY111').picks, { CSE220: 123, MAT215: null, PHY111: null });
 });
