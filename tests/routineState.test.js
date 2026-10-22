@@ -24,6 +24,7 @@ import {
     decodeRoutinePicks,
     MAX_SHARE_COURSES,
 } from '../js/core/routineState.js';
+import { readFileSync } from 'node:fs';
 import { parseFeed, indexByCourse } from '../js/core/connectFeed.js';
 
 let passed = 0, failed = 0;
@@ -245,6 +246,27 @@ test('decode treats a non-positive / non-numeric sid as null', () => {
 test('decode caps at MAX_SHARE_COURSES entries', () => {
     const many = Array.from({ length: MAX_SHARE_COURSES + 5 }, (_, i) => `CSE${100 + i}`).join('~');
     eq(Object.keys(decodeRoutinePicks(many).picks).length, MAX_SHARE_COURSES);
+});
+test('a code with a hyphen or a letter suffix round-trips', () => {
+    // DIU's English codes carry a field part after a hyphen; NSU's labs a letter.
+    let s = pickSection(emptyRoutineState(), 'ENG0232-01', 1304825493);
+    s = pickSection(s, 'CSE115L', 42);
+    s = pickCourse(s, 'GED0031-07');
+    const encoded = encodeRoutinePicks(s);
+    eq(encoded, 'CSE115L-42~ENG0232.01-1304825493~GED0031.07');
+    eq(decodeRoutinePicks(encoded).picks, { CSE115L: 42, 'ENG0232-01': 1304825493, 'GED0031-07': null });
+});
+test('a link made before hyphenated codes still decodes the same', () => {
+    eq(decodeRoutinePicks('CSE220-123~MAT215~PHY111').picks, { CSE220: 123, MAT215: null, PHY111: null });
+});
+test('every course code in the campus snapshots round-trips', () => {
+    for (const file of ['feeds/nsu-263.json', 'feeds/diu-263.json']) {
+        const feed = JSON.parse(readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'));
+        for (const code of new Set(feed.map((s) => s.courseCode))) {
+            const s = pickSection(emptyRoutineState(), code, 7);
+            eq(decodeRoutinePicks(encodeRoutinePicks(s)).picks, { [code]: 7 }, `${file} ${code}`);
+        }
+    }
 });
 test('decode of empty / non-string is an empty routine', () => {
     eq(decodeRoutinePicks('').picks, {});
