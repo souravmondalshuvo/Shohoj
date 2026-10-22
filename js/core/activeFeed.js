@@ -26,6 +26,14 @@ export function campusHasFeedSnapshot(campusId) {
   return Object.prototype.hasOwnProperty.call(CAMPUS_FEED_SNAPSHOTS, campusId);
 }
 
+/**
+ * Whether a campus's snapshot can also say which rooms are free: it has to
+ * hold every class that could be in a room. DIU's holds a few departments'.
+ */
+export function campusFeedSnapshotHasRooms(campusId) {
+  return campusHasFeedSnapshot(campusId) && CAMPUS_FEED_SNAPSHOTS[campusId].freeRooms === true;
+}
+
 /** The snapshot for a campus, with the options to fetch it, or null. */
 export function feedSnapshotFor(campusId) {
   if (!campusHasFeedSnapshot(campusId)) return null;
