@@ -140,7 +140,9 @@ export function buildRoutineICS(sections, options = {}) {
                     // the event already in the calendar instead of adding a second.
                     uid: `shohoj-${s.sectionId}-class-${slot.day}-${slot.startMin}@shohoj.app`,
                     summary: `${tag} ${isLab ? 'lab' : 'class'}`,
-                    location: (isLab && slot.room) || s.roomName,
+                    // Each meeting's own room: a lab's, or a snapshot day's
+                    // where a section meets in different rooms (DIU).
+                    location: slot.room || s.roomName,
                     description: isLab ? `Lab faculty: ${slotFaculties(s, slot).join(', ')}` : faculty,
                     startDate,
                     startMin: slot.startMin,
