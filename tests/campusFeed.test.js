@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { buildCampusFeed, classDates, feedSectionId, feedSessionId } from '../scripts/campus_feed.mjs';
+import { NO_ROOM, buildCampusFeed, classDates, feedSectionId, feedSessionId } from '../scripts/campus_feed.mjs';
 import { CAMPUS_FEEDS, feedPath, renderCampusFeeds } from '../scripts/generate_campus_feed.mjs';
 import { loadCampuses } from '../scripts/campus_data.mjs';
 import { CAMPUS_FEED_SNAPSHOTS } from '../js/core/campusFeeds.generated.js';
@@ -149,10 +149,14 @@ test('DIU: every section parses, none dropped, ids unique', () => {
   assert.equal(feedSectionId('263', 'ACT201', 1, undefined), feedSectionId('263', 'ACT201', 1));
 });
 
+const DIU_DAYS = { S: 'SUNDAY', M: 'MONDAY', T: 'TUESDAY', W: 'WEDNESDAY', R: 'THURSDAY', F: 'FRIDAY', A: 'SATURDAY' };
+const minutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
 test('DIU: each meeting keeps its own day, time and room', () => {
   const records = new Map(diuSnapshot.records.map((r) => [feedSectionId('263', r.course, r.section, r.program), r]));
   const { sections } = parseFeed(diuRaw);
   let multiRoom = 0;
+  let roomless = 0;
   for (const section of sections) {
     const record = records.get(section.sectionId);
     assert.ok(record, `${section.courseCode} ${section.sectionName} comes from the snapshot`);
@@ -161,11 +165,26 @@ test('DIU: each meeting keeps its own day, time and room', () => {
     if (rooms.size > 1) multiRoom++;
     record.meetings.forEach((m, i) => {
       const slot = section.classSlots[i];
-      assert.equal(slot.room, m.room ?? section.roomName, `${diuKey(record)} meeting ${i}`);
+      const where = `${diuKey(record)} meeting ${i}`;
+      assert.equal(slot.day, DIU_DAYS[m.day], where);
+      assert.equal(slot.startMin, minutes(m.start), where);
+      assert.equal(slot.endMin, minutes(m.end), where);
+      // A roomless meeting beside roomed ones says so; it never takes theirs.
+      if (!m.room && rooms.size > 0) roomless++;
+      assert.equal(slot.room, m.room ?? (rooms.size > 0 ? NO_ROOM : ''), where);
     });
     assert.equal(section.roomName, [...rooms].join(' · '));
   }
   assert.ok(multiRoom > 0, 'some DIU sections meet in more than one room');
+  assert.ok(roomless > 0, 'some DIU meetings (SWE online classes) have no room');
+});
+
+test('DIU: a course two programs both list names each section’s program', () => {
+  const { sections } = parseFeed(diuRaw);
+  const mat = sections.filter((s) => s.courseCode === 'MAT101').map((s) => s.sectionName);
+  assert.ok(mat.includes('CSE 73_A') && mat.includes('SWE 48-A'), mat.slice(0, 4).join(', '));
+  // A course only one program lists keeps the section name as printed.
+  assert.ok(sections.some((s) => s.courseCode === 'ACT327' && s.sectionName === '67_A'));
 });
 
 test('DIU: titles and credits come from the section’s own program, never another’s', () => {
