@@ -144,6 +144,21 @@ test('a lab event names the lab faculty, its own room, and says lab', () => {
     eq([lab.SUMMARY, lab.LOCATION, lab.DESCRIPTION],
         ['CSE221 (Section 12) lab', '09B-11L', 'Lab faculty: TAP\\, TBA']);
 });
+test('a section meeting in different rooms puts each event in its own', () => {
+    const split = parseFeed([
+        sec({
+            sectionId: 9101, courseCode: 'ACT327', sectionName: '67_A', roomName: 'KT-303 · KT-304',
+            sectionSchedule: {
+                classSchedules: [
+                    { day: 'TUESDAY', startTime: '16:00', endTime: '17:30', roomName: 'KT-303' },
+                    { day: 'THURSDAY', startTime: '10:00', endTime: '11:30', roomName: 'KT-304' },
+                ],
+                classStartDate: '2026-09-09', classEndDate: '2026-12-16',
+            },
+        }),
+    ]).sections;
+    eq(events(buildRoutineICS(split, { now: NOW })).map(e => e.LOCATION), ['KT-303', 'KT-304']);
+});
 test('an assigned lab lists every lab faculty, not the theory faculty', () => {
     const [, lab] = events(buildRoutineICS(labSection('THMD,ARFB'), { now: NOW }));
     eq(lab.DESCRIPTION, 'Lab faculty: THMD\\, ARFB');
