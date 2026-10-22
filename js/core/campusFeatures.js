@@ -11,7 +11,7 @@
 // boundary; nothing here is.
 
 import { hasFeature } from './university.js';
-import { campusHasFeedSnapshot } from './activeFeed.js';
+import { campusFeedSnapshotHasRooms, campusHasFeedSnapshot } from './activeFeed.js';
 
 /**
  * Legacy tab id → the registry feature that backs it. The ids differ in one
@@ -51,15 +51,18 @@ export function campusAllowsTab(profile, tabId) {
  * The registry's `features` are shared with the React shell, and a feature
  * listed there switches the shell's route on too. The shell's Routine route
  * still reads BRACU's live feed, so listing `routine` for NSU would show NSU
- * students BRACU's timetable there. This page has NSU's own sections
+ * students BRACU's timetable there. This page has NSU's and DIU's own sections
  * (js/core/activeFeed.js), so it grants the tab itself, here, until the shell
  * can do the same and the registry can simply say so.
  */
 function legacyOnlyTab(profile, tabId) {
   if (Object.prototype.hasOwnProperty.call(LEGACY_ONLY_TABS, profile.id) && LEGACY_ONLY_TABS[profile.id].includes(tabId)) return true;
   // Routine and Free Rooms are both read off the section snapshot. Seats is
-  // not: a snapshot has no seat counts to show.
-  return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
+  // not: a snapshot has no seat counts to show. Free Rooms needs a snapshot
+  // with every class in it, which DIU's few department routines are not.
+  if (tabId === 'routine') return campusHasFeedSnapshot(profile.id);
+  if (tabId === 'freerooms') return campusFeedSnapshotHasRooms(profile.id);
+  return false;
 }
 
 /**
