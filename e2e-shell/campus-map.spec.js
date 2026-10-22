@@ -3,12 +3,17 @@
 // Campus map route (#370) against a seeded CONNECT-feed cache — no network.
 // The stub is planted in localStorage under the feed client's cache key with a
 // fresh timestamp, so fetchConnectFeed serves it without touching the CDN.
-// Room 07A-01C is scheduled 0:00–23:59 every day, so its "in class now" state
-// is deterministic whenever the suite runs.
+// The page clock is pinned to a weekday noon (local time), so "in class now"
+// never depends on when the suite runs. Room 07A-01C is scheduled 0:00–23:59
+// every day, which is busy at noon — but not around the clock: a class is the
+// half-open [start, end) and the feed has no 24:00, so the real clock found it
+// free during minute 23:59 and the #385 tests flaked on CI (#953).
 
 import { expect, test } from '../e2e-support/authFixture.js';
 
 const FEED_KEY = 'shohoj_connect_feed_v1';
+// Wednesday 2026-10-21, 12:00 local. No other stub class is on at noon.
+const FIXED_NOW = new Date('2026-10-21T12:00:00');
 
 const WEEK = ['SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 const slot = (day, startTime, endTime) => ({ day, startTime, endTime });
@@ -23,7 +28,7 @@ const section = (sectionId, courseCode, roomName, classSchedules) => ({
 });
 
 const STUB_FEED = [
-  // Busy around the clock — deterministic "in class now".
+  // Busy at FIXED_NOW, whatever the weekday — deterministic "in class now".
   section(1, 'CSE110', '07A-01C', WEEK.map((d) => slot(d, '0:00', '23:59'))),
   section(2, 'MAT110', '07A-02C', [slot('SUNDAY', '3:00', '3:05')]),
   section(3, 'PHY111', '07B-11C', [slot('MONDAY', '8:00', '9:20')]),
@@ -34,6 +39,9 @@ const STUB_FEED = [
 ];
 
 async function openCampus(page, path = '/campus') {
+  // Before goto, so the first render already sees it. The seeded fetchedAt
+  // reads the same fixed Date as the feed client, so the cache stays fresh.
+  await page.clock.setFixedTime(FIXED_NOW);
   await page.addInitScript(
     ({ key, payload }) => {
       localStorage.setItem(
@@ -135,7 +143,7 @@ test('search box focuses a room by its code (#385)', async ({ page }) => {
 test('“only free rooms” filter hides in-class rooms (#385)', async ({ page }) => {
   await openCampus(page);
   await page.getByRole('button', { name: 'Floor 7' }).click();
-  // 07A-01C is scheduled around the clock → always busy; 07A-02C is free.
+  // 07A-01C is in class at the pinned noon; 07A-02C is free.
   await expect(page.getByRole('button', { name: /07A-01C/ })).toBeVisible();
   await page.getByTestId('campus-onlyfree').check();
   await expect(page.getByRole('button', { name: /07A-01C/ })).toHaveCount(0);
@@ -148,7 +156,7 @@ test('legend shows live free/busy counts (#385)', async ({ page }) => {
   const free = page.getByTestId('campus-free-count');
   await expect(busy).toBeVisible();
   await expect(free).toBeVisible();
-  // 07A-01C is always in class, so the busy tally is at least one.
+  // 07A-01C is in class at the pinned noon, so the busy tally is at least one.
   expect(Number(await busy.textContent())).toBeGreaterThanOrEqual(1);
   expect(Number(await free.textContent())).toBeGreaterThanOrEqual(0);
 });
