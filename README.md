@@ -71,7 +71,7 @@ shipping versus in progress:
   scored on NSU's rules, and tabs a campus has no data for do not render. The
   vanilla app at the site root actually serves the newer campuses *more* than
   the shell does: NSU's Routine, Free Rooms and Campus Map, and DIU's
-  calculator, are root-only for now, because the shell's versions of those
+  calculator and Routine, are root-only for now, because the shell's versions of those
   routes still read BRACU's data. See [Multi-University Vision](#multi-university-vision).
 - **Some features depend on external data feeds** (live seat status, free rooms,
   the campus map's room status) that are third-party and best-effort.
@@ -815,7 +815,8 @@ plan: three campuses sign in today, on both frontends.
   | Degree, Planner, Transcript import | ✅ both | ✅ both | — the shell's degree tracker counts towards BRACU's programs, DIU publishes no prerequisites, and no DIU transcript has been seen |
   | Reviews, Papers, Groups | ✅ both | ✅ both (empty until NSU students post) | — each names a course, and DIU's departments write codes five different ways |
   | Feedback, Profile | ✅ both | ✅ both | ✅ both |
-  | Routine, Free Rooms | ✅ both, live feed | ✅ root only, from a dated section snapshot | — DIU posts each department's routine as its own PDF |
+  | Routine | ✅ both, live feed | ✅ root only, from a dated section snapshot | ✅ root only, from a dated snapshot of the departments loaded so far (CSE, SWE, English); each class names its own room |
+  | Free Rooms | ✅ both, live feed | ✅ root only, from the same snapshot | — only some departments' routines are loaded, and they name rooms in incompatible ways |
   | Seat Status | ✅ both | — no public seat counts | — |
   | Campus Map | ✅ both | ✅ root only, NSU's own model | — |
   | Bus | ✅ both | ✅ [`/bus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=nsu) | ✅ [`/bus/?campus=diu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=diu) |
