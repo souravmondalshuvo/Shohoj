@@ -29,6 +29,11 @@ export interface RawClassSlot {
   startTime?: string | null;
   endTime?: string | null;
   day?: string | null;
+  /**
+   * This meeting's own room. CONNECT never sets it; a campus-database snapshot
+   * does where a section's days meet in different rooms (DIU).
+   */
+  roomName?: string | null;
 }
 
 export interface RawSectionSchedule {
@@ -85,7 +90,8 @@ export interface TimeSlot {
   /**
    * Where this particular meeting happens. Theory slots carry the section's
    * `roomName`, lab slots their own `labRoomName` — so a section's lab isn't
-   * mis-attributed to its theory classroom. Empty string when the feed gives
+   * mis-attributed to its theory classroom — unless the slot names its own
+   * (`RawClassSlot.roomName`). Empty string when the feed gives
    * no room at all; consumers fall back to `NormalizedSection.roomName`.
    */
   room: string;
@@ -186,7 +192,10 @@ function normalizeSlots(
     const endMin = parseTimeToMinutes(slot?.endTime);
     if (day === null || startMin === null || endMin === null) continue;
     if (endMin <= startMin) continue;
-    out.push({ day, startMin, endMin, kind, room });
+    // A meeting may name its own room (a campus-database snapshot, where a
+    // section's days meet in different rooms); otherwise the section's.
+    const own = typeof slot?.roomName === 'string' ? slot.roomName.trim() : '';
+    out.push({ day, startMin, endMin, kind, room: own || room });
   }
   return out;
 }
