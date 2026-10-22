@@ -42,7 +42,10 @@ function normalizeSlots(raw, kind, room) {
         const endMin = parseTimeToMinutes(slot && slot.endTime);
         if (day === null || startMin === null || endMin === null) continue;
         if (endMin <= startMin) continue;
-        out.push({ day, startMin, endMin, kind, room });
+        // A meeting may name its own room (a campus-database snapshot, where a
+        // section's days meet in different rooms); otherwise the section's.
+        const own = typeof (slot && slot.roomName) === 'string' ? slot.roomName.trim() : '';
+        out.push({ day, startMin, endMin, kind, room: own || room });
     }
     return out;
 }
