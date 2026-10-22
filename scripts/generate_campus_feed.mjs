@@ -18,6 +18,7 @@
 //                                       runs it, so neither file can fall
 //                                       behind data/campuses/)
 
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,8 +82,13 @@ export function renderCampusFeeds() {
     );
     if (sections.length === 0) throw new Error(`refusing to generate an empty feed for ${id}`);
 
-    files.push({ path: feedPath(id, meta.term), text: renderSections(sections) });
-    entries.push([id, { url: feedUrl(id, meta.term), capturedOn, freeRooms, ...meta }]);
+    const text = renderSections(sections);
+    // Which version of the file this is. A browser keeps a snapshot for a day,
+    // so the page asks for this revision by name rather than trusting a copy
+    // saved before the file was regenerated.
+    const revision = createHash('sha256').update(text).digest('hex').slice(0, 10);
+    files.push({ path: feedPath(id, meta.term), text });
+    entries.push([id, { url: feedUrl(id, meta.term), revision, capturedOn, freeRooms, ...meta }]);
   }
 
   const body = entries
@@ -98,12 +104,14 @@ export function renderCampusFeeds() {
 // the campus database rather than from a live feed. \`url\` is relative to the
 // page; the file is fetched on demand and is not part of the bundle.
 //
+// \`revision\` names the file's contents, so a copy cached before a
+// regeneration is never served as the new one.
 // \`capturedOn\` is the day the snapshot was true. Nothing here is live: no
 // seat count is carried, and faculty and rooms are as published on that day.
 // \`freeRooms\` is whether it holds enough of the timetable to say which rooms
 // are free; \`programs\`, when set, are the only programs whose sections it has.
 
-/** campus id → { url, capturedOn, freeRooms, term, semesterSessionId, source, … }. */
+/** campus id → { url, revision, capturedOn, freeRooms, term, semesterSessionId, source, … }. */
 export const CAMPUS_FEED_SNAPSHOTS = {
 ${body}
 };
