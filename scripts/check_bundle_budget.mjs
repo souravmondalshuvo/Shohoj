@@ -116,7 +116,14 @@ export const TARGETS = [
     // typed credits for courses a list lacks, and the row reconciling when the
     // lists arrive. The lists themselves are fetched, not bundled. CI measured
     // 1171.4; the room left is ~2%, as before. Gzip had room and stays put.
-    budget: { raw: 1195, gzip: 339 },
+    //
+    // Gzip raised 339 -> 348 for DIU's Routine (#954). Main had no room left:
+    // CI measured it at 339.0 exactly. The tab costs 1.1 kB raw / 0.4 kB gzip
+    // here: DIU's snapshot metadata, per-meeting rooms, share links that keep
+    // hyphenated codes, and pruning old snapshot caches. CI measured 339.4 with
+    // it. The 1,884 sections are fetched, not bundled. 348 restores the ~2.5%
+    // room the October raise kept; raw still has room and stays put.
+    budget: { raw: 1195, gzip: 348 },
   },
   // The shell entry — what a student would download after the cutover.
   {
