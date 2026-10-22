@@ -43,6 +43,10 @@ const NOT_PERSONAL = {
     'which semester the Routine tab is showing — a view preference, like the '
     + 'campus-map floor. The semesters themselves are public timetables, and '
     + 'the picks it applies to live in shohoj_routine_v1, which IS wiped.',
+  shohoj_campus_feed_:
+    'prefix of a campus section snapshot cache (js/core/activeFeed.js), keyed by '
+    + 'campus, term and revision — a public timetable, the same bytes for every '
+    + 'student, exactly like shohoj_connect_feed_v1',
   'shohoj_semester_archive_v1':
     'cache of an archived public semester feed, keyed by session id — the same '
     + 'bytes for every student, exactly like shohoj_connect_feed_v1',
