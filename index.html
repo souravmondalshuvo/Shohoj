@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-NG+Rfh+k3usGCgL9bRryJMzDbsDXBlwKnj7bqS/u3+M='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-sygEVOj+hKszCMW6ROVR/P0fwekh+sKluj7ygI4ZXEo=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Ot0FFCJHNIwpmBZnwPpEzWi3GElqSRsbtpt7KKVFVC4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18876,12 +18876,17 @@ function setCourseLookup(lookup) {
 // the campus database rather than from a live feed. `url` is relative to the
 // page; the file is fetched on demand and is not part of the bundle.
 //
+// `revision` names the file's contents, so a copy cached before a
+// regeneration is never served as the new one.
 // `capturedOn` is the day the snapshot was true. Nothing here is live: no
 // seat count is carried, and faculty and rooms are as published on that day.
+// `freeRooms` is whether it holds enough of the timetable to say which rooms
+// are free; `programs`, when set, are the only programs whose sections it has.
 
-/** campus id → { url, capturedOn, term, semesterSessionId, source, … }. */
+/** campus id → { url, revision, capturedOn, freeRooms, term, semesterSessionId, source, … }. */
 const CAMPUS_FEED_SNAPSHOTS = {
-  "nsu": {"url":"feeds/nsu-263.json","capturedOn":"2026-09-28","term":"263","semesterSessionId":20263,"source":"nsuer-263","sectionCount":3818,"courseCount":734,"untimedCount":252,"classStartDate":"2026-09-20","classEndDate":"2026-12-20","noClassDays":[{"date":"2026-10-19","event":"No Classes"},{"date":"2026-10-20","event":"Holiday- Durga Puja"},{"date":"2026-10-21","event":"Holiday- Durga Puja"},{"date":"2026-10-22","event":"No Classes"},{"date":"2026-11-07","event":"Holiday - National Revolution and Solidarity Day"},{"date":"2026-12-06","event":"No Classes"},{"date":"2026-12-16","event":"Holiday- Victory Day"}],"lastClassDays":[{"date":"2026-12-15","days":["SUNDAY","TUESDAY"]},{"date":"2026-12-19","days":["THURSDAY","SATURDAY"]},{"date":"2026-12-20","days":["MONDAY","WEDNESDAY"]}],"examStartDate":"2026-12-22","examEndDate":"2026-12-28"},
+  "nsu": {"url":"feeds/nsu-263.json","revision":"b55cf52361","capturedOn":"2026-09-28","freeRooms":true,"term":"263","semesterSessionId":20263,"source":"nsuer-263","programs":null,"sectionCount":3818,"courseCount":734,"untimedCount":252,"classStartDate":"2026-09-20","classEndDate":"2026-12-20","noClassDays":[{"date":"2026-10-19","event":"No Classes"},{"date":"2026-10-20","event":"Holiday- Durga Puja"},{"date":"2026-10-21","event":"Holiday- Durga Puja"},{"date":"2026-10-22","event":"No Classes"},{"date":"2026-11-07","event":"Holiday - National Revolution and Solidarity Day"},{"date":"2026-12-06","event":"No Classes"},{"date":"2026-12-16","event":"Holiday- Victory Day"}],"lastClassDays":[{"date":"2026-12-15","days":["SUNDAY","TUESDAY"]},{"date":"2026-12-19","days":["THURSDAY","SATURDAY"]},{"date":"2026-12-20","days":["MONDAY","WEDNESDAY"]}],"examStartDate":"2026-12-22","examEndDate":"2026-12-28"},
+  "diu": {"url":"feeds/diu-263.json","revision":"310ff9e75b","capturedOn":"2026-10-14","freeRooms":false,"term":"263","semesterSessionId":20263,"source":"diu-cse-routine-263-v41","programs":["CSE","ENG","SWE"],"sectionCount":1884,"courseCount":180,"untimedCount":0,"classStartDate":"2026-09-09","classEndDate":"2026-12-16","noClassDays":[],"lastClassDays":[],"examStartDate":"2026-12-17","examEndDate":"2026-12-24"},
 };
 
 // ── js/core/activeFeed.js ───────────────────────────────────────
@@ -18905,9 +18910,22 @@ const CAMPUS_FEED_SNAPSHOTS = {
 /** Long, because nothing changes between deploys; the ETag still revalidates. */
 const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
+const SNAPSHOT_CACHE_PREFIX = 'shohoj_campus_feed_';
+
+const snapshotCacheKey = (campusId, snapshot) =>
+  `${SNAPSHOT_CACHE_PREFIX}${campusId}_${snapshot.term}_${snapshot.revision}`;
+
 /** Whether a campus's sections come from a snapshot rather than a live feed. */
 function campusHasFeedSnapshot(campusId) {
   return Object.prototype.hasOwnProperty.call(CAMPUS_FEED_SNAPSHOTS, campusId);
+}
+
+/**
+ * Whether a campus's snapshot can also say which rooms are free: it has to
+ * hold every class that could be in a room. DIU's holds a few departments'.
+ */
+function campusFeedSnapshotHasRooms(campusId) {
+  return campusHasFeedSnapshot(campusId) && CAMPUS_FEED_SNAPSHOTS[campusId].freeRooms === true;
 }
 
 /** The snapshot for a campus, with the options to fetch it, or null. */
@@ -18917,14 +18935,40 @@ function feedSnapshotFor(campusId) {
   return {
     ...snapshot,
     campusId,
-    // Its own cache slot per campus and term: it must never evict, or be
-    // served in place of, the live feed or another term's snapshot.
+    // Its own cache slot per campus, term and revision: it must never evict,
+    // or be served in place of, the live feed, another term's snapshot, or
+    // this one as it was before a regeneration. The revision rides on the URL
+    // too, past any HTTP cache still holding the old file.
     fetchOptions: {
-      url: snapshot.url,
-      cacheKey: `shohoj_campus_feed_${campusId}_${snapshot.term}`,
+      url: `${snapshot.url}?v=${snapshot.revision}`,
+      cacheKey: snapshotCacheKey(campusId, snapshot),
       ttlMs: SNAPSHOT_TTL_MS,
     },
   };
+}
+
+/**
+ * Remove saved snapshots this build no longer serves — an older revision or
+ * term, under the old revision-less key, or a campus dropped from the list —
+ * so each regeneration does not leave a megabyte behind in localStorage.
+ */
+function pruneFeedSnapshotCaches(
+  storage = typeof localStorage !== 'undefined' ? localStorage : null,
+) {
+  if (!storage) return;
+  const keep = new Set(
+    Object.entries(CAMPUS_FEED_SNAPSHOTS).map(([id, snapshot]) => snapshotCacheKey(id, snapshot)),
+  );
+  try {
+    const stale = [];
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (key && key.startsWith(SNAPSHOT_CACHE_PREFIX) && !keep.has(key)) stale.push(key);
+    }
+    for (const key of stale) storage.removeItem(key);
+  } catch {
+    /* storage unavailable: nothing to prune */
+  }
 }
 
 /** The active campus's snapshot, or null when it is on the live feed. */
@@ -19110,15 +19154,18 @@ function campusAllowsTab(profile, tabId) {
  * The registry's `features` are shared with the React shell, and a feature
  * listed there switches the shell's route on too. The shell's Routine route
  * still reads BRACU's live feed, so listing `routine` for NSU would show NSU
- * students BRACU's timetable there. This page has NSU's own sections
+ * students BRACU's timetable there. This page has NSU's and DIU's own sections
  * (js/core/activeFeed.js), so it grants the tab itself, here, until the shell
  * can do the same and the registry can simply say so.
  */
 function legacyOnlyTab(profile, tabId) {
   if (Object.prototype.hasOwnProperty.call(LEGACY_ONLY_TABS, profile.id) && LEGACY_ONLY_TABS[profile.id].includes(tabId)) return true;
   // Routine and Free Rooms are both read off the section snapshot. Seats is
-  // not: a snapshot has no seat counts to show.
-  return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
+  // not: a snapshot has no seat counts to show. Free Rooms needs a snapshot
+  // with every class in it, which DIU's few department routines are not.
+  if (tabId === 'routine') return campusHasFeedSnapshot(profile.id);
+  if (tabId === 'freerooms') return campusFeedSnapshotHasRooms(profile.id);
+  return false;
 }
 
 /**
@@ -25164,7 +25211,10 @@ function normalizeSlots(raw, kind, room) {
         const endMin = parseTimeToMinutes(slot && slot.endTime);
         if (day === null || startMin === null || endMin === null) continue;
         if (endMin <= startMin) continue;
-        out.push({ day, startMin, endMin, kind, room });
+        // A meeting may name its own room (a campus-database snapshot, where a
+        // section's days meet in different rooms); otherwise the section's.
+        const own = typeof (slot && slot.roomName) === 'string' ? slot.roomName.trim() : '';
+        out.push({ day, startMin, endMin, kind, room: own || room });
     }
     return out;
 }
@@ -26726,7 +26776,9 @@ function buildRoutineICS(sections, options = {}) {
                     // the event already in the calendar instead of adding a second.
                     uid: `shohoj-${s.sectionId}-class-${slot.day}-${slot.startMin}@shohoj.app`,
                     summary: `${tag} ${isLab ? 'lab' : 'class'}`,
-                    location: (isLab && slot.room) || s.roomName,
+                    // Each meeting's own room: a lab's, or a snapshot day's
+                    // where a section meets in different rooms (DIU).
+                    location: slot.room || s.roomName,
                     description: isLab ? `Lab faculty: ${slotFaculties(s, slot).join(', ')}` : faculty,
                     startDate,
                     startMin: slot.startMin,
@@ -26822,16 +26874,20 @@ function pickedCourseCodes(state) {
 
 // Cap on courses decoded from a shared link — guards against abusive payloads.
 const MAX_SHARE_COURSES = 15;
-const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}$/;
+// A subject and number, an optional letter (NSU's labs, CSE115L), and an
+// optional field part after a hyphen (DIU's English, ENG0232-01).
+const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}[A-Z]?(-\d{1,4})?$/;
 
 // Encode picks into a compact, URL-safe string: `CODE` or `CODE-sectionId`
 // pairs joined by `~`. Sorted for a stable link; a null pick encodes as the
-// bare code.
+// bare code. A hyphen inside a code is written `.`, since the first hyphen
+// ends the code; a code without one encodes as it always has.
 function encodeRoutinePicks(state) {
     const parts = [];
     for (const code of pickedCourseCodes(state)) {
         const sid = state.picks[code];
-        parts.push(sid == null ? code : `${code}-${sid}`);
+        const written = code.replace(/-/g, '.');
+        parts.push(sid == null ? written : `${written}-${sid}`);
     }
     return parts.join('~');
 }
@@ -26844,7 +26900,7 @@ function decodeRoutinePicks(encoded) {
     for (const part of encoded.split('~').slice(0, MAX_SHARE_COURSES)) {
         if (!part) continue;
         const dash = part.indexOf('-');
-        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash));
+        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash)).replace(/\./g, '-');
         if (!SHARE_CODE_RE.test(code)) continue;
         let sid = null;
         if (dash !== -1) {
@@ -30964,8 +31020,10 @@ async function _refresh(force = false) {
   // The live feed paints any saved copy at once, however old, and refreshes
   // behind it — its origin can take 20 s to answer (#761).
   let feedOptions;
-  if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
-  else if (archiveUrl === null) feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+  if (snapshot) {
+    pruneFeedSnapshotCaches();
+    feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+  } else if (archiveUrl === null) feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
   else feedOptions = { forceRefresh: !!force, url: archiveUrl, cacheKey: archiveCacheKey(session) };
   const feedPromise = fetchConnectFeed(feedOptions);
   const reviewsPromise = _loadFacultyRatings(force);
@@ -31622,8 +31680,13 @@ function _pickerHTML() {
   // A snapshot says what it cannot tell you every time, not on hover: a
   // timetable that looks live and is not is how a student ends up in the
   // wrong room. Class times are the part that holds; the rest moves.
+  // A snapshot of some departments' routines has to say whose, or a student
+  // in another one is left wondering why their course isn't listed.
+  const coverage = snapshot && snapshot.programs
+    ? `Only ${_routineProgramList(snapshot.programs)} routines are loaded so far. `
+    : '';
   const snapshotNote = snapshot
-    ? `Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and each course's exam date aren't available. ${termExamNote(snapshot, (date) => formatSemesterDate(date) || date)}`.trim()
+    ? `${coverage}Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and each course's exam date aren't available. ${termExamNote(snapshot, (date) => formatSemesterDate(date) || date)}`.trim()
     : '';
   const archiveNote = (gap || snapshotNote)
     ? `<div class="routine-archive-note" role="status" data-testid="${snapshot ? 'routine-snapshot-note' : 'routine-archive-note'}">${escHtml(gap || snapshotNote)}</div>`
@@ -31994,6 +32057,11 @@ function _formatRooms(section) {
   return rooms.join(' · ');
 }
 
+// "CSE, ENG and SWE".
+function _routineProgramList(codes) {
+  return codes.length < 2 ? codes.join('') : `${codes.slice(0, -1).join(', ')} and ${codes[codes.length - 1]}`;
+}
+
 function _formatSchedule(section) {
   if (!section.classSlots || section.classSlots.length === 0) return 'No schedule';
   const byDay = [...section.classSlots].sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day));
@@ -32253,8 +32321,10 @@ async function _frRefresh(force = false) {
   try {
     // Any saved copy paints at once and refreshes behind it (#761).
     let feedOptions;
-    if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
-    else feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+    if (snapshot) {
+      pruneFeedSnapshotCaches();
+      feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+    } else feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
     const result = await fetchConnectFeed(feedOptions);
     if (seq !== _frRefreshSeq) return;
     // A snapshot's room names are the university's spellings, some of which
