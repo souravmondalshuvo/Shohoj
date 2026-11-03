@@ -1436,6 +1436,81 @@ async function run() {
     await assertFails(getDoc(doc(outsider, 'appFeedback', 'anything')));
   });
 
+  // ── Adversarial additions (security audit follow-up, #967) ────────────────
+  // The rules already deny each of these; these assertions pin that so a future
+  // refactor cannot regress them silently. Every attack is paired with a
+  // positive control, so a pass proves the rule — not an unreachable collection.
+
+  // Campus tenancy bypass via a lookalike domain. The highest-impact attack on
+  // the whole app: were campusOfEmail not anchored ^...$, any of these verified
+  // Google tokens would resolve to a real campus and reach its data.
+  const SPOOF_EMAILS = [
+    'attacker@g.bracu.ac.bd.evil.com', // suffix append
+    'attacker@evil-g.bracu.ac.bd', // prefix, no separator
+    'attacker@sub.g.bracu.ac.bd', // extra leading label
+    'attacker@northsouth.edu.evil.com', // NSU suffix append
+    'a@g.bracu.ac.bd\n@g.bracu.ac.bd', // newline smuggling
+  ];
+  for (const email of SPOOF_EMAILS) {
+    const label = email.replace(/\n/g, '\\n');
+    await test(`tenancy: "${label}" cannot write a BRACU doc`, async () => {
+      const uid = 'spoof_w_' + Math.random().toString(36).slice(2);
+      const db = bracuCtx(uid, email).firestore();
+      // feedbackDoc claims university:'bracu'; campusOfEmail(email) must be ''
+      // so writingOwnCampus() fails and the create is denied.
+      await assertFails(setDoc(doc(db, 'appFeedback', 'fb_spoof'), feedbackDoc({ uid })));
+    });
+    await test(`tenancy: "${label}" cannot read a BRACU doc`, async () => {
+      await seedRaw('appFeedback', 'fb_real', feedbackDoc({ uid: BRACU_UID }));
+      const db = bracuCtx('spoof_r_' + Math.random().toString(36).slice(2), email).firestore();
+      await assertFails(getDoc(doc(db, 'appFeedback', 'fb_real')));
+    });
+  }
+  await test('tenancy: the exact BRACU address CAN write (positive control)', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_ok'), feedbackDoc()));
+  });
+
+  // appFeedbackUpvotes: read isolation is covered above; the delete rule
+  // (resource.data.uid == request.auth.uid) was not.
+  await test("upvote: a user cannot delete another user's upvote", async () => {
+    const voteId = `fb_x_${BRACU_UID}`;
+    await seedRaw('appFeedbackUpvotes', voteId, {
+      feedbackId: 'fb_x',
+      uid: BRACU_UID,
+      createdAt: new Date(),
+    });
+    const attacker = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(deleteDoc(doc(attacker, 'appFeedbackUpvotes', voteId)));
+  });
+  await test('upvote: a user can delete their own upvote (positive control)', async () => {
+    const voteId = `fb_y_${BRACU_UID}`;
+    const owner = bracuCtx().firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(owner, 'appFeedbackUpvotes', voteId),
+        upvoteDoc({ feedbackId: 'fb_y', uid: BRACU_UID }),
+      ),
+    );
+    await assertSucceeds(deleteDoc(doc(owner, 'appFeedbackUpvotes', voteId)));
+  });
+
+  // reviewReports: the main suite tests a MALFORMED id (shape). This exercises
+  // the exists(facultyReviews/{id}) branch with a well-formed id that points at
+  // no document — the anti-spam guard that stops reports against ghost reviews.
+  await test('reports: a report against a non-existent review is rejected', async () => {
+    const db = bracuCtx().firestore();
+    const ghostId = reviewId('AAA', 'CSE110', 'a'.repeat(64)); // well-formed, absent
+    await assertFails(
+      setDoc(doc(db, 'reviewReports', `${BRACU_UID}_${ghostId}`), {
+        reviewId: ghostId,
+        reason: 'ghost review report',
+        reporterUid: BRACU_UID,
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
   await testEnv.cleanup();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
