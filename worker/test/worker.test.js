@@ -1296,6 +1296,14 @@ async function makeServiceAccountJson() {
     assert(/found item/.test(found.subject));
     assert(found.html.includes('says it belongs to them'));
     assert(found.html.includes('&lt;script&gt;'), 'title must be escaped');
+
+    // A title carrying control chars (CR/LF) must not reach the subject header.
+    const crlf = buildLostFoundClaimEmail(
+      { type: 'lost', title: 'Keys\r\nBcc: victim@elsewhere.test' },
+      { fromEmail: 'finder@g.bracu.ac.bd' },
+    );
+    assert(!/[\r\n]/.test(crlf.subject), 'subject must strip CR/LF');
+    assert(crlf.subject.includes('Keys'), crlf.subject);
   });
 
   // Mock fetch router for the lost & found cron.
