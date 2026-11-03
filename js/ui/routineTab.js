@@ -1768,7 +1768,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   const seatPct = section.capacity > 0 ? (section.consumedSeat / section.capacity) : 0;
   const seatClass = section.isFull ? 'full' : (seatPct > 0.85 ? 'tight' : 'open');
   const action = isPicked ? 'routine:unpickSection' : 'routine:pickSection';
-  const data = `data-code="${escAttr(courseCode)}" data-sid="${section.sectionId}"`;
+  const data = `data-code="${escAttr(courseCode)}" data-sid="${escAttr(String(section.sectionId))}"`;
   const pickedClash = isPicked && mark && (mark.classClash || mark.examClash);
   const candClash = !isPicked && cand && (cand.cls || cand.exam);
   const bare = _sectionListIsBare();
