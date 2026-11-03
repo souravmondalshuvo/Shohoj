@@ -332,7 +332,10 @@ function ShellChrome() {
       {/* aria-label names the landmark: legacy omits it, but it costs no pixels
           and the shell's a11y guards assert a labelled Primary navigation. */}
       <nav className="lg-surface" aria-label="Primary">
-        <NavLink to="/" className="nav-logo" aria-label="Shohoj home" end>
+        {/* No aria-label: like legacy, the link is named by the text it shows,
+            so a spoken "click Shohoj" reaches it (WCAG 2.5.3, axe's
+            label-content-name-mismatch). */}
+        <NavLink to="/" className="nav-logo" end>
           <div className="nav-logo-mark">স</div>
           <span className="nav-logo-text">
             Shohoj <span>সহজ</span>
