@@ -2795,7 +2795,11 @@ export function buildLostFoundClaimEmail(post, claim) {
   const kind = post.type === 'lost' ? 'lost' : 'found';
   const verb = kind === 'lost' ? 'says they found it' : 'says it belongs to them';
   const title = String(post.title || '(untitled)');
-  const subject = `Someone responded to your ${kind} item — ${title}`;
+  // Strip control chars (incl. CR/LF) from the uploader-controlled title before
+  // it becomes an outbound email header, matching every other subject here. Not
+  // exploitable via Resend's JSON API today, but the header path should never
+  // depend on that.
+  const subject = sanitizeHeaderValue(`Someone responded to your ${kind} item — ${title}`);
   const note =
     typeof claim.note === 'string' && claim.note.trim() !== ''
       ? `<p style="margin:12px 0;padding:10px 12px;background:#f5f5f5;border-radius:8px;">${escapeHtml(claim.note.trim())}</p>`
