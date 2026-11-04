@@ -57,7 +57,7 @@ test('reveals fire after a client-side navigation', async ({ page }) => {
   // observers were built against is gone by now.
   await navigateTo(page, 'Reviews');
   await expect(page).toHaveURL(/\/reviews$/);
-  await page.getByRole('link', { name: 'Shohoj home' }).click();
+  await page.getByRole('link', { name: 'Shohoj সহজ' }).click();
   await expect(page).toHaveURL(/\/(#features)?$/);
 
   // The hero cascade is time-based, so it plays on arrival.
