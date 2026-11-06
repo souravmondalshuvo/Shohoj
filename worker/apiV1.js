@@ -25,9 +25,10 @@
 //      would break the legacy site that is still the production deploy.
 //
 //   3. PURE, INJECTABLE LOGIC. Everything decidable without I/O is a pure
-//      function here; the one function that touches Firestore takes its reads
-//      and writes as injected dependencies. The Worker wires the real ones in
-//      index.js, the tests wire fakes, and none of it needs a network.
+//      function here; the one function that touches storage takes the
+//      academic store's `users` as an injected dependency. The Worker wires the
+//      real one in index.js, the tests wire fakes, and none of it needs a
+//      network. Where the record lives is academicRepo.js's business.
 //
 // This module deliberately does NOT import from ./index.js. index.js imports it,
 // and a cycle between them would be resolved differently by the Workers runtime
@@ -35,23 +36,6 @@
 // up in production.
 
 import { campusOfEmail } from './campus.generated.js';
-
-/**
- * Server-owned Firestore collection holding the internal user record.
- *
- * Separate from `users/{uid}`, which is the client-written academic-state blob
- * (`{ data: <JSON string>, updatedAt }`, capped at 500 KB by firestore.rules).
- * Two reasons not to reuse it: that document's rule is
- * `keys().hasOnly(['data','updatedAt'])`, so adding fields would mean weakening
- * a rule that protects real academic data; and this record must be
- * server-written only, while that one is client-written by design.
- *
- * Nothing needs to be added to firestore.rules for this: the rules end in a
- * deny-all `match /{document=**}`, so an unlisted collection is already closed
- * to every client. The Worker reaches it with a service account, which bypasses
- * rules — the same path /reviews already uses.
- */
-export const SHOHOJ_USERS_COLLECTION = 'shohojUsers';
 
 /**
  * Version stamped on every stored user record.
@@ -290,10 +274,10 @@ export function userDto(record) {
  * verified claims, and return the DTO.
  *
  * `deps` is the entire I/O surface:
- *   getDoc(path)        → stored fields, or null when the document is absent
- *   patchDoc(path, obj) → merge-write those fields
- *   sha256Hex(input)    → 64-char lowercase hex
- *   now()               → Date, injectable so tests can pin it
+ *   users.get(uid)          → the stored record, or null when there is none
+ *   users.merge(uid, obj)   → write those fields, leaving any others alone
+ *   sha256Hex(input)        → 64-char lowercase hex
+ *   now()                   → Date, injectable so tests can pin it
  *
  * Bootstrap is a plain read-then-write rather than a transaction. Two
  * simultaneous first requests from one new account can both see nothing and
@@ -309,9 +293,8 @@ export async function resolveShohojUser(deps, claims) {
   }
 
   const id = await shohojUserId(firebaseUid, deps.sha256Hex);
-  const path = `${SHOHOJ_USERS_COLLECTION}/${firebaseUid}`;
 
-  const existing = await deps.getDoc(path);
+  const existing = await deps.users.get(firebaseUid);
   const nowIso = deps.now().toISOString();
   const { record, changed, created } = shapeUserRecord({
     id,
@@ -321,7 +304,7 @@ export async function resolveShohojUser(deps, claims) {
     nowIso,
   });
 
-  if (changed) await deps.patchDoc(path, record);
+  if (changed) await deps.users.merge(firebaseUid, record);
 
   return { user: userDto(record), created };
 }
