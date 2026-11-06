@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { createFirestoreAtomicStore } from '../worker/firestoreAtomic.js';
 import { createCalendarFeed, deleteCalendarFeed } from '../worker/calendarFeedHandlers.js';
-import { resolveCalendarFeedOwner } from '../worker/calendarFeed.js';
+import { createAcademicStore } from '../worker/academicRepo.js';
 import { reserveAiAdmission, settleAiAdmission } from '../worker/aiAdmission.js';
 import { deliverLostFoundClaim } from '../worker/lostFoundDelivery.js';
 import { toFields, fromFields } from '../worker/test/helpers/firestoreRest.js';
@@ -20,13 +20,14 @@ try {
   await env.clearFirestore();
   await store.commitWrites([{ path: 'shohojUsers/atomic_student', fields: { studentId: 'preserve-this' }, exists: false }]);
   const deps = { ...store, getDoc: async path => (await store.getDocSnapshot(path))?.fields ?? null };
-  const ctx = { deps, firebaseUid: 'atomic_student', feedOrigin: 'https://example.invalid', now: () => new Date(), randomHex: () => crypto.randomUUID().replaceAll('-', '') };
+  const academic = createAcademicStore(deps);
+  const ctx = { feeds: academic.feedsFor('atomic_student'), feedOrigin: 'https://example.invalid', now: () => new Date(), randomHex: () => crypto.randomUUID().replaceAll('-', '') };
   const minted = await Promise.all([createCalendarFeed(ctx), createCalendarFeed(ctx)]);
   assert.equal((await deps.getDoc('shohojUsers/atomic_student')).studentId, 'preserve-this');
   await deleteCalendarFeed(ctx);
   for (const result of minted) {
     const token = new URL(result.body.feed.url).pathname.split('/').at(-1).replace('.ics', '');
-    assert.equal(await resolveCalendarFeedOwner(deps, token), null);
+    assert.equal(await academic.feedOwner(token), null);
   }
   console.log('✓ Real Firestore REST: concurrent calendar rotation/revoke and masked profile preservation');
   await store.commitWrites([{ path: 'assistantDailyQuota/atomic_student_2026-09-26', fields: { count: 39 }, exists: false }]);
