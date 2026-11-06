@@ -31,21 +31,8 @@ const TOKEN_PATTERN = /^cft_[0-9a-f]{32}$/;
 const FEED_PREFIX = '/feeds/tasks/';
 const FEED_SUFFIX = '.ics';
 
-/** The collection keyed by token. Ownership still requires the forward pointer. */
-export const CALENDAR_FEED_COLLECTION = 'calendarFeeds';
-
-/**
- * Resolve only the owner's current credential. Legacy orphan reverse documents
- * are intentionally inert, including ones left by previously failed writes.
- */
-export async function resolveCalendarFeedOwner(deps, token) {
-  if (!isCalendarFeedToken(token)) return null;
-  const feed = await deps.getDoc(`${CALENDAR_FEED_COLLECTION}/${token}`);
-  const uid = feed?.firebaseUid;
-  if (typeof uid !== 'string' || uid === '' || uid.includes('/')) return null;
-  const owner = await deps.getDoc(`shohojUsers/${uid}`);
-  return owner?.calendarFeedToken === token ? uid : null;
-}
+// Where tokens are stored, and how an owner is resolved from one, is the
+// academic store's business: see `feedsFor` and `feedOwner` in academicRepo.js.
 
 /**
  * Mint a token from injected randomness.
