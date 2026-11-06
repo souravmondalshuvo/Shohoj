@@ -114,6 +114,7 @@ import { API_ERROR_CODES, apiError, resolveShohojUser } from './apiV1.js';
 // read and write — user record, feed tokens and the reminder cron included —
 // goes through the store academicRepo.js builds, never a raw path (#908).
 import { createAcademicStore } from './academicRepo.js';
+import { createD1AcademicStore } from './academicStoreD1.js';
 import * as academic from './academicHandlers.js';
 // Shohoj Tasks (#715). Same layering as the academic core: taskTime.js and
 // tasks.js are pure, taskHandlers.js returns plain { status, body }.
@@ -1230,14 +1231,6 @@ async function handleApiV1Me(request, env, origin) {
 
 // ── /api/v1 academic core (#712) ────────────────────────────────────────────
 
-/**
- * The academic store, on Firestore, bound to one service-account token.
- *
- * `listDocs` unwraps firestoreListAll's `{ id, fields }` into plain records —
- * the stored document already carries its own `id` field, so the wrapper adds
- * nothing the domain layer needs and its shape would leak Firestore's REST
- * response into pure code.
- */
 function atomicStore(env, token) {
   return createFirestoreAtomicStore({
     baseUrl: firestoreDocsBase(env),
@@ -1247,7 +1240,32 @@ function atomicStore(env, token) {
   });
 }
 
-function academicStore(env, token) {
+/**
+ * The academic store this deployment uses (#908, ADR 0003).
+ *
+ * `ACADEMIC_STORE` is the one switch: unset or `firestore` keeps the records in
+ * Firestore, `d1` reads and writes the `ACADEMIC_DB` binding instead. Anything
+ * else — a typo, or `d1` with no binding — throws rather than quietly falling
+ * back to Firestore, because a fallback after the switch would serve data that
+ * stopped changing the moment the backfill ran.
+ *
+ * The Firestore store is bound to one service-account token. Its `listDocs`
+ * unwraps firestoreListAll's `{ id, fields }` into plain records — the stored
+ * document already carries its own `id` field, so the wrapper adds nothing the
+ * domain layer needs and its shape would leak Firestore's REST response into
+ * pure code.
+ */
+export function academicStore(env, token) {
+  const backend = env.ACADEMIC_STORE ?? 'firestore';
+  if (backend === 'd1') {
+    if (!env.ACADEMIC_DB) {
+      throw new Error('ACADEMIC_STORE is "d1" but the ACADEMIC_DB binding is missing');
+    }
+    return createD1AcademicStore(env.ACADEMIC_DB);
+  }
+  if (backend !== 'firestore') {
+    throw new Error(`ACADEMIC_STORE must be "firestore" or "d1", not "${backend}"`);
+  }
   return createAcademicStore({
     ...atomicStore(env, token),
     getDoc: (path) => firestoreGetFields(env, token, path),
