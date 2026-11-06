@@ -16,8 +16,11 @@ import {
   isCalendarFeedToken,
   parseCalendarFeedPath,
   redactFeedPath,
-  resolveCalendarFeedOwner,
 } from '../calendarFeed.js';
+import { createAcademicStore } from '../academicRepo.js';
+
+/** Anonymous owner resolution, through the academic store over Firestore primitives. */
+const resolveCalendarFeedOwner = (deps, token) => createAcademicStore(deps).feedOwner(token);
 
 const HEX = 'a'.repeat(32);
 const TOKEN = `cft_${HEX}`;
