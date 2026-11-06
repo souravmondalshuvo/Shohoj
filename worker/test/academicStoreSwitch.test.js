@@ -62,10 +62,11 @@ async function withNetwork(fn) {
   const original = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
     const url = typeof input === 'string' ? input : input.url;
-    if (url.includes('oauth2.googleapis.com/token')) {
+    const { hostname, pathname } = new URL(url);
+    if (hostname === 'oauth2.googleapis.com' && pathname === '/token') {
       return Response.json({ access_token: 'sa-token', expires_in: 3600 });
     }
-    if (url.includes('firestore.googleapis.com')) {
+    if (hostname === 'firestore.googleapis.com') {
       firestoreCalls.push(`${init?.method ?? 'GET'} ${url}`);
       if ((init?.method ?? 'GET') === 'GET') return new Response('{}', { status: 404 });
       return Response.json({});
