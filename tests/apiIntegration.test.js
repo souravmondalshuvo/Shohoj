@@ -29,7 +29,7 @@ import test from 'node:test';
 import { exportJWK, exportPKCS8, generateKeyPair, SignJWT } from 'jose';
 
 import worker, { __setTestJwksForTests } from '../worker/index.js';
-import { SHOHOJ_USERS_COLLECTION } from '../worker/apiV1.js';
+import { USERS_COLLECTION } from '../worker/academicRepo.js';
 import { createApiClient } from '../src/platform/api/apiClient.ts';
 import { fetchShohojUser } from '../src/platform/api/shohojUser.ts';
 
@@ -168,7 +168,7 @@ test('an authenticated request resolves the Shohoj user, bootstrapping it on fir
 
     // The record was actually written, keyed by the Firebase uid.
     assert.equal(google.writes.length, 1);
-    assert.equal(google.writes[0].path, `${SHOHOJ_USERS_COLLECTION}/${STUDENT.sub}`);
+    assert.equal(google.writes[0].path, `${USERS_COLLECTION}/${STUDENT.sub}`);
 
     // ...and the Firebase uid never reached the client.
     assert.equal('firebaseUid' in first.value, false);
