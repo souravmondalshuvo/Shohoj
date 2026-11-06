@@ -18,7 +18,6 @@ import { exportJWK, exportPKCS8, generateKeyPair, SignJWT } from 'jose';
 import worker, { __setTestJwksForTests } from '../index.js';
 import {
   API_ERROR_CODES,
-  SHOHOJ_USERS_COLLECTION,
   USER_RECORD_SCHEMA_VERSION,
   displayNameFromClaims,
   identityFromClaims,
@@ -27,6 +26,7 @@ import {
   shohojUserId,
   userDto,
 } from '../apiV1.js';
+import { USERS_COLLECTION, createAcademicStore } from '../academicRepo.js';
 
 let passed = 0;
 let failed = 0;
@@ -87,8 +87,7 @@ function fakeStore(seed = {}) {
 
 function depsFor(store, nowIso = '2026-09-20T10:00:00.000Z') {
   return {
-    getDoc: store.getDoc,
-    patchDoc: store.patchDoc,
+    users: createAcademicStore({ getDoc: store.getDoc, mergeDoc: store.patchDoc }).users,
     sha256Hex,
     now: () => new Date(nowIso),
   };
@@ -358,7 +357,7 @@ async function withMockedFetch(handler, fn) {
     const { user, created } = await resolveShohojUser(depsFor(store), BRACU_CLAIMS);
     assert(created, 'first sight is a creation');
     assertEq(store.writes.length, 1);
-    assertEq(store.writes[0].path, `${SHOHOJ_USERS_COLLECTION}/firebase-uid-abc`);
+    assertEq(store.writes[0].path, `${USERS_COLLECTION}/firebase-uid-abc`);
     assertEq(user.university, 'bracu');
     assert(/^usr_[0-9a-f]{32}$/.test(user.id), 'user carries a derived id');
   });
@@ -430,7 +429,7 @@ async function withMockedFetch(handler, fn) {
             headers: { 'Content-Type': 'application/json' },
           });
         }
-        if (url.includes(`/documents/${SHOHOJ_USERS_COLLECTION}/`)) {
+        if (url.includes(`/documents/${USERS_COLLECTION}/`)) {
           if ((init?.method || 'GET') === 'PATCH') {
             patched.push(JSON.parse(init.body));
             return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
