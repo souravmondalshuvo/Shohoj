@@ -78,7 +78,7 @@ import {
 } from './assistant.js';
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
 import { buildExtractionProviders, runExtractionTurn } from './extractionProviders.js';
-import { resolveCalendarFeedOwner, parseCalendarFeedPath, redactFeedPath } from './calendarFeed.js';
+import { parseCalendarFeedPath, redactFeedPath } from './calendarFeed.js';
 import { createCalendarFeed, deleteCalendarFeed, getCalendarFeed } from './calendarFeedHandlers.js';
 import {
   buildTasksICS as buildFeedICS,
@@ -110,8 +110,10 @@ import { API_ERROR_CODES, apiError, resolveShohojUser } from './apiV1.js';
 // The academic core (#712): Semester and Enrollment. Layered deliberately —
 // academic.js is pure rules, academicRepo.js knows Firestore, academicHandlers.js
 // returns plain { status, body }. This file supplies the I/O and turns the
-// result into a Response; that is the whole of its job here.
-import { USERS_COLLECTION, createAcademicRepo } from './academicRepo.js';
+// result into a Response; that is the whole of its job here. Every academic
+// read and write — user record, feed tokens and the reminder cron included —
+// goes through the store academicRepo.js builds, never a raw path (#908).
+import { createAcademicStore } from './academicRepo.js';
 import * as academic from './academicHandlers.js';
 // Shohoj Tasks (#715). Same layering as the academic core: taskTime.js and
 // tasks.js are pure, taskHandlers.js returns plain { status, body }.
@@ -1196,12 +1198,7 @@ async function handleApiV1Me(request, env, origin) {
   let resolved;
   try {
     resolved = await resolveShohojUser(
-      {
-        getDoc: (path) => firestoreGetFields(env, accessToken, path),
-        patchDoc: (path, obj) => firestoreMergeFields(env, accessToken, path, obj),
-        sha256Hex,
-        now: () => new Date(),
-      },
+      { users: academicStore(env, accessToken).users, sha256Hex, now: () => new Date() },
       claims,
     );
   } catch (e) {
@@ -1234,8 +1231,7 @@ async function handleApiV1Me(request, env, origin) {
 // ── /api/v1 academic core (#712) ────────────────────────────────────────────
 
 /**
- * Firestore access for the academic repository, bound to one service-account
- * token.
+ * The academic store, on Firestore, bound to one service-account token.
  *
  * `listDocs` unwraps firestoreListAll's `{ id, fields }` into plain records —
  * the stored document already carries its own `id` field, so the wrapper adds
@@ -1251,14 +1247,16 @@ function atomicStore(env, token) {
   });
 }
 
-function academicDeps(env, token) {
-  return {
+function academicStore(env, token) {
+  return createAcademicStore({
     ...atomicStore(env, token),
     getDoc: (path) => firestoreGetFields(env, token, path),
     patchDoc: (path, fields) => firestorePatchFields(env, token, path, fields),
+    mergeDoc: (path, fields) => firestoreMergeFields(env, token, path, fields),
     deleteDoc: (path) => firestoreDeleteDoc(env, token, path),
     listDocs: async (path) => (await firestoreListAll(env, token, path)).map((d) => d.fields),
-  };
+    runQuery: (structuredQuery) => firestoreRunQuery(env, token, structuredQuery),
+  });
 }
 
 /** Parse the request body, or null when it is absent or not JSON. */
@@ -1351,7 +1349,7 @@ async function handleAcademicApi(request, env, origin, url) {
     );
   }
 
-  const deps = academicDeps(env, token);
+  const store = academicStore(env, token);
   let user;
   try {
     // The same resolution /api/v1/me performs, and for the same reason: every
@@ -1359,12 +1357,7 @@ async function handleAcademicApi(request, env, origin, url) {
     // It bootstraps on first sight, so a student's very first action can be
     // creating a semester rather than having to load their profile first.
     ({ user } = await resolveShohojUser(
-      {
-        getDoc: deps.getDoc,
-        patchDoc: (path, fields) => firestoreMergeFields(env, token, path, fields),
-        sha256Hex,
-        now: () => new Date(),
-      },
+      { users: store.users, sha256Hex, now: () => new Date() },
       claims,
     ));
   } catch (e) {
@@ -1398,19 +1391,18 @@ async function handleAcademicApi(request, env, origin, url) {
   }
 
   const ctx = {
-    repo: createAcademicRepo(deps, firebaseUid),
+    repo: store.repoFor(firebaseUid),
     userId: user.id,
     university: user.university,
     sha256Hex,
     randomHex,
     now: () => new Date(),
-    // The calendar feed needs three things the rest of this namespace does
-    // not: raw Firestore, because its reverse index lives OUTSIDE the
-    // student's subtree by design; the Firebase uid, because that is what the
-    // reverse doc has to point at to rebuild this repository; and the origin
-    // the caller reached us on, so the URL handed back is one they can paste.
-    deps,
-    firebaseUid,
+    // The calendar feed needs two things the rest of this namespace does not:
+    // its own store, bound to this student like the repository is, because
+    // its reverse index lives OUTSIDE the student's subtree by design; and the
+    // origin the caller reached us on, so the URL handed back is one they can
+    // paste.
+    feeds: store.feedsFor(firebaseUid),
     feedOrigin: url.origin,
   };
 
@@ -2346,11 +2338,11 @@ async function handleCalendarFeed(request, env, url) {
     return new Response('Unavailable', { status: 503 });
   }
 
-  const deps = academicDeps(env, saToken);
-  const firebaseUid = await resolveCalendarFeedOwner(deps, token);
+  const store = academicStore(env, saToken);
+  const firebaseUid = await store.feedOwner(token);
   if (firebaseUid === null) return notFoundFeed();
 
-  const repo = createAcademicRepo(deps, firebaseUid);
+  const repo = store.repoFor(firebaseUid);
   const [tasks, enrollments] = await Promise.all([repo.listTasks(), repo.listEnrollments()]);
   const ics = buildFeedICS(toFeedEvents(tasks, enrollments), { now: new Date() });
 
@@ -2572,13 +2564,9 @@ export async function loadSeatIndexCached(now = Date.now()) {
  * reminder marked SENT after a failed delivery is a missed deadline the student
  * was told about, which is worse than no reminder at all.
  *
- * Reminders live under each student for ownership, so finding due ones across
- * everybody needs a collection-group query — `allDescendants` over the
- * `reminders` subcollection. That is a server-side read the API never exposes.
- *
- * Filtered on STATUS server-side and on time in memory. A pending-only query is
- * bounded by what has not yet fired, which is small; adding a range filter on
- * `scheduledFor` would need a composite index for a list that is already short.
+ * Finding due reminders across every student is the store's
+ * `pendingReminders()`: a server-side read the API never exposes. It filters on
+ * STATUS; time is decided here, in memory.
  */
 export async function runReminderCron(env, nowMs = Date.now()) {
   const emailCfg = seatAlertEmailConfig(env);
@@ -2599,45 +2587,26 @@ export async function runReminderCron(env, nowMs = Date.now()) {
     };
   }
 
-  const pending = await firestoreRunQuery(env, token, {
-    from: [{ collectionId: 'reminders', allDescendants: true }],
-    where: {
-      fieldFilter: {
-        field: { fieldPath: 'status' },
-        op: 'EQUAL',
-        value: { stringValue: 'PENDING' },
-      },
-    },
-    limit: 500,
-  });
+  const store = academicStore(env, token);
+  const pending = await store.pendingReminders();
 
   let due = 0;
   let emailed = 0;
   let failed = 0;
   let dropped = 0;
 
-  for (const row of pending) {
-    const reminder = row.fields;
-    // The document PATH carries the owning uid; the record carries the Shohoj
-    // user id, which is a different value and cannot address the document.
-    const ownerUid = ownerUidFromPath(row);
-    if (ownerUid === null) continue;
-
-    const task = await firestoreGetFields(
-      env,
-      token,
-      `${USERS_COLLECTION}/${ownerUid}/tasks/${reminder.taskId}`,
-    );
+  for (const { ownerUid, reminder } of pending) {
+    const repo = store.repoFor(ownerUid);
+    const task = await repo.getTask(reminder.taskId);
 
     if (isStale(reminder, nowMs)) {
       // Too late to be worth sending — a cron that was down overnight must not
       // deliver yesterday's nudges about work that is now simply overdue.
-      await firestorePatchFields(
-        env,
-        token,
-        `${USERS_COLLECTION}/${ownerUid}/reminders/${reminder.id}`,
-        { ...reminder, status: 'CANCELLED', updatedAt: new Date(nowMs).toISOString() },
-      );
+      await repo.putReminder({
+        ...reminder,
+        status: 'CANCELLED',
+        updatedAt: new Date(nowMs).toISOString(),
+      });
       dropped += 1;
       continue;
     }
@@ -2645,29 +2614,24 @@ export async function runReminderCron(env, nowMs = Date.now()) {
     if (!shouldSend(reminder, task, nowMs)) continue;
     due += 1;
 
-    const email = await reminderRecipient(env, token, ownerUid);
+    const email = await reminderRecipient(store, ownerUid);
     if (email === null) {
       failed += 1;
       continue;
     }
 
-    const courseCode = await reminderCourseCode(env, token, ownerUid, task);
+    const courseCode = await reminderCourseCode(repo, task);
     const { subject, html } = buildReminderEmail(task, reminder, courseCode);
     const sent = await resendSeatAlert(env, email, subject, html);
 
     // The whole point: only a confirmed send advances the record.
     if (sent) {
-      await firestorePatchFields(
-        env,
-        token,
-        `${USERS_COLLECTION}/${ownerUid}/reminders/${reminder.id}`,
-        {
-          ...reminder,
-          status: 'SENT',
-          sentAt: new Date(nowMs).toISOString(),
-          updatedAt: new Date(nowMs).toISOString(),
-        },
-      );
+      await repo.putReminder({
+        ...reminder,
+        status: 'SENT',
+        sentAt: new Date(nowMs).toISOString(),
+        updatedAt: new Date(nowMs).toISOString(),
+      });
       emailed += 1;
     } else {
       // Left PENDING on purpose, so the next pass retries it. Marking FAILED
@@ -2679,27 +2643,17 @@ export async function runReminderCron(env, nowMs = Date.now()) {
   return { configured: true, due, emailed, failed, dropped };
 }
 
-/** The owning uid, read from a reminder document's own path. */
-function ownerUidFromPath(row) {
-  const match = /shohojUsers\/([^/]+)\/reminders\//.exec(String(row?.name ?? ''));
-  return match ? match[1] : null;
-}
-
 /** The address to reach a student on: their verified sign-in email. */
-async function reminderRecipient(env, token, ownerUid) {
-  const user = await firestoreGetFields(env, token, `${USERS_COLLECTION}/${ownerUid}`);
+async function reminderRecipient(store, ownerUid) {
+  const user = await store.users.get(ownerUid);
   const email = user?.email;
   return typeof email === 'string' && email.includes('@') ? email : null;
 }
 
 /** The course code a task belongs to, for the subject line. Null when unattached. */
-async function reminderCourseCode(env, token, ownerUid, task) {
+async function reminderCourseCode(repo, task) {
   if (!task?.enrollmentId) return null;
-  const enrollment = await firestoreGetFields(
-    env,
-    token,
-    `${USERS_COLLECTION}/${ownerUid}/enrollments/${task.enrollmentId}`,
-  );
+  const enrollment = await repo.getEnrollment(task.enrollmentId);
   return typeof enrollment?.courseCode === 'string' ? enrollment.courseCode : null;
 }
 
