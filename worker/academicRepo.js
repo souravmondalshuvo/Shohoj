@@ -1,10 +1,17 @@
 // worker/academicRepo.js
 //
-// The academic core's repository layer (#712): where semester and enrolment
-// records live, and the only place that knows it is Firestore.
+// The academic core's storage layer (#712, widened by #908): where the Shohoj
+// user record, semesters, enrolments, tasks, assessments, reminders and
+// calendar-feed tokens live, and the only place that knows it is Firestore.
 //
-// Everything here takes its Firestore access as four injected primitives
-// (`getDoc`, `patchDoc`, `deleteDoc`, `listDocs`) rather than importing the
+// `createAcademicStore` is the interface the rest of the Worker sees. Nothing
+// outside this module names an academic Firestore path, so a second backend
+// (Cloudflare D1, ADR 0003) is a second implementation of that one object, not
+// a hunt through the handlers. test/storageSeam.test.js keeps it that way.
+//
+// Everything here takes its Firestore access as injected primitives (`getDoc`,
+// `patchDoc`, `deleteDoc`, `listDocs`, and for the store also `mergeDoc`,
+// `getDocSnapshot`, `commitWrites` and `runQuery`) rather than importing the
 // REST helpers from index.js. Two reasons: index.js imports this module, so
 // importing back would close a cycle the Workers runtime and node's test loader
 // resolve differently; and a repository whose I/O is injected can be tested
@@ -12,11 +19,13 @@
 //
 // LAYOUT
 //
+//   shohojUsers/{firebaseUid}                         the internal user record
 //   shohojUsers/{firebaseUid}/semesters/{semesterId}
 //   shohojUsers/{firebaseUid}/enrollments/{enrollmentId}
 //   shohojUsers/{firebaseUid}/tasks/{taskId}
 //   shohojUsers/{firebaseUid}/assessments/{taskId}   <- keyed BY task id
 //   shohojUsers/{firebaseUid}/reminders/{reminderId}
+//   calendarFeeds/{token}                             whose feed a token is
 //
 // Subcollections under the user, for three reasons that all point the same way:
 // a student's data is co-located, so deleting an account is one subtree; no
@@ -35,7 +44,27 @@
 // paths shut. Every read and write goes through /api/v1, where ownership is
 // checked against the verified token.
 
+import { isCalendarFeedToken } from './calendarFeed.js';
+
+/**
+ * Server-owned collection holding the internal user record, with the
+ * student's academic subtree beneath it.
+ *
+ * Separate from `users/{uid}`, which is the client-written academic-state blob
+ * (`{ data: <JSON string>, updatedAt }`, capped at 500 KB by firestore.rules).
+ * Two reasons not to reuse it: that document's rule is
+ * `keys().hasOnly(['data','updatedAt'])`, so adding fields would mean weakening
+ * a rule that protects real academic data; and this record must be
+ * server-written only, while that one is client-written by design.
+ *
+ * Nothing needs to be added to firestore.rules for this: the rules end in a
+ * deny-all `match /{document=**}`, so an unlisted collection is already closed
+ * to every client. The Worker reaches it with a service account, which bypasses
+ * rules — the same path /reviews already uses.
+ */
 export const USERS_COLLECTION = 'shohojUsers';
+/** The calendar-feed reverse index, keyed by token (#744). */
+export const CALENDAR_FEED_COLLECTION = 'calendarFeeds';
 export const SEMESTERS_SUBCOLLECTION = 'semesters';
 export const ENROLLMENTS_SUBCOLLECTION = 'enrollments';
 export const TASKS_SUBCOLLECTION = 'tasks';
@@ -144,6 +173,217 @@ export function createAcademicRepo(deps, firebaseUid) {
     putReminder: (record) => deps.patchDoc(reminderPath(firebaseUid, record.id), record),
     deleteReminder: (id) => deps.deleteDoc(reminderPath(firebaseUid, id)),
   };
+}
+
+// ── The storage interface (#908) ────────────────────────────────────────────
+
+/**
+ * How many times a feed rotation or revocation rereads and retries after
+ * losing a race on the owner document before giving up.
+ */
+const MAX_FEED_WRITE_ATTEMPTS = 5;
+
+/**
+ * How many PENDING reminders one cron pass reads. Pending is bounded by what
+ * has not yet fired, which is small; this is a ceiling, not a page size.
+ */
+const PENDING_REMINDER_LIMIT = 500;
+
+/**
+ * Build the academic store: every read and write the Worker makes of a
+ * student's academic records, in one object.
+ *
+ *   repoFor(firebaseUid)   the per-student repository above
+ *   users.get(uid)         the internal user record, or null
+ *   users.merge(uid, rec)  write those fields, leaving any others alone
+ *   feedsFor(uid)          that student's calendar feed: current/rotate/revoke
+ *   feedOwner(token)       whose feed a token is, or null — anonymous
+ *   pendingReminders()     every student's PENDING reminders, as
+ *                          `{ ownerUid, reminder }` — server-side only
+ *
+ * `deps`, beyond the four `createAcademicRepo` takes:
+ *   mergeDoc(path, fields)    → write only the named fields (an update mask)
+ *   getDocSnapshot(path)      → `{ fields, updateTime }`, or null when absent
+ *   commitWrites(writes)      → atomic and precondition-checked; a lost race
+ *                               throws an error carrying `conflict: true`
+ *   runQuery(structuredQuery) → `[{ name, fields }]`
+ *
+ * `users.merge` is a masked write on purpose: the same document carries
+ * `calendarFeedToken`, which a profile refresh must never clear.
+ */
+export function createAcademicStore(deps) {
+  return {
+    repoFor: (firebaseUid) => createAcademicRepo(deps, firebaseUid),
+    users: {
+      get: (firebaseUid) => deps.getDoc(userPath(firebaseUid)),
+      merge: (firebaseUid, fields) => deps.mergeDoc(userPath(firebaseUid), fields),
+    },
+    feedsFor: (firebaseUid) => createFeedStore(deps, firebaseUid),
+    feedOwner: (token) => resolveFeedOwner(deps, token),
+    pendingReminders: () => pendingReminders(deps),
+  };
+}
+
+// ── Calendar feed tokens (#744) ─────────────────────────────────────────────
+//
+// Two documents, deliberately:
+//
+//   shohojUsers/{uid}.calendarFeedToken   what THIS student's feed is
+//   calendarFeeds/{token}                 whose feed THAT is
+//
+// The forward pointer is authoritative: anonymous reads must check BOTH
+// documents. Atomic commits keep the pointers together, and the owner document's
+// updateTime serializes rotations/revocations even across Worker isolates.
+
+function feedDocPath(token) {
+  return `${CALENDAR_FEED_COLLECTION}/${token}`;
+}
+
+/** Only valid tokens may become reverse-index document paths. */
+function currentFeedToken(fields) {
+  const token = fields?.calendarFeedToken;
+  return isCalendarFeedToken(token) ? token : null;
+}
+
+/** One student's feed, bound to them the way their repository is. */
+function createFeedStore(deps, firebaseUid) {
+  const ownerPath = userPath(firebaseUid);
+
+  return {
+    /** `{ token, createdAt }` for the live feed, or null when there is none. */
+    async current() {
+      const token = currentFeedToken(await deps.getDoc(ownerPath));
+      if (token === null) return null;
+
+      // Read the reverse doc for its timestamp rather than storing the date twice.
+      const feed = await deps.getDoc(feedDocPath(token));
+      if (!feed || feed.firebaseUid !== firebaseUid) {
+        // The forward pointer outlived its reverse doc. The URL is already dead,
+        // so report honestly rather than handing back a link that 404s.
+        return null;
+      }
+      return { token, createdAt: feed.createdAt };
+    },
+
+    /**
+     * Mint a feed, or replace the existing one, and return `{ token, createdAt }`.
+     *
+     * `mint()` supplies a fresh `{ token, createdAt }` on every attempt. A single
+     * conditional commit creates the new reverse pointer, moves only the owner's
+     * calendarFeedToken field, and deletes the previous reverse pointer. If
+     * another request changes the owner first, reread and retry. A token
+     * collision also retries instead of overwriting someone else's credential.
+     */
+    async rotate(mint) {
+      for (let attempt = 0; attempt < MAX_FEED_WRITE_ATTEMPTS; attempt++) {
+        const user = await deps.getDocSnapshot(ownerPath);
+        if (!user?.updateTime) throw new Error('Calendar feed owner is unavailable');
+        const previous = currentFeedToken(user.fields);
+        const { token, createdAt } = mint();
+        const writes = [
+          {
+            path: feedDocPath(token),
+            fields: { firebaseUid, createdAt },
+            exists: false,
+          },
+          {
+            path: ownerPath,
+            fields: { calendarFeedToken: token },
+            updateTime: user.updateTime,
+          },
+        ];
+        if (previous !== null && previous !== token) {
+          writes.push({ path: feedDocPath(previous), delete: true });
+        }
+        try {
+          await deps.commitWrites(writes);
+          return { token, createdAt };
+        } catch (error) {
+          if (!error.conflict || attempt === MAX_FEED_WRITE_ATTEMPTS - 1) throw error;
+        }
+      }
+    },
+
+    /**
+     * Clear the authoritative pointer and remove its reverse index atomically.
+     * A concurrent rotation forces a retry, so revocation cannot clear the new
+     * pointer while leaving its credential accessible. Revoking a feed that is
+     * already gone resolves quietly.
+     */
+    async revoke() {
+      for (let attempt = 0; attempt < MAX_FEED_WRITE_ATTEMPTS; attempt++) {
+        const user = await deps.getDocSnapshot(ownerPath);
+        const token = currentFeedToken(user?.fields);
+        if (token === null) return;
+        if (!user.updateTime) throw new Error('Calendar feed owner is unavailable');
+        try {
+          await deps.commitWrites([
+            { path: ownerPath, fields: { calendarFeedToken: '' }, updateTime: user.updateTime },
+            { path: feedDocPath(token), delete: true },
+          ]);
+          return;
+        } catch (error) {
+          if (!error.conflict || attempt === MAX_FEED_WRITE_ATTEMPTS - 1) throw error;
+        }
+      }
+    },
+  };
+}
+
+/**
+ * Resolve only the owner's current credential. Legacy orphan reverse documents
+ * are intentionally inert, including ones left by previously failed writes.
+ */
+async function resolveFeedOwner(deps, token) {
+  if (!isCalendarFeedToken(token)) return null;
+  const feed = await deps.getDoc(feedDocPath(token));
+  const uid = feed?.firebaseUid;
+  if (typeof uid !== 'string' || uid === '' || uid.includes('/')) return null;
+  const owner = await deps.getDoc(userPath(uid));
+  return owner?.calendarFeedToken === token ? uid : null;
+}
+
+// ── Reminders across every student (#727) ───────────────────────────────────
+
+/**
+ * Every student's PENDING reminders, each with the uid that owns it.
+ *
+ * Reminders live under each student for ownership, so finding them across
+ * everybody needs a collection-group query — `allDescendants` over the
+ * `reminders` subcollection. Filtered on STATUS server-side and left to the
+ * caller on time: adding a range filter on `scheduledFor` would need a
+ * composite index for a list that is already short.
+ *
+ * The document PATH carries the owning uid; the record carries the Shohoj user
+ * id, which is a different value and cannot address the document. A row whose
+ * path does not parse is skipped.
+ */
+async function pendingReminders(deps) {
+  const rows = await deps.runQuery({
+    from: [{ collectionId: REMINDERS_SUBCOLLECTION, allDescendants: true }],
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'status' },
+        op: 'EQUAL',
+        value: { stringValue: 'PENDING' },
+      },
+    },
+    limit: PENDING_REMINDER_LIMIT,
+  });
+
+  const pending = [];
+  for (const row of rows) {
+    const ownerUid = ownerUidFromReminderPath(row?.name);
+    if (ownerUid === null) continue;
+    pending.push({ ownerUid, reminder: row.fields });
+  }
+  return pending;
+}
+
+/** The owning uid, read from a reminder document's own path. */
+function ownerUidFromReminderPath(name) {
+  const match = /shohojUsers\/([^/]+)\/reminders\//.exec(String(name ?? ''));
+  return match ? match[1] : null;
 }
 
 /**
