@@ -13,9 +13,11 @@ import {
   deleteCalendarFeed,
   getCalendarFeed,
 } from '../calendarFeedHandlers.js';
-import { resolveCalendarFeedOwner } from '../calendarFeed.js';
+import { createAcademicStore } from '../academicRepo.js';
 
 const UID = 'uid_alice';
+
+const resolveCalendarFeedOwner = (deps, token) => createAcademicStore(deps).feedOwner(token);
 const ORIGIN = 'https://worker.example';
 
 /** Firestore's atomic preconditions and field masks, without network I/O. */
@@ -57,11 +59,10 @@ function fakeStore(seed = {}) {
   };
 }
 
-function ctxFor(store) {
+function ctxFor(store, uid = UID) {
   let counter = 0;
   return {
-    deps: store.deps,
-    firebaseUid: UID,
+    feeds: createAcademicStore(store.deps).feedsFor(uid),
     feedOrigin: ORIGIN,
     // Deterministic "randomness", so a test can name the token it expects.
     randomHex: () => String(++counter).padStart(32, '0'),
@@ -232,7 +233,7 @@ test('identity is not an input to the token', async () => {
 
   const urlA = (await createCalendarFeed({ ...ctxFor(a), randomHex: fixed })).body.feed.url;
   const urlB = (
-    await createCalendarFeed({ ...ctxFor(b), firebaseUid: 'uid_bob', randomHex: fixed })
+    await createCalendarFeed({ ...ctxFor(b, 'uid_bob'), randomHex: fixed })
   ).body.feed.url;
 
   assert.equal(urlA, urlB);
