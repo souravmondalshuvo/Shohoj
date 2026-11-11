@@ -184,7 +184,18 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-export function Component() {
+export interface BracuCampusProps {
+  /**
+   * Where the Residential Campus map (#978) is, from the page this map is
+   * mounted in. The default suits /campus/ and the shell's /app/campus; the
+   * legacy page, which mounts this at the site root, passes its own.
+   */
+  residentialHref?: string;
+}
+
+export function Component({
+  residentialHref = '../campus/?campus=bracu-rs',
+}: BracuCampusProps = {}) {
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [now, setNow] = useState<NowStamp>(nowStamp);
@@ -539,6 +550,12 @@ export function Component() {
       <p className="shell-muted">
         A public-reference reconstruction of BRACU&apos;s Merul Badda campus, connected to the live
         class schedule — pick a floor to see its rooms and what&apos;s free right now.
+      </p>
+      <p className="shell-muted">
+        Off to the Residential Semester?{' '}
+        <a href={residentialHref} data-testid="campus-residential-link">
+          See the Savar campus in 3D
+        </a>
       </p>
 
       {feedError !== null ? (
