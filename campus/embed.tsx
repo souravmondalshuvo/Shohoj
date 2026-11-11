@@ -13,8 +13,9 @@
 //   - The router is in memory. The host owns the address bar (the legacy page
 //     keeps its tab in the hash), so the map's ?room= / ?floor= state must not
 //     be written there. A deep link is handed in once, as `search`.
-//   - NSU's section snapshot is addressed from the host's directory, which is
-//     the site root, not one level below it.
+//   - NSU's section snapshot, and the link to BRACU's Residential Campus
+//     page, are addressed from the host's directory, which is the site root,
+//     not one level below it.
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -34,6 +35,10 @@ function NsuCampusAtSiteRoot() {
   return <NsuCampus siteRoot="./" />;
 }
 
+function BracuCampusAtSiteRoot() {
+  return <BracuCampus residentialHref="campus/?campus=bracu-rs" />;
+}
+
 /**
  * Mount the Campus Map into `container`. Returns the function that takes it
  * down again, which the host must call before mounting another campus's map
@@ -42,7 +47,7 @@ function NsuCampusAtSiteRoot() {
 export function mountCampusMap(container: HTMLElement, options: CampusMapOptions = {}): () => void {
   const search = options.search?.startsWith('?') ? options.search : '';
   const router = createMemoryRouter(
-    [{ path: '*', Component: options.campus === 'nsu' ? NsuCampusAtSiteRoot : BracuCampus }],
+    [{ path: '*', Component: options.campus === 'nsu' ? NsuCampusAtSiteRoot : BracuCampusAtSiteRoot }],
     { initialEntries: [`/${search}`] },
   );
   const root = createRoot(container);
