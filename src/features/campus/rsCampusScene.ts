@@ -600,7 +600,7 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
     if (r.kind === 'trunk') scene.add(mesh(ribbonGeometry(r.path, 8, 0.03), roadMats.trunk));
     else if (r.kind === 'footway') scene.add(mesh(ribbonGeometry(r.path, 1.8, 0.06), roadMats.foot));
     else if (r.inside) scene.add(mesh(ribbonGeometry(r.path, 3.6, 0.06), roadMats.campus));
-    else if (r.kind !== 'service') scene.add(mesh(ribbonGeometry(r.path, 4.5, 0.02), roadMats.lane));
+    else scene.add(mesh(ribbonGeometry(r.path, r.kind === 'service' ? 3 : 4.5, 0.02), roadMats.lane));
   }
 
   // ── The wall, its posts and the gate ─────────────────────────────────────
@@ -835,14 +835,28 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
   controls.maxDistance = 900;
   controls.screenSpacePanning = false;
 
+  // What the camera was last framed on, and whether the reader has moved it
+  // since: a resize re-frames an untouched view so it still fits.
+  let framedOn: string | null = null;
+  let movedByReader = false;
+  controls.addEventListener('start', () => {
+    movedByReader = true;
+  });
+
   function frame(id: string | null): void {
+    framedOn = id;
+    movedByReader = false;
+    // The views below are set for a landscape canvas (aspect 1.6 or wider).
+    // A narrower one, a phone held upright, needs the camera further back to
+    // keep the same width in view.
+    const widen = Math.max(1, 1.6 / camera.aspect);
     const entry = id ? entries.find((e) => e.building.id === id) : null;
     if (entry) {
       const [cx, cy] = polygonCentre(entry.building.footprint);
       const xs = entry.building.footprint.map((p) => p[0]);
       const ys = entry.building.footprint.map((p) => p[1]);
       const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), entry.top);
-      const d = Math.max(45, span * 1.9);
+      const d = Math.max(45, span * 1.9) * widen;
       controls.target.set(cx, entry.top * 0.4, -cy);
       camera.position.set(cx + d * 0.55, entry.top * 0.4 + d * 0.62, -cy + d * 0.75);
     } else {
@@ -850,7 +864,7 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
       const cx = (b.x1 + b.x2) / 2;
       const cy = (b.y1 + b.y2) / 2;
       controls.target.set(cx + 10, 0, -cy);
-      camera.position.set(cx + 170, 215, -cy + 265);
+      camera.position.set(cx + 10 + 160 * widen, 215 * widen, -cy + 265 * widen);
     }
     controls.update();
     requestRender();
@@ -877,12 +891,15 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    if (ready && !movedByReader) frame(framedOn);
     requestRender();
   }
+  let ready = false;
   const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
   observer?.observe(container);
   resize();
   frame(null);
+  ready = true;
 
   // ── Picking ─────────────────────────────────────────────────────────────
   const raycaster = new Raycaster();
