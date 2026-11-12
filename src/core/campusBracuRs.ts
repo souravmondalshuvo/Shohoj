@@ -5,11 +5,12 @@
  *
  * How much of this is known, and how:
  *
- *   - The site and every footprint are OpenStreetMap's, projected to metres
+ *   - The site and the footprints are OpenStreetMap's, projected to metres
  *     about the middle of the campus wall (x east, y north). OSM gives the
  *     wall (way 1236280123, 11.1 acres), the buildings, the two fields, the
  *     basketball court, the gardens, the roads, the water tower and the two
- *     sculptures.
+ *     sculptures. The two small sheds with `osmWay: null` are not in OSM;
+ *     their outlines are traced from the satellite image.
  *   - Names come from OSM and BRACU's RS handbooks (Spring 2026, Summer 2025,
  *     Fall 2022), which use them in their duty lists: Nikunjo and Maloncho
  *     dormitories, the Duranto and Durbar fields, Anandapur. A building no
