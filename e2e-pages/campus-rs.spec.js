@@ -66,9 +66,7 @@ test('an unknown ?building= opens the whole campus', async ({ page }) => {
   await expect(page.getByTestId('campus-hint')).toBeVisible();
 });
 
-// FIXME(#978): the centre click finds no building in headless Chromium,
-// though picking works in a real browser. Open: why the framed view misses.
-test.fixme('clicking a building in the 3D view selects it', async ({ page }) => {
+test('clicking a building in the 3D view selects it', async ({ page }) => {
   // Framed on Nikunja, the middle of the view is Nikunja.
   await openRs(page, '&building=nikunja');
   const canvas = page.getByTestId('campus-canvas');
@@ -77,6 +75,7 @@ test.fixme('clicking a building in the 3D view selects it', async ({ page }) => 
   // Top-right corner: the road and the land beyond the wall. Selects nothing.
   await page.mouse.click(box.x + box.width - 12, box.y + 12);
   await expect(page.getByTestId('campus-building-panel')).toHaveCount(0);
+  // Deselecting kept the camera where it was: the middle is still Nikunja.
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.getByTestId('campus-building-panel')).toHaveAttribute('data-building', 'nikunja');
 });
