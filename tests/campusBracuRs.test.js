@@ -91,9 +91,24 @@ test('names appear only where a source gives one', () => {
     const named = RS_BUILDINGS.filter((b) => b.name !== null).map((b) => b.name).sort();
     assert.deepEqual(named, ['Anandapur', 'Maloncho', 'Nikunja']);
     for (const b of RS_BUILDINGS) {
-        assert.ok(b.label.length > 0, `${b.id} has something to call it`);
         if (b.name !== null) assert.equal(b.label, b.name);
     }
+    // An unnamed building is described, never given a name: these labels are
+    // plain descriptions, and any new one has to be added here on purpose.
+    const descriptions = Object.fromEntries(
+        RS_BUILDINGS.filter((b) => b.name === null).map((b) => [b.id, b.label]),
+    );
+    assert.deepEqual(descriptions, {
+        'east-block': 'East block',
+        'dorm-two-wing': 'Three-storey dormitory',
+        'north-block': 'North block',
+        'courtyard-building': 'Courtyard building',
+        'west-block': 'West block',
+        'west-shed': 'Long shed, west',
+        'north-west-shed': 'Long shed, north-west',
+        'hut-south': 'Small shed',
+        'hut-south-2': 'Small shed',
+    });
     assert.equal(rsBuilding('nikunja')?.aka, 'Nikunjo', 'the RS handbook\'s spelling');
 });
 
@@ -106,8 +121,10 @@ test('storey counts say where they come from; only OpenStreetMap\'s are confirme
     for (const b of RS_BUILDINGS) {
         assert.ok(Number.isInteger(b.levels) && b.levels >= 1, b.id);
         assert.equal(rsLevelsConfirmed(b), b.levelsFrom === 'osm', b.id);
-        assert.ok(rsLevelsSourceLabel(b.levelsFrom).length > 0);
     }
+    assert.equal(rsLevelsSourceLabel('osm'), 'OpenStreetMap');
+    assert.equal(rsLevelsSourceLabel('photo'), 'counted in an RS-handbook photo');
+    assert.equal(rsLevelsSourceLabel('imagery'), 'estimated from the satellite image');
     // Nikunja is the tallest thing on campus.
     const tallest = [...RS_BUILDINGS].sort((a, b) => rsWallTop(b) - rsWallTop(a))[0];
     assert.equal(tallest.id, 'nikunja');
