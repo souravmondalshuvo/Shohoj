@@ -187,14 +187,16 @@ function prefersReducedMotion(): boolean {
 export interface BracuCampusProps {
   /**
    * Where the Residential Campus map (#978) is, from the page this map is
-   * mounted in. The default suits /campus/ and the shell's /app/campus; the
-   * legacy page, which mounts this at the site root, passes its own.
+   * mounted in. The default is built from the build's base, not the current
+   * route, so the shell's /app/campus and /app/campus/ both reach the site's
+   * /campus/ page; the legacy page, which mounts this at the site root,
+   * passes its own.
    */
   residentialHref?: string;
 }
 
 export function Component({
-  residentialHref = '../campus/?campus=bracu-rs',
+  residentialHref = `${import.meta.env.BASE_URL}../campus/?campus=bracu-rs`,
 }: BracuCampusProps = {}) {
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
