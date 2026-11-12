@@ -43,16 +43,6 @@ function distanceToEdge([x, y], polygon) {
     return best;
 }
 
-/**
- * Inside, or within `slack` metres of the outline. Nikunja and the east block
- * stand on the wall line — the building is the boundary there — and OSM's
- * outlines cross by up to 1.9 m: drawing tolerance, not a building through
- * the wall.
- */
-function insideOrOn(point, polygon, slack = 2) {
-    return pointInPolygon(point, polygon) || distanceToEdge(point, polygon) <= slack;
-}
-
 test('the wall is OpenStreetMap\'s campus outline: 11.1 acres at Khagan, Savar', () => {
     const acres = Math.abs(polygonArea(RS_WALL)) / 4046.86;
     assert.ok(acres > 11.0 && acres < 11.2, `${acres.toFixed(2)} acres`);
@@ -71,10 +61,10 @@ test('campus metres convert back to where OpenStreetMap has the gate', () => {
     assert.ok(distanceToEdge(RS_GATE, RS_WALL) < 0.5, 'the gate is in the wall');
 });
 
-test('every building stands inside the wall', () => {
+test('every building stands inside the wall, every corner of it', () => {
     for (const b of RS_BUILDINGS) {
         assert.ok(pointInPolygon(polygonCentre(b.footprint), RS_WALL), `${b.id} centre`);
-        for (const p of b.footprint) assert.ok(insideOrOn(p, RS_WALL), `${b.id} corner ${p}`);
+        for (const p of b.footprint) assert.ok(pointInPolygon(p, RS_WALL), `${b.id} corner ${p}`);
         assert.ok(Math.abs(polygonArea(b.footprint)) > 20, `${b.id} has a real footprint`);
     }
 });
