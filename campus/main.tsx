@@ -6,7 +6,7 @@
 // ?campus=nsu, North South University's map, or for ?campus=bracu-rs, BRACU's
 // Residential Campus at Savar (#978) — inside a minimal one-route data
 // router: the route only touches the URL through
-// useSearchParams (?room= deep links), so a catch-all path works at any mount
+// useSearchParams (?room= and ?building= deep links), so a catch-all path works at any mount
 // point — the Pages site lives under /Shohoj/, so no basename is assumed.
 // Retired at the Phase 12/13 cutover, when the shell serves /campus itself.
 
