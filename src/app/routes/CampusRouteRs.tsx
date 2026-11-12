@@ -199,6 +199,9 @@ export function RsCampus() {
           does.
         </p>
       )}
+      <p className="shell-muted" data-testid="campus-attribution">
+        Map data © OpenStreetMap contributors · satellite reading: Esri World Imagery
+      </p>
 
       {current ? (
         <div
@@ -249,9 +252,10 @@ export function RsCampus() {
       <details className="campus-evidence" data-testid="campus-evidence">
         <summary>How accurate is this map?</summary>
         <p>
-          <strong>Measured:</strong> the campus wall, every building&apos;s outline and where it
-          stands, the fields, the court, the gardens and the roads, from OpenStreetMap. Trees are
-          placed where the satellite image (5 February 2026) shows a canopy.
+          <strong>Measured:</strong> the campus wall, the buildings&apos; outlines and where they
+          stand, the fields, the court, the gardens and the roads, from OpenStreetMap. Two small
+          sheds OpenStreetMap does not have are traced from the satellite image (5 February 2026),
+          and trees are placed where that image shows a canopy.
         </p>
         <p>
           <strong>Read from sources:</strong> the names Nikunja, Maloncho, Anandapur, Duronto and
