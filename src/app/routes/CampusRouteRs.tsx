@@ -80,11 +80,15 @@ export function RsCampus() {
     },
     [setSearchParams],
   );
+  const selectRef = useRef(select);
+  selectRef.current = select;
 
   useEffect(() => {
     const host = canvasHost.current;
     if (!host) return;
-    const handle = createRsCampusScene(host, { onSelect: (id) => select(id, false) });
+    // Through a ref: setSearchParams changes with every URL change, and the
+    // scene must not be torn down (and its camera reset) on each selection.
+    const handle = createRsCampusScene(host, { onSelect: (id) => selectRef.current(id, false) });
     if (!handle) {
       setWebglOk(false);
       return;
@@ -99,7 +103,7 @@ export function RsCampus() {
       sceneRef.current = null;
       handle.dispose();
     };
-  }, [select]);
+  }, []);
 
   useEffect(() => {
     sceneRef.current?.setSelected(selected);
