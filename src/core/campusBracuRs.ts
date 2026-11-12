@@ -11,6 +11,10 @@
  *     basketball court, the gardens, the roads, the water tower and the two
  *     sculptures. The two small sheds with `osmWay: null` are not in OSM;
  *     their outlines are traced from the satellite image.
+ *   - Nikunja and the east block stand on the wall line, and OSM's outlines
+ *     of them cross the wall's by up to 1.9 m — drawing tolerance. Those five
+ *     corners are moved onto the wall, 0.3 m inside it, so every building is
+ *     inside the wall as drawn.
  *   - Names come from OSM and BRACU's RS handbooks (Spring 2026, Summer 2025,
  *     Fall 2022), which use them in their duty lists: Nikunjo and Maloncho
  *     dormitories, the Duranto and Durbar fields, Anandapur. A building no
@@ -158,16 +162,16 @@ export const RS_BUILDINGS: readonly RsBuilding[] = [
       [88.1, -82.1],
       [91.8, -88.3],
       [100.0, -83.5],
-      [104.0, -90.2],
+      [103.8, -89.1],
       [133.6, -72.6],
       [131.6, -69.2],
       [136.8, -66.0],
       [140.1, -71.5],
-      [165.6, -56.4],
+      [165.2, -56.4],
       [161.8, -50.0],
-      [165.7, -47.8],
+      [164.4, -47.9],
       [161.7, -41.1],
-      [164.3, -39.6],
+      [163.6, -39.7],
       [159.6, -31.8],
     ],
   },
@@ -222,7 +226,7 @@ export const RS_BUILDINGS: readonly RsBuilding[] = [
       [122.0, 31.3],
       [127.2, 24.0],
       [152.3, 37.0],
-      [142.5, 79.7],
+      [140.4, 79.1],
       [105.6, 73.7],
       [109.7, 58.2],
       [119.5, 60.9],
