@@ -24,6 +24,10 @@ test('shows the Residential Campus, its buildings and its size', async ({ page }
     'true',
   );
   await expect(page.getByTestId('campus-canvas').locator('canvas')).toBeVisible();
+  // The map's credit is on show, not folded away in the accuracy notes.
+  await expect(page.getByTestId('campus-attribution')).toContainText(
+    '© OpenStreetMap contributors',
+  );
 });
 
 test('picking a building says what is known and where it comes from', async ({ page }) => {
