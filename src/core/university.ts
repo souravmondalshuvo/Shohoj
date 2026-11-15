@@ -155,6 +155,11 @@ export type FeatureId =
   | 'playground'
   | 'planner'
   | 'profile'
+  /**
+   * Shohoj Quest (#981), the CSE110 learning game. BRACU only: its quests
+   * follow BRACU's CSE110 syllabus, zone by zone. It has a route and no tab.
+   */
+  | 'quest'
   | 'reviews'
   | 'rooms'
   | 'routine'
@@ -272,6 +277,7 @@ const BRACU: UniversityProfile = {
     'playground',
     'planner',
     'profile',
+    'quest',
     'reviews',
     'rooms',
     'routine',
