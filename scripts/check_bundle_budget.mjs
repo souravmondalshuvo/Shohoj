@@ -208,8 +208,25 @@ export const TARGETS = [
     // routes with their stops are ~4 kB of data in the lazy BusRoute chunk: CI
     // measured 2200.6. `shell entry` did not move (502.5 kB raw / 157.4 gzip).
     // The same ~2% of room the last raise left, not whatever happens to fit.
+    //
+    // Raised from 2245 for Shohoj Quest (#981), the largest single addition
+    // this number has seen, and none of it is on a page that is not the game.
+    // A local build measured 4015.9, up 1,817 kB:
+    //   zoneGame     1,341 kB   Phaser 4. One file, not tree-shakeable. Fetched
+    //                           when /quest opens.
+    //   CodeEditor     354 kB   CodeMirror 6 and its Java grammar. Fetched with
+    //                           the first quest that has code to write.
+    //   QuestRoute      73 kB   the screen, the grader and the six quests.
+    //   the rest        49 kB   the Bridge's map, the Java worker and its engine.
+    // The Java runtime itself (~14 MB) is CheerpJ's, from CheerpJ's CDN, and is
+    // in no file here. `shell entry` did not move: 435.7 kB locally before and
+    // after, which is the check that the game costs nothing until it is opened.
+    // Phaser is now a third of this total, as the campus map was before it. If
+    // this tightens again, a custom Phaser build is the place to look: the game
+    // uses tilemaps, sprites, tweens and input, and ships physics, particles,
+    // sound and more that it never calls.
     measured: { raw: 2123 },
-    budget: { raw: 2245 },
+    budget: { raw: 4100 },
   },
 ];
 
