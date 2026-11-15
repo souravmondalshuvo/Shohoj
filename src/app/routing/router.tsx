@@ -116,6 +116,10 @@ export const router = createBrowserRouter(
         { path: 'papers', lazy: campusRoute('papers', () => import('../routes/PapersRoute')) },
         // Study Group Finder (#443) — auth-gated board over Firestore.
         { path: 'groups', lazy: campusRoute('groups', () => import('../routes/GroupsRoute')) },
+        // Shohoj Quest (#981): the CSE110 learning game. Reached by its address
+        // only — it has no tab while it is a vertical slice under test. Phaser,
+        // the editor and the Java engine each load on demand inside the route.
+        { path: 'quest', lazy: campusRoute('quest', () => import('../routes/QuestRoute')) },
         // Admin is the standalone build3.py admin.html page (linked from the nav as
         // a full-page link), not a shell route — no in-shell port yet. The static
         // page is served at <base>/admin/; the 404 SPA fallback must exclude it.
