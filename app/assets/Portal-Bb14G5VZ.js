@@ -1,0 +1,1 @@
+import{t as e}from"./react-dom-g7hNCJoM.js";var t=e();function n({children:e}){return(0,t.createPortal)(e,document.body)}export{n as t};
