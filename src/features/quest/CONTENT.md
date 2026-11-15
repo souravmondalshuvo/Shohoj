@@ -145,10 +145,20 @@ A locked zone needs only `id`, `order`, `name`, `tagline`, `topics` and
 npm run test:one quest
 ```
 
-This validates every zone, checks each quest has a reference solution that gets
-past its rules, and runs the grader's own tests. It does not run Java. Running
-each reference solution through the real Java engine is a separate check that
-arrives with the runner.
+Validates every zone, checks each quest has a reference solution that gets past
+its rules, and runs the grader's and engine's own tests. No Java runs.
+
+```bash
+npm run quest:check
+```
+
+Runs every reference solution through the real Java engine in a headless
+browser, and checks that no code quest is already solved by its starter. It
+downloads about 14 MB from CheerpJ's CDN, so it is not part of CI: run it after
+writing or changing quests. Add a word to check only matching quests, for
+example `npm run quest:check -- bridge-the-toll`.
+
+When you add a zone's solutions file, spread it into `content/solutions.ts`.
 
 Grading happens in the student's browser. Treat progress as self-study data:
 do not attach anything of value to it.
