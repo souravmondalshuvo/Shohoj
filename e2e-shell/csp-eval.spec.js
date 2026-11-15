@@ -13,7 +13,11 @@
 
 import { expect, test } from '../e2e-support/authFixture.js';
 
-for (const path of ['/', '/campus']) {
+// '/quest' is here for Phaser, which the route fetches as it mounts: its build
+// carries a `new Function('return this')` fallback for finding the global
+// object, reached only where `globalThis` is missing. Its heading is in the
+// page before the game is, so this also waits for the canvas.
+for (const path of ['/', '/campus', '/quest']) {
   test(`${path} loads without an eval CSP violation`, async ({ page }) => {
     await page.addInitScript(() => {
       window.__evalViolations = [];
@@ -28,6 +32,7 @@ for (const path of ['/', '/campus']) {
     // The route has mounted, so the bundle (and every module-level schema in
     // it) has evaluated — the point where the probe used to fire.
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+    if (path === '/quest') await expect(page.locator('.quest-stage canvas')).toBeVisible();
 
     expect(await page.evaluate(() => window.__evalViolations)).toEqual([]);
   });
