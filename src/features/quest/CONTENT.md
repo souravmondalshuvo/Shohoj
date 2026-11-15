@@ -135,9 +135,72 @@ already pass its own rules.
    stub.
 3. Set `status: 'open'`, and give it a `map` key and a `giver`.
 4. Open with a `predict` quest, and mark one quest `boss: true`.
+5. Draw its map (below), save it as `assets/maps/<map>.json`, and add one line
+   for it to `assets/maps/index.ts`.
 
 A locked zone needs only `id`, `order`, `name`, `tagline`, `topics` and
-`status: 'locked'`. It is drawn on the world map and cannot be entered.
+`status: 'locked'`. It is listed in the quest log and cannot be entered.
+
+The game opens the first zone whose status is `open`. Walking from one zone to
+the next is not built yet: with two open zones, the second is unreachable.
+
+## Draw a zone's map
+
+A map is drawn in [Tiled](https://www.mapeditor.org/) and exported as JSON. The
+game reads meaning from layer names and marker names, so a map needs no code.
+
+Set the map up like this:
+
+- Orthogonal, 16 by 16 pixel tiles, not infinite.
+- One tileset: `assets/roguelikeSheet_transparent.png`, tile size 16, margin 0,
+  spacing 1. Press **Embed in Map** on the Tilesets panel, or the export will
+  not carry it.
+- Tile Layer Format: CSV. Export as JSON, uncompressed.
+
+Tile layers are drawn in the order they are listed. Their names say what they
+are for; only the start of the name matters, so `built` and `built rails` are
+both built layers.
+
+| Layer name starts with | What it does |
+| --- | --- |
+| `blocked` | Never drawn. Any tile on it marks a square nobody can walk on. Use any tile. |
+| `built` | Drawn faintly inside a gate that is shut, and fully once it opens: what a quest builds. |
+| `barrier` | Drawn only inside a gate that is shut: what a quest removes. |
+| `above` | Drawn over the characters: treetops, a lintel. |
+| anything else | Always drawn, under the characters. |
+
+Add one object layer named `markers`:
+
+| Marker name | Shape | What it is |
+| --- | --- | --- |
+| `spawn` | point | Where a new player starts. |
+| `giver` | point | Where the quest-giver stands. Nobody walks through that square. |
+| `exit` | rectangle | Stepping in finishes the zone. |
+| `gate` | rectangle | Squares that are shut until a quest is solved. Give it a custom property `quest` (string) holding the quest's id. |
+
+A gate is how solving a quest changes the place. Its squares cannot be walked
+on until its quest is solved, and walking up to one opens that quest. A quest
+can have several gates, and a quest with no gate is still offered by the
+quest-giver and the quest log. The boss quest needs a gate between the player
+and the exit.
+
+Draw the map as it looks when everything is solved, then lay the gates over
+the parts that have to be earned.
+
+`npm run test:one questWorld` reads every open zone's map and fails, saying
+why, if a gate names a quest that does not exist, if a new player cannot reach
+the quest-giver, if the exit cannot be reached with every quest solved, or if
+it can be reached without the boss.
+
+The Bridge's map is drawn by `scripts/quest_bridge_map.mjs` instead of by
+hand, so that its spans line up with its quest ids. Re-run the script after
+changing it; the tests fail if the committed map is stale. Opening
+`assets/maps/bridge.json` in Tiled shows how the layers and markers fit
+together.
+
+Art is Kenney's "Roguelike/RPG Pack" and "Roguelike Characters", both CC0. To
+draw the quest-giver or the hero from a different tile, or to change what the
+hero board is drawn with, edit `assets/sprites.ts`.
 
 ## Check your work
 
