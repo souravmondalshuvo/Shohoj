@@ -62,6 +62,7 @@ const BRACU = {
         'playground',
         'planner',
         'profile',
+        'quest',
         'reviews',
         'rooms',
         'routine',
