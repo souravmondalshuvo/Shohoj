@@ -1,0 +1,720 @@
+/* src/features/quest/ui/quest.css
+ *
+ * Shohoj Quest (#981). Imported by the quest screen, so it ships in the
+ * route's own stylesheet and adds nothing to the shell's.
+ *
+ * Every class starts `quest-`. Colours come from the site's theme variables
+ * (css/style.css) so the game follows light and dark; the few of its own are
+ * declared on .quest-root.
+ */
+
+html.quest-open,
+html.quest-open body {
+  overflow: hidden;
+}
+
+.quest-root {
+  --quest-code-bg: #0d1611;
+  --quest-code-fg: #e3ece5;
+  --quest-code-keyword: #ff9d6c;
+  --quest-code-type: #7fd4c8;
+  --quest-code-string: #b9e07a;
+  --quest-code-number: #f1c40f;
+  --quest-code-comment: #7d9484;
+  --quest-code-call: #8fbcff;
+  --quest-code-active: rgba(255, 255, 255, 0.05);
+  --quest-code-selection: rgba(91, 157, 255, 0.35);
+  --quest-code-error: rgba(231, 76, 60, 0.28);
+  --quest-panel-bg: #0b1410;
+  --quest-bad: #ff8a7a;
+
+  position: fixed;
+  inset: 0 0 auto 0;
+  /* Follows the visible viewport, so a phone keyboard does not cover Run. */
+  height: var(--quest-height, 100dvh);
+  /* Over the shell's navigation, under its modals (9999). */
+  z-index: 9995;
+  display: flex;
+  flex-direction: column;
+  background: #5ec3d3;
+  color: var(--text, #e8f0ea);
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+[data-theme='light'] .quest-root {
+  --quest-code-bg: #fbfdfb;
+  --quest-code-fg: #10241a;
+  --quest-code-keyword: #b0481b;
+  --quest-code-type: #0f6f66;
+  --quest-code-string: #3d6b12;
+  --quest-code-number: #8a5a00;
+  --quest-code-comment: #5f7a67;
+  --quest-code-call: #2b5c8f;
+  --quest-code-active: rgba(13, 41, 20, 0.05);
+  --quest-code-selection: rgba(43, 92, 143, 0.22);
+  --quest-code-error: rgba(200, 50, 40, 0.16);
+  --quest-panel-bg: #f2f8f4;
+  --quest-bad: #b3261e;
+}
+
+/* ── HUD ─────────────────────────────────────────────────────────────────── */
+
+.quest-hud {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  background: var(--quest-panel-bg);
+  border-bottom: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+}
+.quest-hud-back {
+  color: var(--text2, #8aab90);
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+  padding: 8px 4px;
+}
+.quest-hud-back:hover {
+  color: var(--text, #e8f0ea);
+}
+.quest-hud-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quest-hud-xp {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-amber, #f1c40f);
+  white-space: nowrap;
+}
+
+/* ── The zone ────────────────────────────────────────────────────────────── */
+
+.quest-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+.quest-stage canvas {
+  display: block;
+}
+.quest-stage-note {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: #0b2a30;
+  font-weight: 500;
+}
+.quest-tip {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%);
+  z-index: 1;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(8, 20, 14, 0.82);
+  color: #e8f0ea;
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+.quest-credit {
+  position: absolute;
+  right: 8px;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  z-index: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(8, 20, 14, 0.7);
+  color: #cfe0d4;
+  font-size: 11px;
+}
+.quest-credit a {
+  color: inherit;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.quest-button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--chip-border, rgba(255, 255, 255, 0.1));
+  background: var(--chip-hover, rgba(255, 255, 255, 0.05));
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.quest-button:hover:not(:disabled) {
+  border-color: var(--ink-green, #2ecc71);
+}
+.quest-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.quest-button--primary {
+  background: #2ecc71;
+  border-color: #2ecc71;
+  color: #06240f;
+  font-weight: 700;
+}
+.quest-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-blue, #5b9dff);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.quest-root :focus-visible {
+  outline: 2px solid var(--ink-amber, #f1c40f);
+  outline-offset: 2px;
+}
+
+/* ── The quest-giver's words ─────────────────────────────────────────────── */
+
+.quest-dialog {
+  position: absolute;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 3;
+  width: min(560px, calc(100% - 24px));
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border, rgba(46, 204, 113, 0.18));
+  background: var(--quest-panel-bg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.quest-dialog-speaker {
+  margin: 0 0 4px;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-green, #2ecc71);
+}
+.quest-dialog-text {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.quest-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.quest-dialog-actions .quest-button {
+  white-space: normal;
+}
+
+/* ── The quest panel and the log ─────────────────────────────────────────── */
+
+.quest-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(4, 12, 8, 0.45);
+}
+.quest-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  height: 100%;
+  background: var(--quest-panel-bg);
+  border-left: 1px solid var(--border, rgba(46, 204, 113, 0.18));
+}
+.quest-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+}
+.quest-panel-head h2 {
+  margin: 2px 0 0;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 19px;
+  line-height: 1.25;
+}
+.quest-panel-head h2:focus {
+  outline: none;
+}
+.quest-kind {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text2, #8aab90);
+}
+.quest-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px 20px;
+}
+.quest-panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+}
+.quest-task {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.quest-story {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text2, #8aab90);
+}
+.quest-story summary {
+  cursor: pointer;
+}
+.quest-story p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+.quest-note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--badge-bg, rgba(255, 255, 255, 0.06));
+  font-size: 13px;
+}
+.quest-label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Code, wherever it is shown. */
+.quest-code,
+.quest-textarea,
+.quest-fill,
+.quest-io-text,
+.quest-problem-raw {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.quest-code {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+  background: var(--quest-code-bg);
+  color: var(--quest-code-fg);
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+.quest-code--lines {
+  padding: 10px 0;
+}
+.quest-code-line {
+  display: flex;
+  min-width: max-content;
+  padding-right: 12px;
+}
+.quest-code-number {
+  flex: none;
+  width: 34px;
+  padding-right: 10px;
+  text-align: right;
+  color: var(--quest-code-comment);
+  user-select: none;
+}
+.quest-code-line--blank {
+  background: var(--quest-code-active);
+}
+.quest-fill {
+  flex: 1;
+  min-width: 220px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ink-green, #2ecc71);
+  background: transparent;
+  color: inherit;
+}
+.quest-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--chip-border, rgba(255, 255, 255, 0.1));
+  background: var(--quest-code-bg);
+  color: var(--quest-code-fg);
+  resize: vertical;
+}
+
+/* The editor. */
+.quest-editor {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  border: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+  background: var(--quest-code-bg);
+  overflow: hidden;
+}
+.quest-editor-code {
+  height: clamp(220px, 44vh, 460px);
+}
+.quest-editor-code .cm-editor {
+  font-size: 14px;
+}
+.quest-keys {
+  display: none;
+  gap: 6px;
+  padding: 6px;
+  overflow-x: auto;
+  border-top: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+  -webkit-overflow-scrolling: touch;
+}
+.quest-key {
+  flex: none;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--chip-border, rgba(255, 255, 255, 0.1));
+  background: var(--chip-hover, rgba(255, 255, 255, 0.05));
+  color: var(--quest-code-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 16px;
+}
+.quest-key--wide {
+  padding: 0 10px;
+  font-size: 13px;
+}
+@media (pointer: coarse) {
+  .quest-keys {
+    display: flex;
+  }
+  /* Below 16px, iOS zooms the page when a field takes focus. */
+  .quest-editor-code .cm-editor,
+  .quest-textarea,
+  .quest-fill {
+    font-size: 16px;
+  }
+}
+
+/* The Java engine's status. */
+.quest-engine {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text2, #8aab90);
+}
+.quest-engine p {
+  margin: 0 0 6px;
+}
+.quest-engine--failed {
+  color: var(--quest-bad);
+}
+.quest-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  accent-color: #2ecc71;
+}
+
+/* What the grader said. */
+.quest-verdict {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--chip-border, rgba(255, 255, 255, 0.1));
+  font-size: 14px;
+  line-height: 1.5;
+}
+.quest-verdict p {
+  margin: 0 0 6px;
+}
+.quest-verdict--pass {
+  border-color: var(--ink-green, #2ecc71);
+}
+.quest-verdict--fail,
+.quest-verdict--engine {
+  border-color: var(--quest-bad);
+}
+.quest-verdict-title {
+  font-weight: 700;
+}
+.quest-plain-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.quest-problem,
+.quest-test {
+  padding: 8px 0;
+  border-top: 1px solid var(--hairline, rgba(255, 255, 255, 0.05));
+}
+.quest-test:empty {
+  display: none;
+}
+.quest-problem-where {
+  font-weight: 700;
+  color: var(--quest-bad);
+}
+.quest-problem-hint,
+.quest-test-hint {
+  color: var(--text, #e8f0ea);
+}
+.quest-problem-raw,
+.quest-io-text {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--quest-code-bg);
+  color: var(--quest-code-fg);
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: pre;
+}
+.quest-test-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.quest-test-name {
+  flex: 1;
+  font-weight: 600;
+}
+.quest-test-outcome {
+  font-size: 12px;
+  color: var(--text2, #8aab90);
+}
+.quest-test--pass .quest-test-mark {
+  color: var(--ink-green, #2ecc71);
+}
+.quest-test--fail .quest-test-mark,
+.quest-test--error .quest-test-mark,
+.quest-test--timeout .quest-test-mark {
+  color: var(--quest-bad);
+}
+.quest-io-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.quest-io-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2, #8aab90);
+}
+.quest-test-diff code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--quest-code-bg);
+  color: var(--quest-code-fg);
+}
+.quest-solved {
+  margin: 12px 0 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid var(--ink-green, #2ecc71);
+}
+.quest-solved p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.quest-solved-title {
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+.quest-hints {
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+.quest-hint {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+/* ── The hero's board ────────────────────────────────────────────────────── */
+
+/* Stays in view while the panel scrolls: the replay is the point of the quest,
+   and the verdict under the editor must not push it off the screen. */
+.quest-board-wrap {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  margin: 0 -16px 12px;
+  padding: 10px 16px 6px;
+  overflow-x: auto;
+  background: var(--quest-panel-bg);
+}
+.quest-board {
+  position: relative;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.quest-board-tile,
+.quest-board-hero {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+}
+.quest-board-hero {
+  left: 0;
+  top: 0;
+  transition: transform 200ms linear;
+}
+/* Which way the hero faces: a small arrow on that side. */
+.quest-board-hero::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  border: 5px solid transparent;
+  border-bottom-color: #f5c542;
+  filter: drop-shadow(0 0 1px #1c2a22);
+  transition: transform 150ms linear;
+}
+.quest-board-hero[data-facing='N']::after {
+  transform: translateY(-19px);
+}
+.quest-board-hero[data-facing='E']::after {
+  transform: translateX(19px) rotate(90deg);
+}
+.quest-board-hero[data-facing='S']::after {
+  transform: translateY(19px) rotate(180deg);
+}
+.quest-board-hero[data-facing='W']::after {
+  transform: translateX(-19px) rotate(270deg);
+}
+.quest-board-hero--bumped {
+  animation: quest-bump 240ms linear;
+}
+@keyframes quest-bump {
+  50% {
+    filter: brightness(1.8) saturate(0.4);
+  }
+}
+.quest-board-caption {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text2, #8aab90);
+}
+
+/* ── The quest log ───────────────────────────────────────────────────────── */
+
+.quest-log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.quest-log-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hairline, rgba(255, 255, 255, 0.05));
+}
+.quest-log-text {
+  flex: 1;
+  min-width: 0;
+}
+.quest-log-title {
+  margin: 0;
+  font-weight: 600;
+}
+.quest-log-meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text2, #8aab90);
+}
+.quest-log-item--locked .quest-log-title {
+  color: var(--text2, #8aab90);
+}
+.quest-log-state {
+  font-size: 12px;
+  color: var(--text2, #8aab90);
+}
+.quest-chip {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.quest-chip--boss {
+  background: rgba(241, 196, 15, 0.16);
+  color: var(--ink-amber, #f1c40f);
+}
+.quest-subhead {
+  margin: 22px 0 8px;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 15px;
+}
+.quest-zones {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.quest-zone {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  color: var(--text2, #8aab90);
+}
+.quest-zone--here {
+  color: var(--text, #e8f0ea);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-board-hero,
+  .quest-board-hero::after {
+    transition: none;
+  }
+  .quest-board-hero--bumped {
+    animation: none;
+  }
+}
