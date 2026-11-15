@@ -25,7 +25,7 @@ import {
   zoneCleared,
   zonesInOrder,
 } from '../src/features/quest/content/world.ts';
-import { bridgeSolutions } from '../src/features/quest/content/zones/bridge.solutions.ts';
+import { SOLUTIONS } from '../src/features/quest/content/solutions.ts';
 import { gradePredict } from '../src/features/quest/grader/grade.ts';
 import { planRun } from '../src/features/quest/grader/harness.ts';
 
@@ -259,7 +259,7 @@ test('every quest has a reference solution, and it gets past the quest rules', (
   const world = loadWorld();
   for (const zone of world.zones) {
     for (const quest of zone.quests) {
-      const solution = bridgeSolutions[quest.id];
+      const solution = SOLUTIONS[quest.id];
       assert.equal(typeof solution, 'string', `${quest.id} has no reference solution`);
       if (quest.type === 'predict') {
         assert.equal(gradePredict(quest, solution).passed, true, `${quest.id}: the solution is not the answer`);
