@@ -69,12 +69,19 @@ export interface QuestScreenProps {
    * none, quests that run code say they cannot; the rest of the game works.
    */
   readonly javaSandboxUrl?: string | null;
+  /**
+   * How the student leaves the game. The shell's route leaves it out, and the
+   * way back is a link to its home page. The legacy site, which shows the game
+   * from a tab and has no router, passes the function that closes the tab.
+   */
+  readonly onLeave?: () => void;
 }
 
 export function QuestScreen({
   store = sessionStore,
   drafts = sessionDrafts,
   javaSandboxUrl = null,
+  onLeave,
 }: QuestScreenProps) {
   // Before any quest can open: this runs as the screen mounts, and a quest is
   // opened by the student afterwards.
@@ -95,17 +102,19 @@ export function QuestScreen({
       </section>
     );
   }
-  return <ZoneScreen zone={zone} store={store} drafts={drafts} />;
+  return <ZoneScreen zone={zone} store={store} drafts={drafts} onLeave={onLeave} />;
 }
 
 function ZoneScreen({
   zone,
   store,
   drafts,
+  onLeave,
 }: {
   readonly zone: Zone;
   readonly store: ProgressStore;
   readonly drafts: DraftStore;
+  readonly onLeave: (() => void) | undefined;
 }) {
   const world = useMemo(() => loadWorld(), []);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -340,9 +349,20 @@ function ZoneScreen({
   return createPortal(
     <div className="quest-root" ref={rootRef}>
       <div className="quest-hud">
-        <Link to="/" className="quest-hud-back" aria-label="Leave the game, back to Shohoj">
-          ← Shohoj
-        </Link>
+        {onLeave ? (
+          <button
+            type="button"
+            className="quest-hud-back"
+            aria-label="Leave the game, back to Shohoj"
+            onClick={onLeave}
+          >
+            ← Shohoj
+          </button>
+        ) : (
+          <Link to="/" className="quest-hud-back" aria-label="Leave the game, back to Shohoj">
+            ← Shohoj
+          </Link>
+        )}
         <h1 className="quest-hud-title">{zone.name}</h1>
         <span className="quest-hud-xp" aria-label={`${xp} experience points`}>
           {xp} XP
