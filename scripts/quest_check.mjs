@@ -20,13 +20,16 @@
 // it after writing or changing quests, and after changing the CheerpJ version.
 //
 // It serves scripts/quest-check/ with Vite's dev server, so the page uses the
-// same worker and engine modules the game ships, and drives it with Playwright.
+// same engine modules the game ships, and drives it with Playwright. The engine
+// runs where it runs in production: in the Java sandbox, a frame on another
+// origin, served here from the Worker's own code (e2e-support/questSandbox.js).
 
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
 
+import { QUEST_SANDBOX_URL, serveQuestSandbox } from '../e2e-support/questSandbox.js';
 import { SOLUTIONS } from '../src/features/quest/content/solutions.ts';
 import { loadWorld } from '../src/features/quest/content/world.ts';
 
@@ -77,7 +80,8 @@ let failures = 0;
 try {
   const page = await browser.newPage();
   page.on('pageerror', (error) => console.error(`  page error: ${error.message}`));
-  await page.goto(`http://127.0.0.1:${port}/`);
+  await serveQuestSandbox(page, `http://127.0.0.1:${port}`);
+  await page.goto(`http://127.0.0.1:${port}/?sandbox=${encodeURIComponent(QUEST_SANDBOX_URL)}`);
   await page.waitForFunction(() => Boolean(globalThis.questCheck));
 
   const started = Date.now();
