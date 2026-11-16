@@ -16,6 +16,25 @@ import { useSyncExternalStore } from 'react';
 import type { QuestRunner } from '../runner/attempt.ts';
 import type { EngineStatus, JavaEngine } from '../runner/javaEngine.ts';
 
+declare global {
+  interface Window {
+    /**
+     * e2e seam: something to run a quest's plan in place of the Java engine.
+     * With it set, nothing is downloaded from CheerpJ's CDN and no worker is
+     * started. Everything around the engine still runs as it ships: the rules
+     * check, the harness, the grader and the screen.
+     *
+     * It is not a security boundary, and does not need to be one. Grading runs
+     * in the student's browser either way, which is why progress is self-study
+     * data that nothing may trust.
+     */
+    __shohojQuestRunner?: QuestRunner;
+  }
+}
+
+const standIn = (): QuestRunner | undefined =>
+  typeof window === 'undefined' ? undefined : window.__shohojQuestRunner;
+
 const IDLE: EngineStatus = { phase: 'idle' };
 
 /** The engine's status, and whether it has been ready before on this page. */
@@ -62,6 +81,7 @@ function create(): Promise<JavaEngine> {
 
 /** Begin loading the engine, if it is not loaded or loading already. */
 export function startJavaEngine(): void {
+  if (standIn()) return;
   create().then(
     // A failed load is reported through the status, which every screen shows.
     (created) => void created.load().catch(() => undefined),
@@ -77,6 +97,8 @@ export function stopJavaEngine(): void {
 /** Runs a quest's plan on the shared engine, loading it first if need be. */
 export const javaRunner: QuestRunner = {
   run: async (plan, hooks) => {
+    const substitute = standIn();
+    if (substitute) return substitute.run(plan, hooks);
     let created: JavaEngine;
     try {
       created = await create();
