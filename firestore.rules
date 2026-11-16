@@ -343,6 +343,47 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Shohoj Quest progress (#981) ─────────────────────────────────────
+    // A student owns their save at questProgress/{uid}: which quests they have
+    // solved, and where their hero stood. Any verified campus student may keep
+    // one; which campuses are offered the game is the client's decision, and
+    // nothing here depends on it.
+    //
+    // This is SELF-STUDY DATA. Quests are graded in the student's own browser,
+    // so a student can write any progress they like into their own document,
+    // and these rules do not try to stop them. Nothing may ever read this
+    // collection as proof of anything, or attach a reward to it.
+    //
+    // What the rules do hold: nobody reads or writes another student's save,
+    // and a save keeps its shape and stays small. `completed` maps a quest id
+    // to when it was solved; rules cannot look inside a map, so the client
+    // reads it defensively and the cap on its size is what bounds abuse.
+    function validQuestProgressPayload(d) {
+      return d.keys().hasOnly(['v','completed','zone','at','updatedAt'])
+        && d.keys().hasAll(['v','completed','zone','at','updatedAt'])
+        && d.v == 1
+        && d.completed is map
+        && d.completed.size() <= 500
+        && d.zone is string
+        && d.zone.size() <= 48
+        && d.zone.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && (d.at == null || (
+          d.at is map
+          && d.at.keys().hasOnly(['x','y'])
+          && d.at.keys().hasAll(['x','y'])
+          && d.at.x is int && d.at.x >= 0 && d.at.x <= 1023
+          && d.at.y is int && d.at.y >= 0 && d.at.y <= 1023
+        ))
+        && d.updatedAt == request.time;
+    }
+
+    match /questProgress/{uid} {
+      allow read, delete: if isVerifiedCampusUser() && request.auth.uid == uid;
+      allow create, update: if isVerifiedCampusUser()
+        && request.auth.uid == uid
+        && validQuestProgressPayload(request.resource.data);
+    }
+
     // ── Study group finder (Phase 2 community) ───────────────────────────
     // A BRACU student posts a study group for a course; other students browse
     // and join. Direct client writes, gated below (no Worker). The contact
