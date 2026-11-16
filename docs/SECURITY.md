@@ -147,7 +147,7 @@ The one exception is **CheerpJ**, the Java runtime behind Shohoj Quest. It is lo
 
 ## Shohoj Quest: student code and its engine
 
-Shohoj Quest (`/quest` on the shell) compiles and runs Java a student types, with CheerpJ, entirely in the browser. Nothing a student types is sent to a server.
+Shohoj Quest (the Quest tab on the main site, and `/quest` on the shell) compiles and runs Java a student types, with CheerpJ, entirely in the browser. Nothing a student types is sent to a server.
 
 **The engine does not run on the site's origin.** CheerpJ is third-party code that cannot be integrity-checked, so it is treated as untrusted. It runs in a hidden frame served by the Cloudflare Worker (`worker/questSandbox.js`, at `/quest-sandbox/`), which is a different origin from the site, and inside that frame in a Web Worker. Three things hold it:
 
@@ -157,7 +157,9 @@ Shohoj Quest (`/quest` on the shell) compiles and runs Java a student types, wit
 
 The game gives the frame source text and gets text back over a `MessagePort`. It accepts two messages from the frame, "ready" and "error", and only from that frame's window on that origin (`src/features/quest/runner/sandboxWorker.ts`). The sandbox page may be embedded only by the origins in the Worker's `ALLOWED_ORIGINS` (`frame-ancestors`). There is no fallback: with no sandbox address configured, quests that run code say so, and the engine is never started on the site's origin instead.
 
-**What was loosened to do this:** one origin was added to one directive of the shell's CSP. `frame-src` in `app/index.html` now lists the Worker's origin, which was already in `connect-src`. `script-src` and `worker-src` do not list it, and CheerpJ's CDN appears nowhere in the site's policy.
+**What was loosened to do this:** one origin was added to one directive of each page that shows the game. `frame-src` in `app/index.html` (the shell) and, since the game moved onto the main site, in the root `index.html` (the legacy page, built into `shohoj.html`) lists the Worker's origin, which was already in both pages' `connect-src`. `script-src` and `worker-src` do not list it, and CheerpJ's CDN appears nowhere in the site's policy.
+
+**On the main site** the game is a module built by Vite (`quest/embed.js`, from `quest/embed.tsx`) that the Quest tab imports from the site's own origin when it is opened (`js/ui/questTab.js`); it is first-party code like the Campus Map's, under `script-src 'self'`. It does not load a second Firebase: the page hands it one function, `window._shohoj_questProgressTransact` in `js/auth/firebase.js`, which reads and writes the signed-in student's own `questProgress/{uid}` in a transaction and refuses any other uid. The rules are what enforce that; the check is there so a game left open across a change of account cannot write to the wrong one. Signing out takes the game down before anything more is saved.
 
 **History, because earlier documents say otherwise.** Until 2026-11-16 the engine ran in a Web Worker on the site's own origin, and was described as contained because it was handed only source text. It was not: a same-origin worker can open the site's IndexedDB, and the page's `<meta>` CSP does not govern a worker loaded from a URL, so a compromised CheerpJ CDN could have taken over the account of any student who ran code. An opaque-origin sandbox (`<iframe sandbox="allow-scripts">`) was tried first and does not work, because IndexedDB is denied there and CheerpJ needs it for the class files `javac` writes.
 
@@ -168,7 +170,7 @@ The game gives the frame source text and gets text back over a `MessagePort`. It
 - It needs storage in an embedded cross-site page. Browsers partition that storage rather than deny it, and it works in Chromium with default settings, which is what was tested. A browser set to block it outright gets a message saying so instead of an engine. Safari, Firefox and Chrome with third-party cookies blocked have not been tested.
 - Phaser, which draws the map on the page itself, is first-party code from npm and is configured to load images as plain `<img>` elements, because its default reads them through `blob:` URLs, which `img-src` forbids.
 
-`e2e-shell/quest-sandbox.spec.js` holds all of this in a real browser under the production CSP: the frame's origin and sandbox attribute, that the page starts no worker of its own, that the page's storage is out of reach from inside, and that nothing runs when there is no sandbox. `tests/questSandbox.test.js` pins the policies and the message checks.
+`e2e-pages/legacy-quest-tab.spec.js` covers the main site's mount: the tab, the way back, the cloud save going through the page's own bridge, and sign-out taking the game down. `e2e-shell/quest-sandbox.spec.js` holds all of this in a real browser under the production CSP: the frame's origin and sandbox attribute, that the page starts no worker of its own, that the page's storage is out of reach from inside, and that nothing runs when there is no sandbox. `tests/questSandbox.test.js` pins the policies and the message checks.
 
 **A runaway program cannot hold the page.** Student code runs off the main thread, with a time limit per test. At the limit the game removes the frame, which destroys the worker inside it and cannot be refused by the code running there, and starts a fresh one. An output flood is cut off by the harness before it reaches the page.
 
