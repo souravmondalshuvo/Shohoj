@@ -92,6 +92,7 @@ import { renderRoutineTab } from './ui/routineTab.js';
 import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { renderCampusMapTab } from './ui/campusMapTab.js';
+import { closeQuestTab, renderQuestTab } from './ui/questTab.js';
 import { renderGroupsTab } from './ui/groupsTab.js';
 import { renderTasksTab } from './ui/tasksTab.js';
 import { renderTasksDigest } from './ui/tasksDigest.js';
@@ -722,6 +723,7 @@ const TAB_MAP = {
   campus:     'tabCampus',
   groups:     'tabGroups',
   tasks:      'tabTasks',
+  quest:      'tabQuest',
 };
 
 let _activeCalcTab = 'calculator';
@@ -858,7 +860,10 @@ function switchCalcTab(tabId) {
   // nav's Tasks link — comes through here, so this is the one place the campus
   // check has to hold.
   if (!campusAllowsTab(getActiveCampus(), tabId)) tabId = 'calculator';
+  const previousTab = _activeCalcTab;
   _activeCalcTab = tabId;
+  // Shohoj Quest covers the whole window; any other tab takes it down.
+  if (tabId !== 'quest') closeQuestTab();
 
   // Update tab buttons — single tabs and menu items both carry data-tab.
   document.querySelectorAll('#calcTabs [data-tab]').forEach(btn => {
@@ -930,6 +935,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'tasks') {
     renderTasksTab();
   }
+  if (tabId === 'quest') {
+    renderQuestTab(previousTab);
+  }
   if (tabId === 'calculator') {
     renderTasksDigest();
   }
@@ -960,11 +968,14 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/campus'))    return 'campus';
   if (hash.startsWith('#calculator/groups'))    return 'groups';
   if (hash.startsWith('#calculator/tasks'))     return 'tasks';
+  if (hash.startsWith('#calculator/quest'))     return 'quest';
 
   // Then check sessionStorage
   try {
     const saved = sessionStorage.getItem('shohoj_active_tab');
-    if (saved && TAB_MAP[saved]) return saved;
+    // Not the game: it covers the whole window, so it opens only when asked
+    // for, by its tab or a #calculator/quest link, never on a plain visit.
+    if (saved && TAB_MAP[saved] && saved !== 'quest') return saved;
   } catch(e) {}
 
   return 'calculator';
