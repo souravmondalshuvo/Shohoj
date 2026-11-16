@@ -27,6 +27,8 @@ html.quest-open body {
   --quest-code-error: rgba(231, 76, 60, 0.28);
   --quest-panel-bg: #0b1410;
   --quest-bad: #ff8a7a;
+  /* How wide code's leading indent is drawn: 1 is as typed. */
+  --quest-lead-scale: 1;
 
   position: fixed;
   inset: 0 0 auto 0;
@@ -192,6 +194,17 @@ html.quest-open body {
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+.quest-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .quest-root :focus-visible {
   outline: 2px solid var(--ink-amber, #f1c40f);
@@ -386,27 +399,40 @@ html.quest-open body {
   resize: vertical;
 }
 
-/* The editor. */
+/* The editor. As tall as its code: the panel scrolls, the editor does not. */
 .quest-editor {
-  display: flex;
-  flex-direction: column;
   border-radius: 10px;
   border: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
   background: var(--quest-code-bg);
-  overflow: hidden;
-}
-.quest-editor-code {
-  height: clamp(220px, 44vh, 460px);
 }
 .quest-editor-code .cm-editor {
+  border-radius: 10px;
   font-size: 14px;
 }
+/* A wrapped line hangs under its own first character. `--quest-lead` is the
+   line's indent in columns, set per line by CodeEditor.tsx; 6px is the left
+   padding CodeMirror gives every line. */
+.quest-editor-code .cm-line.quest-cm-indented {
+  text-indent: calc(var(--quest-lead) * var(--quest-lead-scale) * -1ch);
+  padding-left: calc(6px + var(--quest-lead) * var(--quest-lead-scale) * 1ch);
+}
+/* The indent's own spaces, squeezed by the same scale. */
+.quest-editor-code .quest-cm-lead {
+  letter-spacing: calc((var(--quest-lead-scale) - 1) * 1ch);
+}
+/* Stays at the bottom of the panel while the editor is in view, so the keys
+   are above the phone keyboard however long the code is. */
 .quest-keys {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: none;
   gap: 6px;
   padding: 6px;
   overflow-x: auto;
   border-top: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+  border-radius: 0 0 10px 10px;
+  background: var(--quest-code-bg);
   -webkit-overflow-scrolling: touch;
 }
 .quest-key {
@@ -425,6 +451,11 @@ html.quest-open body {
   font-size: 13px;
 }
 @media (pointer: coarse) {
+  /* Half-width indents on a phone: the nesting still reads, and a line of
+     Java three levels deep keeps most of the screen for its code. */
+  .quest-root {
+    --quest-lead-scale: 0.5;
+  }
   .quest-keys {
     display: flex;
   }
@@ -508,6 +539,12 @@ html.quest-open body {
   font-size: 13px;
   overflow-x: auto;
   white-space: pre;
+}
+/* The compiler's own words wrap: nothing in them lines up. */
+.quest-problem-raw {
+  overflow-x: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .quest-test-head {
   display: flex;
