@@ -4057,6 +4057,54 @@ async function makeServiceAccountJson() {
     assert(!('capabilities' in body), 'liveness must not take on readiness semantics');
   });
 
+  console.log('\nShohoj Quest\'s Java sandbox (GET /quest-sandbox/):');
+
+  // The sandbox exists so that third-party engine code runs on THIS origin and
+  // not the site's. What is checked here is that the Worker really serves it,
+  // to a frame's navigation (which carries no Origin header), with the policies
+  // that hold the engine. The files themselves are tested in
+  // tests/questSandbox.test.js.
+  await test('sandbox: the page is served to a plain navigation, embeddable only by allowed sites', async () => {
+    const res = await worker.fetch(new Request('https://worker.test/quest-sandbox/'), ENV, {});
+    assertEq(res.status, 200);
+    assert(res.headers.get('content-type').startsWith('text/html'), 'html');
+    assertEq(
+      res.headers.get('content-security-policy'),
+      "default-src 'none'; script-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors https://shohoj.example http://localhost:5173",
+    );
+    assert(res.headers.has('X-Request-Id'), 'carries a request id like every response');
+    assert((await res.text()).includes('<script src="frame.js"></script>'), 'loads its script by path, not inline');
+  });
+
+  await test('sandbox: the engine\'s worker is served with a policy that reaches only CheerpJ', async () => {
+    const res = await worker.fetch(new Request('https://worker.test/quest-sandbox/worker.js'), ENV, {});
+    assertEq(res.status, 200);
+    assertEq(
+      res.headers.get('content-security-policy'),
+      "default-src 'none'; script-src 'self' https://cjrtnc.leaningtech.com 'unsafe-eval' 'wasm-unsafe-eval'; connect-src https://cjrtnc.leaningtech.com",
+    );
+    assertEq(res.headers.get('x-content-type-options'), 'nosniff');
+  });
+
+  await test('sandbox: it is static and read-only, and grants no cross-origin reads', async () => {
+    const post = await worker.fetch(new Request('https://worker.test/quest-sandbox/', { method: 'POST' }), ENV, {});
+    assertEq(post.status, 405);
+    const missing = await worker.fetch(new Request('https://worker.test/quest-sandbox/secrets.js'), ENV, {});
+    assertEq(missing.status, 404);
+    // Even asked from an allowed site, the files are not readable by script
+    // there: they are for embedding and for the sandbox's own origin.
+    const res = await worker.fetch(req('GET', '/quest-sandbox/frame.js'), ENV, {});
+    assertEq(res.status, 200);
+    assertEq(res.headers.get('access-control-allow-origin'), null);
+  });
+
+  await test('sandbox: its path shadows nothing else', async () => {
+    const health = await worker.fetch(req('GET', '/health'), ENV, {});
+    assertEq(health.status, 200);
+    const near = await worker.fetch(req('GET', '/quest-sandboxes'), ENV, {});
+    assertEq(near.status, 404);
+  });
+
   console.log('\nCourse codes are checked against the caller\'s campus:');
 
   // CSE110 is BRACU's first programming course and CSE115 is NSU's; neither
