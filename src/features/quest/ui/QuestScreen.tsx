@@ -24,10 +24,13 @@ import { ZONE_MAPS } from '../assets/maps/index.ts';
 import type { Quest, Zone } from '../content/schema.ts';
 import { findQuest, loadWorld, questState, totalXp, zonesInOrder } from '../content/world.ts';
 import type { ZoneEvent, ZoneGame, ZoneState } from '../game/zoneGame.ts';
+import { memoryDraftStore, type DraftStore } from '../progress/localProgress.ts';
 import {
   completedSet,
   emptyProgress,
+  inZone,
   memoryProgressStore,
+  mergeProgress,
   withPosition,
   withSolved,
   type Progress,
@@ -51,16 +54,19 @@ type View =
 
 type Stage = 'loading' | 'ready' | 'failed';
 
-// Kept for as long as the page is open, so leaving the game for another tab of
-// Shohoj and coming back does not start it over.
+// The defaults keep everything for as long as the page is open and no longer.
+// The route passes stores that outlast the visit (useQuestStores).
 const sessionStore = memoryProgressStore();
+const sessionDrafts = memoryDraftStore();
 
 export interface QuestScreenProps {
-  /** Where progress is kept. Defaults to this visit only. */
+  /** Where progress is kept. */
   readonly store?: ProgressStore;
+  /** Where code a student has typed but not finished is kept. */
+  readonly drafts?: DraftStore;
 }
 
-export function QuestScreen({ store = sessionStore }: QuestScreenProps) {
+export function QuestScreen({ store = sessionStore, drafts = sessionDrafts }: QuestScreenProps) {
   const world = useMemo(() => loadWorld(), []);
   const zone = useMemo(
     () => zonesInOrder(world).find((place) => place.status === 'open') ?? null,
@@ -74,10 +80,18 @@ export function QuestScreen({ store = sessionStore }: QuestScreenProps) {
       </section>
     );
   }
-  return <ZoneScreen zone={zone} store={store} />;
+  return <ZoneScreen zone={zone} store={store} drafts={drafts} />;
 }
 
-function ZoneScreen({ zone, store }: { readonly zone: Zone; readonly store: ProgressStore }) {
+function ZoneScreen({
+  zone,
+  store,
+  drafts,
+}: {
+  readonly zone: Zone;
+  readonly store: ProgressStore;
+  readonly drafts: DraftStore;
+}) {
   const world = useMemo(() => loadWorld(), []);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [view, setView] = useState<View>({ kind: 'world' });
@@ -86,28 +100,52 @@ function ZoneScreen({ zone, store }: { readonly zone: Zone; readonly store: Prog
 
   const stageRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<ZoneGame | null>(null);
-  const drafts = useRef(new Map<string, string>());
 
   // ── Progress ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     let current = true;
-    store.load().then(
-      (saved) => {
-        if (current) setProgress(saved && saved.zone === zone.id ? saved : emptyProgress(zone.id));
-      },
-      () => {
-        if (current) setProgress(emptyProgress(zone.id));
-      },
-    );
+    // Both results below are applied only if nothing is held yet. The cloud's
+    // copy can arrive before the device's "nothing saved here" is applied, and
+    // an empty start put in its place would throw those quests away.
+    const begin = (saved: Progress | null) => {
+      if (!current) return;
+      // Solved quests belong to the whole world; only where the hero stood
+      // belongs to a zone.
+      setProgress((held) => held ?? (saved ? inZone(saved, zone.id) : emptyProgress(zone.id)));
+    };
+    store.load().then(begin, () => begin(null));
+    // Quests solved on another device arrive after the game has opened. They
+    // are merged into what is on screen, never put in its place: the student
+    // may have solved something in the meantime.
+    const unsubscribe = store.onRemote?.((remote) => {
+      if (!current) return;
+      setProgress((held) => (held ? mergeProgress(held, remote) : inZone(remote, zone.id)));
+    });
     return () => {
       current = false;
+      unsubscribe?.();
     };
   }, [store, zone.id]);
 
   useEffect(() => {
     if (progress) store.save(progress);
   }, [progress, store]);
+
+  // A phone drops a background tab without warning, so whatever is waiting to
+  // be written goes when the page is hidden, not when it is closed.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState !== 'hidden') return;
+      store.flush?.();
+      drafts.flush();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      drafts.flush();
+    };
+  }, [store, drafts]);
 
   const completed = useMemo(
     () => (progress ? completedSet(progress) : new Set<string>()),
@@ -420,8 +458,8 @@ function ZoneScreen({ zone, store }: { readonly zone: Zone; readonly store: Prog
             key={openQuest.id}
             quest={openQuest}
             alreadySolved={completed.has(openQuest.id)}
-            draft={drafts.current.get(openQuest.id)}
-            onDraft={(text) => drafts.current.set(openQuest.id, text)}
+            draft={drafts.get(openQuest.id)}
+            onDraft={(text) => drafts.set(openQuest.id, text)}
             onSolved={() =>
               setProgress((held) => (held ? withSolved(held, openQuest.id, Date.now()) : held))
             }
