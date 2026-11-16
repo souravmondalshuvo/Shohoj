@@ -137,6 +137,9 @@ MAIN_JS_FILES = [
     # Campus Map tab: the loader only. The map is campus/embed.js, built by
     # Vite and fetched when the tab is opened.
     'js/ui/campusMapTab.js',
+    # Quest tab (#981): the loader only. The game is quest/embed.js, built by
+    # Vite and fetched when the tab is opened.
+    'js/ui/questTab.js',
     'js/ui/seatsTab.js',
     'js/ui/groupsTab.js',
     # Shohoj Tasks, phase 1 (#767): the Worker client, the view model (a twin
