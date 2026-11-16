@@ -57,6 +57,7 @@ test('a DIU student gets the calculator, the playground, Routine and DIU\'s buse
     await expect(bus).toHaveJSProperty('hidden', false);
     await expect(bus).toHaveAttribute('href', 'bus/?campus=diu');
     await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
+    await expect(page.locator('#calcTabs [data-feature="quest"]')).toHaveJSProperty('hidden', true);
   }
   await expect(page.locator('#calculator')).toContainText("DIU's exact grading scale");
 
