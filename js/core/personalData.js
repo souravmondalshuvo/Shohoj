@@ -32,6 +32,8 @@ export const PERSONAL_LOCAL_KEYS = [
   'shohoj_seat_watch_v1',        // seat watchlist
   'shohoj_seat_alerts_enabled',  // seat-alert opt-in
   'shohoj_connect_profile_v1',   // their CONNECT profile snapshot
+  'shohoj_quest_progress_v1',    // Shohoj Quest: quests solved and where the hero stood
+  'shohoj_quest_drafts_v1',      // Shohoj Quest: code typed but not yet finished
 ];
 
 // The two routine keys are not a typo. The shell writes shohoj_routine_picks_v1
