@@ -31,7 +31,12 @@ function Block({ label, text }: { readonly label: string; readonly text: string 
   return (
     <div className="quest-io">
       <span className="quest-io-label">{label}</span>
-      <pre className="quest-io-text">{text === '' ? '(nothing)' : text}</pre>
+      {/* Output keeps its line breaks and scrolls sideways: wrapping a
+          pattern would hide the very thing a student is checking. A box that
+          scrolls has to be reachable by keyboard, hence the tab stop. */}
+      <pre className="quest-io-text" tabIndex={0} aria-label={label}>
+        {text === '' ? '(nothing)' : text}
+      </pre>
     </div>
   );
 }
