@@ -1,1 +1,0 @@
-import{ct as e}from"./index-BcnrY6B1.js";import{t}from"./jsx-runtime-Wy9s6hX0.js";var n=t();function r(){return(0,n.jsxs)(`section`,{className:`shell-page`,role:`alert`,children:[(0,n.jsx)(`h1`,{children:`Page not found`}),(0,n.jsx)(`p`,{children:`That page doesn’t exist.`}),(0,n.jsx)(e,{to:`/`,children:`Back to home`})]})}export{r as Component};
