@@ -39,7 +39,7 @@ import {
 import { parseZoneMap } from '../world/zoneMap.ts';
 import { QuestLog } from './QuestLog.tsx';
 import { QuestPanel } from './QuestPanel.tsx';
-import { stopJavaEngine } from './javaEngineStore.ts';
+import { configureJavaEngine, stopJavaEngine } from './javaEngineStore.ts';
 import './quest.css';
 
 type View =
@@ -64,9 +64,24 @@ export interface QuestScreenProps {
   readonly store?: ProgressStore;
   /** Where code a student has typed but not finished is kept. */
   readonly drafts?: DraftStore;
+  /**
+   * The page the Java engine runs in, on an origin other than this one. With
+   * none, quests that run code say they cannot; the rest of the game works.
+   */
+  readonly javaSandboxUrl?: string | null;
 }
 
-export function QuestScreen({ store = sessionStore, drafts = sessionDrafts }: QuestScreenProps) {
+export function QuestScreen({
+  store = sessionStore,
+  drafts = sessionDrafts,
+  javaSandboxUrl = null,
+}: QuestScreenProps) {
+  // Before any quest can open: this runs as the screen mounts, and a quest is
+  // opened by the student afterwards.
+  useEffect(() => {
+    configureJavaEngine(javaSandboxUrl);
+  }, [javaSandboxUrl]);
+
   const world = useMemo(() => loadWorld(), []);
   const zone = useMemo(
     () => zonesInOrder(world).find((place) => place.status === 'open') ?? null,
