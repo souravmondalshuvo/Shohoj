@@ -55,6 +55,8 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await expect(bus).toHaveAttribute('href', 'bus/?campus=nsu');
   await expect(page.locator('#calcTabs a[href^="campus/"]')).toHaveCount(0);
   await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
+  // Shohoj Quest follows BRACU's CSE110 syllabus.
+  await expect(page.locator('#calcTabs [data-feature="quest"]')).toHaveJSProperty('hidden', true);
 
   // The nav's Tasks link opens a tab NSU does not get.
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeHidden();
@@ -81,12 +83,14 @@ test('a BRACU student keeps every tab', async ({ page }) => {
     await expect(tab(page, id)).toHaveJSProperty('hidden', false);
   }
   for (const id of ['plan', 'courses', 'campus']) await expect(group(page, id)).toBeVisible();
-  await expect(page.locator('#calcTabs [data-feature]')).toHaveCount(2);
+  await expect(page.locator('#calcTabs [data-feature]')).toHaveCount(3);
   for (const link of await page.locator('#calcTabs [data-feature]').all()) {
     await expect(link).toHaveJSProperty('hidden', false);
   }
   // BRAC University's Bus link is the bare path it has always been.
   await expect(page.locator('#calcTabs [data-feature="bus"]')).toHaveAttribute('href', 'bus/');
+  // Shohoj Quest is a page on the shell, reached from the Courses menu.
+  await expect(page.locator('#calcTabs [data-feature="quest"]')).toHaveAttribute('href', 'app/quest');
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeVisible();
 
   await page.evaluate(() => window.switchCalcTab('routine'));
