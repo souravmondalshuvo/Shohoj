@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-c0HkLW+unnrONsbQCR/UNQujgAKUarg4P2RzkPz7nuc=' 'sha256-d7DzomBKLoDY+9TSNNevWlU6duiQ06A7EvDfX4nwDa8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-jYJH8G73VZL06mqd9v2hsZoPWZeUst9Ih7jUggig5AM=' 'sha256-d7DzomBKLoDY+9TSNNevWlU6duiQ06A7EvDfX4nwDa8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -9985,6 +9985,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   startAfter,
@@ -11777,6 +11778,27 @@ window._shohoj_syncSeatAlerts = async function(sections, enabled) {
     console.error('[Shohoj] Seat-alert sync failed:', e);
     return false;
   }
+};
+
+// Shohoj Quest's cloud save (#981): questProgress/{uid}, read and written in
+// one transaction. The game (quest/embed.js, mounted by js/ui/questTab.js)
+// decides what to write and passes `decide`; this only does the Firestore part,
+// so the game never loads a second Firebase. The twin of the shell's
+// src/platform/firebase/questProgressRepo.ts, and the same contract: `decide`
+// gets the document's data or `undefined`, returns `null` to leave it, and may
+// run more than once if the transaction retries. firestore.rules lets a student
+// touch only their own document; the uid check here only stops a game left
+// open across a change of account from writing to the wrong one.
+window._shohoj_questProgressTransact = async function(uid, decide) {
+  if (!db || !currentUser || currentUser.uid !== uid) {
+    throw new Error('Not signed in as this student.');
+  }
+  const ref = doc(db, 'questProgress', uid);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const next = decide(snapshot.exists() ? snapshot.data() : undefined);
+    if (next) transaction.set(ref, { ...next, updatedAt: serverTimestamp() });
+  });
 };
 
 // Lets the Seats tab tailor its copy: "you'll get emails" vs "sign in first".
