@@ -34,7 +34,8 @@ const tab = (page, id) => page.locator(`#calcTabs [data-tab="${id}"]`);
 const group = (page, id) => page.locator(`#calcTabs .calc-tab-group[data-group="${id}"]`);
 
 const NSU_TABS = ['calculator', 'planner', 'playground', 'routine', 'reviews', 'papers', 'freerooms', 'campus', 'groups'];
-const BRACU_ONLY_TABS = ['tasks', 'difficulty', 'seats'];
+// Quest follows BRACU's CSE110 syllabus.
+const BRACU_ONLY_TABS = ['tasks', 'difficulty', 'seats', 'quest'];
 
 test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await boot(page, 'student@northsouth.edu');
@@ -55,8 +56,6 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await expect(bus).toHaveAttribute('href', 'bus/?campus=nsu');
   await expect(page.locator('#calcTabs a[href^="campus/"]')).toHaveCount(0);
   await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
-  // Shohoj Quest follows BRACU's CSE110 syllabus.
-  await expect(page.locator('#calcTabs [data-feature="quest"]')).toHaveJSProperty('hidden', true);
 
   // The nav's Tasks link opens a tab NSU does not get.
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeHidden();
@@ -83,14 +82,14 @@ test('a BRACU student keeps every tab', async ({ page }) => {
     await expect(tab(page, id)).toHaveJSProperty('hidden', false);
   }
   for (const id of ['plan', 'courses', 'campus']) await expect(group(page, id)).toBeVisible();
-  await expect(page.locator('#calcTabs [data-feature]')).toHaveCount(3);
+  await expect(page.locator('#calcTabs [data-feature]')).toHaveCount(2);
   for (const link of await page.locator('#calcTabs [data-feature]').all()) {
     await expect(link).toHaveJSProperty('hidden', false);
   }
   // BRAC University's Bus link is the bare path it has always been.
   await expect(page.locator('#calcTabs [data-feature="bus"]')).toHaveAttribute('href', 'bus/');
-  // Shohoj Quest is a page on the shell, reached from the Courses menu.
-  await expect(page.locator('#calcTabs [data-feature="quest"]')).toHaveAttribute('href', 'app/quest');
+  // Shohoj Quest is played on this page, from a tab, not on the shell.
+  await expect(page.locator('#calcTabs a[href*="app/quest"]')).toHaveCount(0);
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeVisible();
 
   await page.evaluate(() => window.switchCalcTab('routine'));
