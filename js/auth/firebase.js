@@ -306,11 +306,24 @@ function stopRealtimeSync() {
 }
 
 // ── Account data deletion ─────────────────────────────────────────────────────
+// Shohoj Quest keeps its save in a document of its own, questProgress/{uid}
+// (#981). "Delete cloud data" promises all of a student's data, so the save
+// goes with it. Best effort, and after the main document: a save that cannot
+// be removed is logged, and must not leave the calculator's data undeleted.
+async function deleteQuestSave(uid) {
+  try {
+    await deleteDoc(doc(db, 'questProgress', uid));
+  } catch (e) {
+    console.error('[Shohoj] The Shohoj Quest save was not deleted:', e);
+  }
+}
+
 export async function deleteCloudDataSilent() {
   if (!currentUser) return true;
   try {
     stopRealtimeSync();
     await deleteDoc(userDocRef(currentUser.uid));
+    await deleteQuestSave(currentUser.uid);
     try { localStorage.removeItem(LAST_SYNC_KEY); } catch(e) {}
     return true;
   } catch (e) {
@@ -333,6 +346,7 @@ export async function deleteCloudData() {
   try {
     stopRealtimeSync();
     await deleteDoc(userDocRef(currentUser.uid));
+    await deleteQuestSave(currentUser.uid);
     startRealtimeSync(currentUser.uid);
     showToast('Cloud data deleted successfully', false, true);
     setSyncIndicator('synced');
