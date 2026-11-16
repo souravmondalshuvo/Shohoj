@@ -140,6 +140,8 @@ test('NSU is not offered screens built on BRACU data', () => {
     '/cafeteria',
     '/lost-found',
     '/difficulty',
+    // Shohoj Quest follows BRACU's CSE110 syllabus.
+    '/quest',
   ]) {
     assert.ok(!paths.includes(hidden), `${hidden} should be hidden at NSU`);
   }
