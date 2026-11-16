@@ -30,6 +30,7 @@ export const CALC_TAB_FEATURES = {
   freerooms:  'rooms',
   campus:     'campus',
   groups:     'groups',
+  quest:      'quest',
 };
 
 /**
