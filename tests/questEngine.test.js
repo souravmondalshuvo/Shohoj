@@ -153,15 +153,39 @@ test('a failed load is reported, and the next load starts again from nothing', a
   assert.ok(statuses.some((s) => s.phase === 'failed'));
 });
 
-test('a worker that errors while loading fails the load', async () => {
-  const { engine } = engineWith({
+test('a worker that errors while loading fails the load, and says why', async () => {
+  let broken = true;
+  const { engine, workers } = engineWith({
     init(worker) {
-      worker.onerror?.({ message: 'Script error.' });
+      if (!broken) return false;
+      worker.onerror?.({ message: 'The Java engine could not be reached.' });
       return true;
     },
   });
-  await assert.rejects(engine.load(), /The Java engine failed: Script error\./);
-  assert.equal(engine.getStatus().phase, 'idle');
+  await assert.rejects(engine.load(), /could not be reached/);
+  // Not idle: idle shows nothing, and the student would be left guessing.
+  assert.deepEqual(engine.getStatus(), {
+    phase: 'failed',
+    message: 'The Java engine could not be reached.',
+  });
+  assert.equal(workers[0].terminated, true);
+
+  // "Try again" is another load, on a fresh worker.
+  broken = false;
+  await engine.load();
+  assert.equal(engine.getStatus().phase, 'ready');
+  assert.equal(workers.length, 2);
+});
+
+test('a worker error with nothing to say still reports a failure', async () => {
+  const { engine } = engineWith({
+    init(worker) {
+      worker.onerror?.({});
+      return true;
+    },
+  });
+  await assert.rejects(engine.load());
+  assert.deepEqual(engine.getStatus(), { phase: 'failed', message: 'The Java engine failed.' });
 });
 
 // ── Running ─────────────────────────────────────────────────────────────────
