@@ -79,6 +79,16 @@ html.quest-open body {
   white-space: nowrap;
   padding: 8px 4px;
 }
+/* On the legacy site the way back is a button (it closes a tab), and it must
+   look like the shell's link. */
+button.quest-hud-back {
+  background: none;
+  border: 0;
+  margin: 0;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
 .quest-hud-back:hover {
   color: var(--text, #e8f0ea);
 }
