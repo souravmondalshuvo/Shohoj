@@ -157,7 +157,7 @@ export type FeatureId =
   | 'profile'
   /**
    * Shohoj Quest (#981), the CSE110 learning game. BRACU only: its quests
-   * follow BRACU's CSE110 syllabus, zone by zone. It has a route and no tab.
+   * follow BRACU's CSE110 syllabus, zone by zone. Courses menu on both builds.
    */
   | 'quest'
   | 'reviews'
