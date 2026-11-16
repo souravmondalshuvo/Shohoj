@@ -230,7 +230,8 @@ npm run test:e2e:quest-real
 Plays through real quests in the real page with the real Java engine: an
 endless loop is killed and the game carries on, a compiler error lands on its
 line, a reference solution passes. Also about 14 MB from CheerpJ's CDN and also
-not part of CI. Run it after changing anything under `runner/` or the harness.
+not part of CI. Run it after changing anything under `runner/`, the harness,
+or `worker/questSandbox.js`, which is the page the engine runs in.
 
 The browser tests that are part of CI (`e2e-shell/quest-*.spec.js`) never run
 Java. They put a stand-in where the engine goes and script its answers; the
