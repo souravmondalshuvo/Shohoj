@@ -223,5 +223,21 @@ example `npm run quest:check -- bridge-the-toll`.
 
 When you add a zone's solutions file, spread it into `content/solutions.ts`.
 
+## What is saved
+
+A student's save is the ids of the quests they solved, when, and where their
+hero stood. It is kept on their device and, when signed in, in Firestore at
+`questProgress/{uid}`. XP is not saved: it is recounted from the content every
+time.
+
+For an author that means:
+
+- Never rename a published quest's `id`. The save is keyed by it, so a renamed
+  quest reads as unsolved for everyone who solved it.
+- Never reuse a retired quest's `id` for a different quest. It would arrive
+  already solved.
+- Changing a quest's `xp`, its `requires` or its place in the list is safe.
+- Deleting a quest is safe. Its id stays in old saves and is ignored.
+
 Grading happens in the student's browser. Treat progress as self-study data:
 do not attach anything of value to it.
