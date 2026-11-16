@@ -209,7 +209,7 @@ export function QuestPanel({
   if (quest.type === 'predict') {
     answerBox = (
       <>
-        <pre className="quest-code" aria-label="The code to trace">
+        <pre className="quest-code" aria-label="The code to trace" tabIndex={0}>
           {quest.snippet}
         </pre>
         <label className="quest-label" htmlFor="quest-predict">
