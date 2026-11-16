@@ -18,11 +18,18 @@
 //     requires the CDN, so the runtime cannot be pinned or self-hosted.
 //   * The page's <meta> CSP does not apply inside a worker loaded from a URL;
 //     a worker takes its policy from its own response headers, and GitHub
-//     Pages sends none. That is why the page's CSP needed no loosening, and it
-//     is also why nothing sensitive may ever be sent here.
-//   * It is given source text and returns text. It never receives an auth
-//     token, has no Firestore or DOM access, and nothing it returns is trusted:
-//     grading is self-study feedback.
+//     Pages sends none. So the page's CSP needed no edit, and nothing governs
+//     what runs here or where it connects.
+//   * It is given source text and returns text. The page never sends it an
+//     auth token, and nothing it returns is trusted: grading is self-study
+//     feedback. That protects the page from student code.
+//   * It does NOT sandbox the engine. This worker has the site's origin. It
+//     has no DOM and no localStorage, but it can open the origin's IndexedDB,
+//     where Firebase Auth keeps the signed-in session. A compromised CheerpJ
+//     CDN is therefore a compromised account for any student who runs code.
+//     Isolating it needs a second origin; an opaque-origin sandboxed iframe
+//     does not work, because CheerpJ needs IndexedDB to compile. See
+//     docs/SECURITY.md, "Shohoj Quest".
 //
 // It must stay a classic worker with no imports. `importScripts`, which is how
 // CheerpJ is loaded, does not exist in a module worker, and a file with imports
