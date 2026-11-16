@@ -13,11 +13,16 @@
 // telling anyone the game works. The stand-in tests (quest-java.spec.js) prove
 // the page around the engine; this proves the engine, in the page.
 //
-// What it holds the game to, from the brief: an infinite loop in a student's
-// code is stopped and the game carries on, and none of it needs the site's
-// Content-Security-Policy loosened.
+// What it holds the game to: an infinite loop in a student's code is stopped
+// and the game carries on; the engine runs in the sandbox, on another origin,
+// and cannot see what the site has stored; and the page's
+// Content-Security-Policy is not violated.
+//
+// The sandbox is served from the Worker's own code (e2e-support/questSandbox.js)
+// at its production address, so this does not depend on what is deployed.
 
 import { expect, test } from '../e2e-support/authFixture.js';
+import { QUEST_SANDBOX_URL, serveQuestSandbox, useQuestSandbox } from '../e2e-support/questSandbox.js';
 import { SOLUTIONS } from '../src/features/quest/content/solutions.ts';
 import { bridge } from '../src/features/quest/content/zones/bridge.ts';
 
@@ -40,10 +45,16 @@ async function openFromLog(page, target) {
   await expect(page.locator('.cm-content')).toBeVisible({ timeout: 20_000 });
 }
 
-test('real Java: an endless loop is killed, the game carries on, and the CSP is untouched', async ({
+test('real Java: an endless loop is killed, the game carries on, and the engine is walled off', async ({
   page,
+  baseURL,
 }) => {
   test.setTimeout(300_000);
+  await serveQuestSandbox(page, new URL(baseURL).origin);
+  await useQuestSandbox(page);
+  // Workers the page itself starts. The engine's must not be one of them.
+  const pageWorkers = [];
+  page.on('worker', (worker) => pageWorkers.push(worker.url()));
   await page.addInitScript(() => {
     window.__violations = [];
     document.addEventListener('securitypolicyviolation', (event) => {
@@ -55,6 +66,23 @@ test('real Java: an endless loop is killed, the game carries on, and the CSP is 
 
   await page.goto('/quest', { waitUntil: 'load' });
   await expect(page.locator('.quest-tip')).toBeVisible({ timeout: 20_000 });
+
+  // Something the site keeps, of the kind the engine must not reach: a
+  // database on the page's own origin, as Firebase's session store is.
+  await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const open = indexedDB.open('firebaseLocalStorageDb', 1);
+        open.onupgradeneeded = () => open.result.createObjectStore('firebaseLocalStorage');
+        open.onsuccess = () => resolve();
+        open.onerror = () => reject(open.error);
+      }),
+  );
+  expect(await page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name))).toContain(
+    'firebaseLocalStorageDb',
+  );
+  // No frame yet: nothing has asked for Java.
+  await expect(page.locator('iframe[title="Java engine"]')).toHaveCount(0);
 
   // The first quest needs no Java. Solving it opens the ones that do.
   await page.getByRole('button', { name: /^Quests/ }).click();
@@ -75,6 +103,12 @@ test('real Java: an endless loop is killed, the game carries on, and the CSP is 
     timeout: 180_000,
   });
   console.log(`first verdict, engine download included: ${Date.now() - started} ms`);
+
+  // The kill removed the engine's frame, and a fresh one is loading or loaded.
+  const frame = page.locator('iframe[title="Java engine"]');
+  await expect(frame).toHaveCount(1);
+  await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin');
+  await expect(frame).toHaveAttribute('src', QUEST_SANDBOX_URL);
 
   // The page was never blocked: the panel still answers, and the next run works.
   await setCode(page, SOLUTIONS[SPAN.id]);
@@ -101,6 +135,20 @@ test('real Java: an endless loop is killed, the game carries on, and the CSP is 
   await setCode(page, SOLUTIONS[ROPES.id]);
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   await expect(page.getByText(`Solved. +${ROPES.xp} XP`)).toBeVisible({ timeout: 90_000 });
+
+  // The engine is on another origin, in the sandbox frame. From there the
+  // site's database does not exist, and the page's own origin is not its own.
+  const sandbox = page.frames().find((candidate) => candidate.url() === QUEST_SANDBOX_URL);
+  expect(sandbox, 'the Java sandbox frame').toBeTruthy();
+  const inside = await sandbox.evaluate(async () => ({
+    origin: location.origin,
+    databases: (await indexedDB.databases()).map((d) => d.name),
+  }));
+  expect(inside.origin).toBe(new URL(QUEST_SANDBOX_URL).origin);
+  expect(inside.origin).not.toBe(new URL(baseURL).origin);
+  expect(inside.databases).not.toContain('firebaseLocalStorageDb');
+  // And the page itself never started a worker for Java.
+  expect(pageWorkers.filter((url) => url.startsWith(new URL(baseURL).origin))).toEqual([]);
 
   expect(await page.evaluate(() => window.__violations)).toEqual([]);
   expect(pageErrors).toEqual([]);
