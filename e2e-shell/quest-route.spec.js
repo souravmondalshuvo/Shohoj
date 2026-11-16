@@ -92,7 +92,7 @@ test('a quest is solved from the quest log, and its XP is counted once', async (
 
   // Solving it again is practice: the total does not move.
   await page.getByRole('button', { name: 'Quests 1/6' }).click();
-  await page.getByRole('button', { name: `Practise ${first.title}` }).click();
+  await page.getByRole('button', { name: `practise ${first.title} again` }).click();
   await page.getByLabel('What it prints').fill(first.answer);
   await page.getByRole('button', { name: 'Check' }).click();
   await expect(page.getByText('Solved again.')).toBeVisible();
