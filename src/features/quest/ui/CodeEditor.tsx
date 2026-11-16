@@ -11,6 +11,11 @@
 // "Int" and "system.out" are how a phone helps. And the text is 16px on touch
 // screens, below which iOS zooms the page on focus.
 //
+// The editor is as tall as its code and wraps long lines, so it never scrolls
+// inside itself: the panel around it scrolls instead. A scrolling box inside a
+// scrolling page is hard to use with a thumb, and a keyboard cannot reach one
+// at all.
+//
 // Tab indents, as in every code editor. Escape then Tab leaves the editor, so
 // a keyboard user is not trapped; CodeMirror's default keymap provides that.
 
@@ -68,6 +73,42 @@ const errorLinesField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+const indentedLine = (columns: number) =>
+  Decoration.line({
+    class: 'quest-cm-indented',
+    attributes: { style: `--quest-lead:${columns}` },
+  });
+const leadingSpace = Decoration.mark({ class: 'quest-cm-lead' });
+
+/**
+ * Two things for narrow screens, both driven from quest.css:
+ *
+ *   * A wrapped line carries on under its own first character instead of back
+ *     at the margin, so the shape of the code survives. Each indented line is
+ *     told how wide its indent is, and hangs by that much.
+ *   * The indent itself is marked, so a phone can draw it at half width. Java
+ *     is three levels deep before a student has written anything, and twelve
+ *     full-width columns is a third of a phone's line.
+ */
+function indentMarks(state: EditorState): DecorationSet {
+  const marks = [];
+  for (let number = 1; number <= state.doc.lines; number += 1) {
+    const line = state.doc.line(number);
+    const lead = /^[ \t]*/.exec(line.text)?.[0] ?? '';
+    if (lead.length === 0) continue;
+    const columns = [...lead].reduce((n, c) => n + (c === '\t' ? 4 : 1), 0);
+    marks.push(indentedLine(Math.min(columns, 24)).range(line.from));
+    marks.push(leadingSpace.range(line.from, line.from + lead.length));
+  }
+  return Decoration.set(marks);
+}
+
+const indentField = StateField.define<DecorationSet>({
+  create: indentMarks,
+  update: (marks, transaction) => (transaction.docChanged ? indentMarks(transaction.state) : marks),
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 // Colours come from quest.css, so the editor follows the site's theme.
 const highlight = HighlightStyle.define([
   { tag: [tags.keyword, tags.modifier, tags.controlKeyword], color: 'var(--quest-code-keyword)' },
@@ -86,13 +127,15 @@ const highlight = HighlightStyle.define([
 ]);
 
 const theme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'var(--quest-code-bg)', color: 'var(--quest-code-fg)' },
+  '&': { backgroundColor: 'var(--quest-code-bg)', color: 'var(--quest-code-fg)' },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': {
+    overflow: 'visible',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
     lineHeight: '1.5',
   },
-  '.cm-content': { caretColor: 'var(--quest-code-fg)', padding: '8px 0' },
+  // Room to tap into, however short the code: the whole box takes the caret.
+  '.cm-content': { caretColor: 'var(--quest-code-fg)', padding: '8px 0', minHeight: '200px' },
   '.cm-gutters': {
     backgroundColor: 'transparent',
     color: 'var(--quest-code-comment)',
@@ -133,6 +176,8 @@ export default function CodeEditor({ value, onChange, errorLines, label }: CodeE
           closeBrackets(),
           indentUnit.of('    '),
           EditorState.tabSize.of(4),
+          EditorView.lineWrapping,
+          indentField,
           java(),
           syntaxHighlighting(highlight),
           errorLinesField,
