@@ -1,22 +1,20 @@
 // src/features/quest/runner/createEngine.ts
 //
-// The one place a real Java worker is created (#981). Kept apart from
-// javaEngine.ts because `new URL(..., import.meta.url)` is the bundler's cue to
-// emit the worker as its own file, and that syntax means nothing to Node, where
-// the engine's unit tests run.
+// The one place a real Java engine is made (#981).
 //
-// The worker is a classic one, not a module: CheerpJ is loaded with
-// `importScripts`, which module workers do not have.
+// Its worker is not created here. It runs in a frame served from another
+// origin (the sandbox, worker/questSandbox.js), because the engine is
+// third-party code that must not share an origin with a student's signed-in
+// session. sandboxWorker.ts explains what that frame is and is not trusted
+// with; javaEngine.ts drives it and does not know the difference.
 
-import { JavaEngine, type WorkerLike } from './javaEngine.ts';
+import { JavaEngine } from './javaEngine.ts';
+import { createSandboxWorker } from './sandboxWorker.ts';
 
-/** A Java engine backed by a real worker. Nothing is downloaded until it is asked to load. */
-export function createJavaEngine(): JavaEngine {
-  return new JavaEngine({
-    spawn: () =>
-      new Worker(new URL('./javaWorker.ts', import.meta.url), {
-        type: 'classic',
-        name: 'shohoj-quest-java',
-      }) as unknown as WorkerLike,
-  });
+/**
+ * A Java engine whose worker lives at `sandboxUrl`. Nothing is downloaded, and
+ * no frame is added to the page, until the engine is asked to load.
+ */
+export function createJavaEngine(sandboxUrl: string): JavaEngine {
+  return new JavaEngine({ spawn: () => createSandboxWorker(sandboxUrl) });
 }
