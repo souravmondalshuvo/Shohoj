@@ -76,7 +76,7 @@ test('the map covers exactly the tabs main.js can switch to', () => {
 test('every feature the page names is one the registry knows', () => {
   const known = new Set(Object.values(UNIVERSITIES).flatMap((u) => u.features));
   const named = [...INDEX_HTML.matchAll(/data-feature="([A-Za-z]+)"/g)].map((m) => m[1]);
-  assert.ok(named.length >= 3, 'the nav Tasks link and the two standalone-page links');
+  assert.ok(named.length >= 4, 'the nav Tasks link, two standalone pages and the Quest link');
   for (const feature of [...named, ...Object.values(CALC_TAB_FEATURES)]) {
     assert.ok(known.has(feature), `"${feature}" is not a registry feature`);
   }
