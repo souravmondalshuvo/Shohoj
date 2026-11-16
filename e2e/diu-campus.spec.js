@@ -47,7 +47,7 @@ test('a DIU student gets the calculator, the playground, Routine and DIU\'s buse
   for (const email of ['rahim15-1234@diu.edu.bd', 'rahim@s.diu.edu.bd']) {
     await signInAs(page, email);
     for (const id of ['calculator', 'playground', 'routine']) await expect(tab(page, id)).toHaveJSProperty('hidden', false);
-    for (const id of ['planner', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'campus', 'groups']) {
+    for (const id of ['planner', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'campus', 'groups', 'quest']) {
       await expect(tab(page, id)).toHaveJSProperty('hidden', true);
     }
     // Of the standalone pages DIU has one: Bus opens DIU's own routes, so the
@@ -57,7 +57,6 @@ test('a DIU student gets the calculator, the playground, Routine and DIU\'s buse
     await expect(bus).toHaveJSProperty('hidden', false);
     await expect(bus).toHaveAttribute('href', 'bus/?campus=diu');
     await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
-    await expect(page.locator('#calcTabs [data-feature="quest"]')).toHaveJSProperty('hidden', true);
   }
   await expect(page.locator('#calculator')).toContainText("DIU's exact grading scale");
 
