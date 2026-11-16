@@ -122,6 +122,7 @@ import * as tasks from './taskHandlers.js';
 import { buildReminderEmail, isStale, shouldSend } from './reminders.js';
 import { eligibleLostFoundClaim, deliverLostFoundClaim } from './lostFoundDelivery.js';
 import { BodyTooLarge, readBoundedBytes, readBoundedJson } from './requestBody.js';
+import { questSandboxResponse } from './questSandbox.js';
 
 export { campusOfEmail };
 
@@ -2966,6 +2967,13 @@ export default {
     // Never contains user data — just a random opaque token.
     const requestId = newRequestId();
     try {
+      // Shohoj Quest's Java sandbox (#981): three static files, the same for
+      // everyone, served from this origin precisely because it is not the
+      // site's. Nothing is read from the request but its path. See
+      // questSandbox.js for what it isolates and how.
+      const sandbox = questSandboxResponse(request, env, url);
+      if (sandbox) return withRequestId(sandbox, requestId);
+
       // Unauthenticated health probe for uptime monitoring. No secrets, no user
       // data, no side effects — safe to expose publicly.
       if (request.method === 'GET' && url.pathname === '/health') {
