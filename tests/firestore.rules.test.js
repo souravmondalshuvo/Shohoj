@@ -20,6 +20,7 @@
  *  13. Paper storage paths must be owner-scoped and SVG uploads are rejected
  *  14. Feedback upvotes are readable only by owner/admin
  *  15. Unknown collection root is denied
+ *  16. questProgress/{uid} (Shohoj Quest): owner-only, shape-checked, small
  */
 
 import {
@@ -39,6 +40,7 @@ import {
   limit,
   orderBy,
   query,
+  runTransaction,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -46,6 +48,8 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+
+import { createQuestProgressRepo } from '../src/features/quest/progress/cloudProgress.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const rulesPath = resolve(here, '..', 'firestore.rules');
@@ -668,6 +672,168 @@ async function run() {
     await assertFails(setDoc(doc(db, 'seatAlertWatches', BRACU_UID), {
       ...validWatch(), sections,
     }));
+  });
+
+  // ── Shohoj Quest progress (#981) ────────────────────────────────────
+  // A student's own save. The rules hold who may touch it and its shape; they
+  // deliberately do not judge whether the progress in it was earned, because
+  // grading runs in the student's browser. See the comment in firestore.rules.
+  const validQuestProgress = (over = {}) => ({
+    v: 1,
+    completed: { 'bridge-count-the-planks': 1763200000000 },
+    zone: 'bridge',
+    at: { x: 4, y: 11 },
+    updatedAt: serverTimestamp(),
+    ...over,
+  });
+  const ownSave = (ctx = bracuCtx(), uid = BRACU_UID) => doc(ctx.firestore(), 'questProgress', uid);
+
+  await test('questProgress: a student can create, read, update and delete their own save', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress()));
+    await assertSucceeds(getDoc(ownSave()));
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress({
+      completed: { 'bridge-count-the-planks': 1763200000000, 'bridge-the-toll': 1763200005000 },
+      at: null,
+    })));
+    await assertSucceeds(deleteDoc(ownSave()));
+  });
+
+  await test('questProgress: a save may hold no solved quests and no position', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress({ completed: {}, at: null })));
+  });
+
+  await test('questProgress: a transaction can read then write the save, as the game does', async () => {
+    const db = bracuCtx().firestore();
+    const ref = doc(db, 'questProgress', BRACU_UID);
+    await assertSucceeds(setDoc(ref, validQuestProgress()));
+    await assertSucceeds(
+      runTransaction(db, async (transaction) => {
+        const saved = (await transaction.get(ref)).data();
+        transaction.set(ref, validQuestProgress({
+          completed: { ...saved.completed, 'bridge-the-toll': 1763200005000 },
+          zone: 'library',
+          at: { x: 0, y: 1023 },
+        }));
+      }),
+    );
+  });
+
+  // The game's own sync, run against the real rules. The backend is
+  // src/platform/firebase/questProgressRepo.ts's transaction, on the emulator's
+  // client for one signed-in student instead of the app's.
+  const questRepoFor = (ctx) => {
+    const db = ctx.firestore();
+    return createQuestProgressRepo(async () => ({
+      async transact(uid, decide) {
+        const ref = doc(db, 'questProgress', uid);
+        await runTransaction(db, async (transaction) => {
+          const snapshot = await transaction.get(ref);
+          const next = decide(snapshot.exists() ? snapshot.data() : undefined);
+          if (next) transaction.set(ref, { ...next, updatedAt: serverTimestamp() });
+        });
+      },
+    }));
+  };
+
+  await test('questProgress: what the game itself writes is accepted, and two devices merge', async () => {
+    const repo = questRepoFor(bracuCtx());
+    const phone = { completed: { 'bridge-count-the-planks': 100 }, zone: 'bridge', at: { x: 4, y: 11 } };
+    const laptop = { completed: { 'bridge-the-toll': 200 }, zone: 'bridge', at: null };
+
+    await assertSucceeds(repo.sync(BRACU_UID, phone));
+    const merged = await assertSucceeds(repo.sync(BRACU_UID, laptop));
+    if (merged.kind !== 'ok') throw new Error(`expected a merge, got ${merged.kind}`);
+    const saved = (await getDoc(ownSave())).data();
+    const solved = Object.keys(saved.completed).sort().join();
+    if (solved !== 'bridge-count-the-planks,bridge-the-toll') {
+      throw new Error(`both devices' quests should be saved, found: ${solved}`);
+    }
+  });
+
+  await test('questProgress: a student with nothing solved leaves no document behind', async () => {
+    const repo = questRepoFor(bracuCtx());
+    await assertSucceeds(repo.sync(BRACU_UID, { completed: {}, zone: 'bridge', at: { x: 1, y: 1 } }));
+    if ((await getDoc(ownSave())).exists()) throw new Error('a save was created for a visitor');
+  });
+
+  await test('questProgress: the game\'s sync cannot reach another student\'s save', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress()));
+    const other = questRepoFor(bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL));
+    await assertFails(other.sync(BRACU_UID, { completed: { stolen: 1 }, zone: 'bridge', at: null }));
+  });
+
+  await test('questProgress: another student cannot read, write or delete a save', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress()));
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL);
+    await assertFails(getDoc(ownSave(other)));
+    await assertFails(setDoc(ownSave(other), validQuestProgress()));
+    await assertFails(deleteDoc(ownSave(other)));
+  });
+
+  await test('questProgress: saves cannot be listed, even by their owner', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress()));
+    await assertFails(getDocs(fsCollection(bracuCtx().firestore(), 'questProgress')));
+  });
+
+  await test('questProgress: an admin has no access to a student\'s save', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress()));
+    await assertFails(getDoc(ownSave(adminCtx())));
+    await assertFails(setDoc(ownSave(adminCtx()), validQuestProgress()));
+  });
+
+  await test('questProgress: signed-out, unverified and outside accounts are denied', async () => {
+    const anon = testEnv.unauthenticatedContext();
+    await assertFails(getDoc(doc(anon.firestore(), 'questProgress', BRACU_UID)));
+    await assertFails(setDoc(doc(anon.firestore(), 'questProgress', BRACU_UID), validQuestProgress()));
+    await assertFails(setDoc(ownSave(unverifiedBracuCtx(), 'unverified_bracu'), validQuestProgress()));
+    await assertFails(setDoc(ownSave(outsiderCtx(), OUTSIDE_UID), validQuestProgress()));
+  });
+
+  await test('questProgress: any verified campus student may keep a save, not only BRACU', async () => {
+    // Which campuses are offered the game is the client's decision. The rules
+    // protect a save wherever its owner studies.
+    await assertSucceeds(setDoc(ownSave(nsuCtx(), NSU_UID), validQuestProgress()));
+    await assertSucceeds(getDoc(ownSave(nsuCtx(), NSU_UID)));
+  });
+
+  await test('questProgress: a save with an extra or a missing field is rejected', async () => {
+    await assertFails(setDoc(ownSave(), validQuestProgress({ xp: 99999 })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ rank: 'first' })));
+    for (const field of ['v', 'completed', 'zone', 'at', 'updatedAt']) {
+      const save = validQuestProgress();
+      delete save[field];
+      await assertFails(setDoc(ownSave(), save));
+    }
+  });
+
+  await test('questProgress: the version, zone and timestamp are held to their shape', async () => {
+    await assertFails(setDoc(ownSave(), validQuestProgress({ v: 2 })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ v: '1' })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ zone: 'The Bridge' })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ zone: '' })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ zone: 'a'.repeat(49) })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ zone: 7 })));
+    // A client clock is not accepted as the time of the write.
+    await assertFails(setDoc(ownSave(), validQuestProgress({ updatedAt: new Date(2020, 0, 1) })));
+  });
+
+  await test('questProgress: `completed` must be a map of at most 500 entries', async () => {
+    const many = (n) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`quest-${i}`, i]));
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress({ completed: many(500) })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ completed: many(501) })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ completed: ['bridge-the-toll'] })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ completed: 'all of them' })));
+  });
+
+  await test('questProgress: the position is null or a whole-number square on a map', async () => {
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress({ at: { x: 0, y: 0 } })));
+    await assertSucceeds(setDoc(ownSave(), validQuestProgress({ at: { x: 1023, y: 1023 } })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ at: { x: 1024, y: 0 } })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ at: { x: -1, y: 0 } })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ at: { x: 1.5, y: 0 } })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ at: { x: 1 } })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ at: { x: 1, y: 2, z: 3 } })));
+    await assertFails(setDoc(ownSave(), validQuestProgress({ at: 'the far bank' })));
   });
 
   await test('seatAlertState is closed to clients (read + write denied)', async () => {
