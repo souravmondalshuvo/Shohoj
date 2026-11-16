@@ -8,7 +8,13 @@
 // background while the student reads the task or carries on playing, and every
 // screen that cares follows the same status.
 //
-// Even the small module that creates the worker is imported on demand, so the
+// The engine does not run on this page's origin. It runs in a frame served
+// from the sandbox (worker/questSandbox.js), and this module has to be told
+// where that is before anything can start. With no sandbox there is no Java:
+// the engine is never started on this origin as a fallback, because that is
+// the exposure the sandbox exists to remove.
+//
+// Even the small module that creates the engine is imported on demand, so the
 // route's own chunk carries none of it.
 
 import { useSyncExternalStore } from 'react';
@@ -48,21 +54,50 @@ export interface EngineView {
   readonly warm: boolean;
 }
 
+const NO_SANDBOX = 'Running Java is not set up on this copy of Shohoj, so code cannot be run here.';
+const NOT_DOWNLOADED =
+  'The Java engine could not be downloaded. Check your connection and try again.';
+
 let view: EngineView = { status: IDLE, warm: false };
 let engine: JavaEngine | null = null;
 let creating: Promise<JavaEngine> | null = null;
+let sandboxUrl: string | null = null;
 const listeners = new Set<() => void>();
+
+/**
+ * Say where the engine's sandbox is: a page on an origin other than this one.
+ * `null` means there is none, and code quests then say so instead of running.
+ */
+export function configureJavaEngine(url: string | null): void {
+  if (url === sandboxUrl) return;
+  // An engine already made for another address is stopped and forgotten.
+  engine?.dispose();
+  engine = null;
+  creating = null;
+  sandboxUrl = url;
+  view = { status: IDLE, warm: false };
+  for (const listener of listeners) listener();
+}
 
 function publish(next: EngineStatus): void {
   view = { status: next, warm: view.warm || next.phase === 'ready' };
   for (const listener of listeners) listener();
 }
 
+class NoSandbox extends Error {}
+
 function create(): Promise<JavaEngine> {
   if (creating) return creating;
+  const url = sandboxUrl;
+  if (url === null) {
+    publish({ phase: 'failed', message: NO_SANDBOX });
+    return Promise.reject(new NoSandbox(NO_SANDBOX));
+  }
   publish({ phase: 'loading', step: 'starting', done: 0, total: 0 });
   const attempt = import('../runner/createEngine.ts').then(({ createJavaEngine }) => {
-    const created = createJavaEngine();
+    const created = createJavaEngine(url);
+    // The sandbox was changed while the chunk loaded: this engine is not wanted.
+    if (creating !== attempt) return created;
     engine = created;
     created.subscribe(publish);
     return created;
@@ -70,11 +105,9 @@ function create(): Promise<JavaEngine> {
   creating = attempt;
   attempt.catch(() => {
     // The chunk did not arrive. Forget the attempt so "Try again" can make one.
-    if (creating === attempt) creating = null;
-    publish({
-      phase: 'failed',
-      message: 'The Java engine could not be downloaded. Check your connection and try again.',
-    });
+    if (creating !== attempt) return;
+    creating = null;
+    publish({ phase: 'failed', message: NOT_DOWNLOADED });
   });
   return attempt;
 }
@@ -102,10 +135,10 @@ export const javaRunner: QuestRunner = {
     let created: JavaEngine;
     try {
       created = await create();
-    } catch {
+    } catch (error) {
       return {
         kind: 'engineError',
-        message: 'The Java engine could not be downloaded. Check your connection and try again.',
+        message: error instanceof NoSandbox ? NO_SANDBOX : NOT_DOWNLOADED,
       };
     }
     return created.run(plan, hooks);
