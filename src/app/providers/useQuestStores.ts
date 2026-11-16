@@ -38,6 +38,34 @@ export interface QuestStores {
   readonly drafts: DraftStore;
 }
 
+declare global {
+  interface Window {
+    /** e2e seam: where the Java sandbox is, for a build with no runtime config. */
+    __shohojQuestSandboxUrl?: string;
+  }
+}
+
+/**
+ * Where Shohoj Quest's Java engine runs: a page served by the Worker, which is
+ * on a different origin from the site. That difference is the point (see
+ * worker/questSandbox.js), so the address comes from the Worker's and is never
+ * a path on this site. `null` when the build has no Worker configured.
+ */
+export function useQuestSandboxUrl(): string | null {
+  const config = useRuntimeConfig();
+  return useMemo(() => {
+    if (window.__shohojQuestSandboxUrl) return window.__shohojQuestSandboxUrl;
+    if (!config) return null;
+    try {
+      const url = new URL('quest-sandbox/', `${config.papersWorkerUrl.replace(/\/+$/, '')}/`);
+      // A sandbox on this page's own origin would isolate nothing.
+      return url.origin === window.location.origin ? null : url.href;
+    } catch {
+      return null;
+    }
+  }, [config]);
+}
+
 /** The browser's storage, or a stand-in when it is switched off. */
 function deviceStorage(): KeyValueStore {
   try {
