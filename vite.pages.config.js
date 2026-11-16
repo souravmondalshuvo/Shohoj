@@ -16,8 +16,9 @@
 // URLs relative because the site lives under a project subpath
 // (souravmondalshuvo.github.io/Shohoj/). Only the inputs listed here build —
 // the repo-root index.html (legacy build3.py source) is never touched.
-// One input is a module, not a page: campus/embed.tsx, which the legacy site
-// imports to show the Campus Map inside its own tab.
+// Two inputs are modules, not pages: campus/embed.tsx and quest/embed.tsx,
+// which the legacy site imports to show the Campus Map and Shohoj Quest from
+// its own tabs.
 // Every standalone page is retired at the shell cutover.
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -54,6 +55,12 @@ function pagesRuntimeConfig() {
   };
 }
 
+// Module entries the legacy site imports by a fixed address.
+const EMBED_ADDRESSES = {
+  'campus-embed': 'campus/embed.js',
+  'quest-embed': 'quest/embed.js',
+};
+
 export default defineConfig({
   root: import.meta.dirname,
   base: './',
@@ -76,14 +83,15 @@ export default defineConfig({
         // Not a page: the Campus Map as a module the legacy site mounts into
         // its own tab (campus/embed.tsx).
         'campus-embed': resolve(import.meta.dirname, 'campus/embed.tsx'),
+        // Not a page either: Shohoj Quest (#981), which the legacy site mounts
+        // from its Quest tab (quest/embed.tsx).
+        'quest-embed': resolve(import.meta.dirname, 'quest/embed.tsx'),
       },
       output: {
         // The legacy bundle is built by build3.py and never sees this build's
-        // manifest, so it cannot know a hashed name. The embed gets a fixed
-        // address beside the page it shares its chunks with; everything it
-        // imports is still hashed.
-        entryFileNames: (chunk) =>
-          chunk.name === 'campus-embed' ? 'campus/embed.js' : 'assets/[name]-[hash].js',
+        // manifest, so it cannot know a hashed name. Each embed gets a fixed
+        // address; everything it imports is still hashed.
+        entryFileNames: (chunk) => EMBED_ADDRESSES[chunk.name] ?? 'assets/[name]-[hash].js',
       },
     },
   },
