@@ -33,6 +33,34 @@ papers/{COURSE}/{UPLOADER_UID}/{filename}
 Download/delete still accept legacy `papers/{COURSE}/{filename}` paths so older
 files remain accessible while new Firestore metadata is owner-scoped.
 
+### The Java sandbox (`GET /quest-sandbox/`)
+
+Three static files, public and unauthenticated, that have nothing to do with
+papers: the page Shohoj Quest's Java engine runs in.
+
+| Path | What it is |
+| --- | --- |
+| `/quest-sandbox/` | A page with one script. The game embeds it in a hidden, sandboxed frame |
+| `/quest-sandbox/frame.js` | Starts the engine's worker and hands the game a channel to it |
+| `/quest-sandbox/worker.js` | The engine's worker. Loads CheerpJ from its CDN |
+
+They are served from here **because this is not the site's origin**. The engine
+is third-party code that cannot carry an integrity hash, and on the site's own
+origin it could reach the student's signed-in session. Here it can reach
+nothing: this origin stores nothing, and the Worker's API takes a bearer token,
+never a cookie.
+
+- The page's `frame-ancestors` is the `ALLOWED_ORIGINS` list, so only the site
+  can embed it. An origin added there for CORS can embed the sandbox too.
+- `worker.js` is served with a policy that lets the engine load and reach
+  `cjrtnc.leaningtech.com` and nothing else, this Worker's API included.
+- No student code reaches this Worker. It serves the files; the code goes from
+  the game to the frame inside the browser.
+
+If the Worker is down, quests that run Java cannot start. Everything is in
+`questSandbox.js`; the reasoning and its limits are in
+[docs/SECURITY.md](../docs/SECURITY.md).
+
 ## One-time setup
 
 ```bash
