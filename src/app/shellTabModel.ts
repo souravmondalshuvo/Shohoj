@@ -59,6 +59,9 @@ export const TABS: readonly TabEntry[] = [
       { to: '/reviews', label: 'Reviews', icon: '⭐', feature: 'reviews' },
       { to: '/difficulty', label: 'Difficulty', icon: '🗺️', feature: 'difficulty' },
       { to: '/papers', label: 'Papers', icon: '📚', feature: 'papers' },
+      // Shohoj Quest (#981). Legacy links to this same route from its Courses
+      // menu, so the two bars stay alike.
+      { to: '/quest', label: 'Quest', icon: '🎮', feature: 'quest' },
     ],
   },
   {
