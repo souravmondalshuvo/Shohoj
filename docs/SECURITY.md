@@ -143,6 +143,24 @@ and daily quota are Worker-only; the Firestore catch-all denies client access.
 
 jsPDF, pdf.js, and Chart.js load from cdnjs with `integrity` and `crossorigin="anonymous"`, so a compromised CDN cannot inject altered code without breaking the hash check.
 
+The one exception is **CheerpJ**, the Java runtime behind Shohoj Quest. It is loaded from `cjrtnc.leaningtech.com` with no integrity hash, and cannot have one: its loader fetches the rest of the runtime itself, in pieces, and its licence requires that CDN. See "Shohoj Quest" below for what that exposes.
+
+## Shohoj Quest: student code and its engine
+
+Shohoj Quest (`/quest` on the shell) compiles and runs Java a student types. Three things follow from that.
+
+**The engine is third-party code with no integrity check, and it runs with the site's origin.** CheerpJ runs inside a dedicated Web Worker (`src/features/quest/runner/javaWorker.ts`). The page hands the worker source text and gets text back; it never sends a token, and it trusts nothing the worker returns. That protects the page from *student code* and from a program that never ends.
+
+It does **not** sandbox the engine itself. A worker loaded from the site's own URL has the site's origin. It cannot touch the DOM or `localStorage`, but it can open the origin's IndexedDB, which is where Firebase Auth keeps the signed-in session and where the Assistant keeps its transcript, and it can make network requests that the page's CSP does not govern (next paragraph). So if CheerpJ's CDN were compromised, the attacker's code could take over the account of any student who opened a quest with code to run. That is the same order of trust the site already places in Google's scripts, which also load without a hash, and it is a real addition to it: one more vendor whose compromise is the site's compromise. What limits it today is only exposure: the worker starts when a quest has code to run, so walking the map, the quest log and "predict the output" quests never load the engine.
+
+Closing this properly means running the engine on a different origin, so that the storage it can reach holds nothing. An opaque-origin sandbox (`<iframe sandbox="allow-scripts">` around the worker) was tried on 2026-11-16 and does not work: IndexedDB is denied there, CheerpJ needs it for the class files `javac` writes, and the compile never finishes. A second real origin, with a page there hosting the worker and talking to the game by `postMessage`, would work. It is not built.
+
+**The page's CSP was not edited, and that is not the same as nothing being loosened.** A worker loaded from a same-origin URL takes its policy from that file's own response headers, not from the page's `<meta>` policy, and GitHub Pages sends none. So the engine's `importScripts`, the code it generates at run time and its network requests happen in a context no policy governs. `script-src`, `connect-src` and `worker-src` in `app/index.html` are as they were, but a third-party script origin now executes on the site without appearing in them. Phaser, which draws the map on the page itself, is configured to load images as plain `<img>` elements because its default reads them through `blob:` URLs, which `img-src` forbids. `e2e-shell/csp-eval.spec.js` and `e2e-shell/quest-route.spec.js` fail on any CSP violation on the route.
+
+**A runaway program cannot hold the page.** Student code runs off the main thread, with a time limit per test. At the limit the page terminates the worker, which is immediate and cannot be refused by the code inside it, and starts a fresh one. An output flood is cut off by the harness before it reaches the page.
+
+**Progress is self-study data.** Grading happens in the student's browser, so a student who wants to can mark every quest solved, with or without the game. `questProgress/{uid}` is readable and writable only by its owner, and the rules check its shape and size, but they deliberately do not judge whether the progress in it was earned. Nothing may read that collection as proof of anything, and nothing of value may be attached to it. The browser tests replace the engine through a `window.__shohojQuestRunner` seam; that seam is no more a weakness than the browser's console is, for the same reason.
+
 ## Content Security Policy
 
 `index.html` and `admin/index.html` define a CSP that whitelists only the Google/Firebase/cdnjs/Worker origins Shohoj actually needs. During the production build, `build3.py` replaces `script-src 'unsafe-inline'` with SHA-256 hashes for the inlined scripts in `shohoj.html` and `admin.html`. `style-src 'unsafe-inline'` remains because the templates still rely on inline `style="..."` attributes; tightening that is tracked as future hardening.
