@@ -13,6 +13,8 @@ Shohoj handles academic data — grades, semester layouts, course plans, faculty
 | Feedback upvotes | Firestore (`appFeedbackUpvotes/...`) | When you upvote feedback |
 | Past papers you upload | Cloudflare R2 (file) + Firestore (`papers/...` metadata) | When you upload |
 | Paper/review reports | Firestore (`paperReports/...`, `reviewReports/...`) | When you report content |
+| Shohoj Quest progress: which quests you solved and when, and where your character stood | Firestore (`questProgress/{uid}`) and your browser's localStorage | When you solve a quest or move |
+| Code you are part-way through writing in Shohoj Quest | Your browser's localStorage only | As you type |
 | Page-view counts | Google Analytics | On every page load |
 
 ## What we don't collect
@@ -64,7 +66,7 @@ Admins cannot read your `users/{uid}` document — Firestore rules forbid it. Th
 
 You have two options:
 
-1. **In-app deletion.** From the sign-out modal, choose "Delete cloud data". This removes your `users/{uid}` document. Reviews, feedback, reports, and paper uploads stay unless separately moderated or manually purged, because they live outside the private user document.
+1. **In-app deletion.** From the sign-out modal, choose "Delete cloud data". This removes your `users/{uid}` document and your Shohoj Quest save (`questProgress/{uid}`). Reviews, feedback, reports, and paper uploads stay unless separately moderated or manually purged, because they live outside the private user document.
 2. **Email request.** Email `admin.shohoj@gmail.com` and we will manually purge your reviews, feedback, reports, paper uploads, and any other identifiable records where practical. Allow up to 7 days.
 
 LocalStorage data is yours — clear it from your browser settings whenever you want. No round-trip needed.
