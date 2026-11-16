@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'unsafe-inline'; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'unsafe-inline'; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com https://shohoj-papers.souravmondal033.workers.dev; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -429,14 +429,13 @@
             <button class="calc-tab-menu-item" data-tab="papers" role="menuitem">
               <span class="calc-tab-icon">📚</span><span>Papers</span>
             </button>
-            <!-- Shohoj Quest (#981), the CSE110 game: a page on the shell, not a
-                 tab, so it is a plain link like Bus and Lost & Found below.
-                 data-feature="quest" hides it for any campus without that
-                 feature (BRACU only: the quests follow BRACU's CSE110). -->
-            <a class="calc-tab-menu-item" href="app/quest" data-feature="quest" role="menuitem">
+            <!-- Shohoj Quest (#981), the CSE110 game, played on this page:
+                 js/ui/questTab.js mounts it over the whole window. BRACU only
+                 (the quests follow BRACU's CSE110), through CALC_TAB_FEATURES. -->
+            <button class="calc-tab-menu-item" data-tab="quest" role="menuitem">
               <span class="calc-tab-icon">🎮</span><span>Quest</span>
               <span class="calc-tab-menu-tag">BETA</span>
-            </a>
+            </button>
           </div>
         </div>
 
@@ -632,6 +631,15 @@
         <div class="calc-body">
           <div id="campusMapContent">
             <!-- Mounted on demand by campusMapTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB: SHOHOJ QUEST ═══ -->
+      <div class="calc-tab-panel" id="tabQuest">
+        <div class="calc-body">
+          <div id="questContent">
+            <!-- Mounted on demand by questTab.js; the game covers the window -->
           </div>
         </div>
       </div>
