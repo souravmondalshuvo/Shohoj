@@ -21,6 +21,7 @@ import {
   provider,
   qLimit,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   signInWithCredential,
@@ -1083,6 +1084,27 @@ window._shohoj_syncSeatAlerts = async function(sections, enabled) {
     console.error('[Shohoj] Seat-alert sync failed:', e);
     return false;
   }
+};
+
+// Shohoj Quest's cloud save (#981): questProgress/{uid}, read and written in
+// one transaction. The game (quest/embed.js, mounted by js/ui/questTab.js)
+// decides what to write and passes `decide`; this only does the Firestore part,
+// so the game never loads a second Firebase. The twin of the shell's
+// src/platform/firebase/questProgressRepo.ts, and the same contract: `decide`
+// gets the document's data or `undefined`, returns `null` to leave it, and may
+// run more than once if the transaction retries. firestore.rules lets a student
+// touch only their own document; the uid check here only stops a game left
+// open across a change of account from writing to the wrong one.
+window._shohoj_questProgressTransact = async function(uid, decide) {
+  if (!db || !currentUser || currentUser.uid !== uid) {
+    throw new Error('Not signed in as this student.');
+  }
+  const ref = doc(db, 'questProgress', uid);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const next = decide(snapshot.exists() ? snapshot.data() : undefined);
+    if (next) transaction.set(ref, { ...next, updatedAt: serverTimestamp() });
+  });
 };
 
 // Lets the Seats tab tailor its copy: "you'll get emails" vs "sign in first".
