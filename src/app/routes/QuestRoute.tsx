@@ -11,10 +11,14 @@
 // code on the device; the stores come from here because they need to know who
 // is signed in, which the game itself does not.
 
+// The Java engine runs in a page on the Worker's origin, not this one; its
+// address comes from here too, because it is part of the runtime config.
+
 import { QuestScreen } from '../../features/quest/ui/QuestScreen';
-import { useQuestStores } from '../providers/useQuestStores';
+import { useQuestSandboxUrl, useQuestStores } from '../providers/useQuestStores';
 
 export function Component() {
   const { store, drafts } = useQuestStores();
-  return <QuestScreen store={store} drafts={drafts} />;
+  const javaSandboxUrl = useQuestSandboxUrl();
+  return <QuestScreen store={store} drafts={drafts} javaSandboxUrl={javaSandboxUrl} />;
 }
