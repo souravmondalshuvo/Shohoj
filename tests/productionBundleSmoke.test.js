@@ -77,6 +77,14 @@ const firebaseStubs = {
     export async function getDoc() {
       return { exists: () => false, data: () => undefined };
     }
+    export async function runTransaction(_db, update) {
+      return update({
+        async get() {
+          return { exists: () => false, data: () => undefined };
+        },
+        set() {},
+      });
+    }
     export async function getDocs() {
       return emptySnapshot();
     }
