@@ -5,7 +5,8 @@
 // src/features/quest, and how to write content for it is CONTENT.md there.
 //
 // BRACU only: the quests follow BRACU's CSE110 syllabus. Reached from the
-// Courses menu, on this shell and on the legacy page.
+// Courses menu on this shell. The legacy page plays the same screen in a tab
+// of its own (quest/embed.tsx, js/ui/questTab.js) rather than linking here.
 
 // Progress is kept on the student's device and in Firestore, and unfinished
 // code on the device; the stores come from here because they need to know who
