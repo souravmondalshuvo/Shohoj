@@ -10574,6 +10574,14 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
             <button class="calc-tab-menu-item" data-tab="papers" role="menuitem">
               <span class="calc-tab-icon">📚</span><span>Papers</span>
             </button>
+            <!-- Shohoj Quest (#981), the CSE110 game: a page on the shell, not a
+                 tab, so it is a plain link like Bus and Lost & Found below.
+                 data-feature="quest" hides it for any campus without that
+                 feature (BRACU only: the quests follow BRACU's CSE110). -->
+            <a class="calc-tab-menu-item" href="app/quest" data-feature="quest" role="menuitem">
+              <span class="calc-tab-icon">🎮</span><span>Quest</span>
+              <span class="calc-tab-menu-tag">BETA</span>
+            </a>
           </div>
         </div>
 
