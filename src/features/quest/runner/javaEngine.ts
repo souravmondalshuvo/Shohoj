@@ -1,6 +1,6 @@
 // src/features/quest/runner/javaEngine.ts
 //
-// Drives the Java worker (javaWorker.ts) for Shohoj Quest (#981): loads the
+// Drives the Java worker (worker/questSandbox.js) for Shohoj Quest (#981): loads the
 // engine, compiles a run plan, runs its tests, and ends a run that goes on too
 // long.
 //
@@ -38,7 +38,7 @@ import {
 import { createProtocolReader, type ProtocolEvent, type TestResult } from '../grader/protocol.ts';
 import { CHEERPJ_LOADER_URL, JAVA_VERSION, PRELOAD_RESOURCES } from './cheerpj.ts';
 
-// ── Messages (repeated, without types, in javaWorker.ts) ────────────────────
+// ── Messages (the other end is sandboxWorkerMain, worker/questSandbox.js) ───
 
 export type WorkerRequest =
   | {
@@ -240,9 +240,13 @@ export class JavaEngine {
     };
     worker.onerror = (event) => {
       if (this.worker !== worker) return;
-      this.stop(
-        event.message ? `The Java engine failed: ${event.message}` : 'The Java engine failed.',
-      );
+      // The worker is gone or never came: its sandbox could not be reached, or
+      // the engine failed to start. `stop` leaves the status idle, which is
+      // right for a deliberate stop and wrong here: say what happened, so the
+      // student sees a reason and a way to try again instead of nothing.
+      const reason = event.message || 'The Java engine failed.';
+      this.stop(reason);
+      this.setStatus({ phase: 'failed', message: reason });
     };
     this.setStatus({ phase: 'loading', step: 'starting', done: 0, total: 0 });
     try {
