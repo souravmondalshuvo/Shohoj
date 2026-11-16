@@ -22,6 +22,7 @@ const GROUP_OF = {
   Reviews: 'Courses',
   Difficulty: 'Courses',
   Papers: 'Courses',
+  Quest: 'Courses',
 
   Seats: 'Campus',
   'Free Rooms': 'Campus',
