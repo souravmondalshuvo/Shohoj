@@ -223,6 +223,20 @@ example `npm run quest:check -- bridge-the-toll`.
 
 When you add a zone's solutions file, spread it into `content/solutions.ts`.
 
+```bash
+npm run test:e2e:quest-real
+```
+
+Plays through real quests in the real page with the real Java engine: an
+endless loop is killed and the game carries on, a compiler error lands on its
+line, a reference solution passes. Also about 14 MB from CheerpJ's CDN and also
+not part of CI. Run it after changing anything under `runner/` or the harness.
+
+The browser tests that are part of CI (`e2e-shell/quest-*.spec.js`) never run
+Java. They put a stand-in where the engine goes and script its answers; the
+helper for writing one is `e2e-support/questRunner.js`. A new quest type, or a
+new kind of verdict, wants a test there.
+
 ## What is saved
 
 A student's save is the ids of the quests they solved, when, and where their
