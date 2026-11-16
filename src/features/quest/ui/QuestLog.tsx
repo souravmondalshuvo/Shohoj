@@ -75,9 +75,13 @@ export function QuestLog({ world, zone, completed, xp, onOpen, onClose }: QuestL
                     type="button"
                     className={`quest-button${state === 'open' ? ' quest-button--primary' : ''}`}
                     onClick={() => onOpen(quest.id)}
-                    aria-label={`${state === 'done' ? 'Practise' : 'Start'} ${quest.title}`}
                   >
+                    {/* What is seen is the start of what is read out, so a
+                        student speaking a command says what they see. */}
                     {state === 'done' ? 'Done ✓' : 'Start'}
+                    <span className="quest-sr">
+                      {state === 'done' ? `practise ${quest.title} again` : quest.title}
+                    </span>
                   </button>
                 )}
               </li>
