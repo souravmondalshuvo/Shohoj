@@ -657,6 +657,8 @@ Firestore (rules-enforced for browser clients; campus-partitioned)
   ├── lostFoundClaims/{id}   — claims, relayed to posters by the cron
   ├── seatAlertWatches/{uid} — per-user watched sections
   ├── seatAlertState/{...}   — cron-side full→open transition state
+  ├── questProgress/{uid}    — Shohoj Quest save: quests solved, where
+  │                            the hero stood (owner-only; self-study data)
   ├── adminLogs/{id}         — admin action audit trail
   ├── shohojUsers/{uid}      — Shohoj Tasks' own record: semesters/,
   │                            enrollments/, tasks/ (+ assessment/current),
@@ -1313,6 +1315,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `lostFoundClaims/{id}`    | Firestore    | Claims awaiting relay; the cron emails the poster and drops the claim   |
 | `seatAlertWatches/{uid}`  | Firestore    | Sections you're watching, for the seat-drop email cron                  |
 | `seatAlertState/{...}`    | Firestore    | Cron-side full→open transition state, so an alert fires once            |
+| `questProgress/{uid}`     | Firestore    | Shohoj Quest save: which quests you solved and when, and where your hero stood. Readable and writable only by you. Graded in your browser, so it is self-study data and proves nothing |
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 | `semesters/{sessionId}`   | Cloudflare R2 | Archived CONNECT section feeds — public timetable data, nothing personal |
