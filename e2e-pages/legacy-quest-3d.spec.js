@@ -54,12 +54,17 @@ test('?quest3d=1 draws the zone in 3D, and the quest-giver answers', async ({ pa
   await expect(threeD(page)).toHaveCount(1);
   await expect(page.locator('.quest-tip')).toBeVisible();
 
-  // Along the road to the head of the bridge, then up into Karim Majhi.
-  for (const key of [...Array(11).fill('ArrowRight'), 'ArrowUp']) {
-    await page.keyboard.press(key);
-    await page.waitForTimeout(260);
+  // Along the road to the head of the bridge, then up into Karim Majhi. Each
+  // step is waited for, by where the game saved the hero: a CI runner draws
+  // 3D in software, a few frames a second, so a step takes as long as it takes.
+  const at = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem('shohoj_quest_progress_v1') ?? 'null')?.progress?.at ?? null);
+  for (let x = 4; x <= 14; x += 1) {
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(at, { timeout: 15_000 }).toEqual({ x, y: 11 });
   }
-  await expect(page.getByRole('dialog', { name: 'Karim Majhi speaks' })).toBeVisible();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByRole('dialog', { name: 'Karim Majhi speaks' })).toBeVisible({ timeout: 15_000 });
 });
 
 test('without the flag, students get the 2D zone', async ({ page }) => {
