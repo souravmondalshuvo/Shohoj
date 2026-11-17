@@ -82,6 +82,8 @@ import {
 
 /** Seconds to walk one square. */
 const STEP_S = 0.16;
+/** Arrow presses kept while the hero is still walking the last one. */
+const MAX_QUEUED_PRESSES = 3;
 const WATER_Y = -0.22;
 const RIVERBED_Y = -0.9;
 
@@ -764,7 +766,12 @@ class Zone3d implements ZoneGame {
   private stepTo: Vector3 | null = null;
   private stepT = 0;
   private walkPhase = 0;
-  private pressed: Cell | null = null;
+  /**
+   * Key presses not yet walked, oldest first. A press made mid-step waits its
+   * turn instead of replacing the one before it, so three taps of an arrow
+   * are three steps even on a phone drawing a few frames a second.
+   */
+  private presses: Cell[] = [];
   private readonly held = new Set<string>();
   private paused = false;
   private destroyed = false;
@@ -910,7 +917,7 @@ class Zone3d implements ZoneGame {
     this.paused = paused;
     this.route = [];
     this.intent = null;
-    this.pressed = null;
+    this.presses = [];
     this.held.clear();
     this.hover.visible = false;
     // Nothing moves behind a panel: stop drawing, for a phone's battery.
@@ -1338,7 +1345,7 @@ class Zone3d implements ZoneGame {
       const step = KEY_STEPS[event.code];
       if (!step) return;
       this.held.add(event.code);
-      if (!event.repeat) this.pressed = step;
+      if (!event.repeat && this.presses.length < MAX_QUEUED_PRESSES) this.presses.push(step);
     };
     const onKeyUp = (event: KeyboardEvent) => {
       this.held.delete(event.code);
@@ -1426,8 +1433,7 @@ class Zone3d implements ZoneGame {
 
   private keyboard(): void {
     if (this.stepTo || this.route.length > 0) return;
-    const press = this.pressed;
-    this.pressed = null;
+    const press = this.presses.shift() ?? null;
     const step = press ?? this.heldStep();
     if (!step) return;
     const next = { x: this.cell.x + step.x, y: this.cell.y + step.y };
