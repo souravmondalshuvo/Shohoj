@@ -54,6 +54,15 @@ type View =
 
 type Stage = 'loading' | 'ready' | 'failed';
 
+/** Whether this visit asked for the 3D prototype, with ?quest3d=1 in the address. */
+function wantsThreeD(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('quest3d') === '1';
+  } catch {
+    return false;
+  }
+}
+
 // The defaults keep everything for as long as the page is open and no longer.
 // The route passes stores that outlast the visit (useQuestStores).
 const sessionStore = memoryProgressStore();
@@ -262,21 +271,35 @@ function ZoneScreen({
 
     const start = async () => {
       if (!loadMap) throw new Error(`no map is registered for "${zone.map ?? ''}"`);
-      const [{ createZoneGame }, mapJson] = await Promise.all([
-        import('../game/zoneGame.ts'),
-        loadMap(),
-      ]);
+      const mapJson = await loadMap();
       const parsed = parseZoneMap(mapJson);
       if (!parsed.ok) throw new Error(parsed.error.join(' '));
       if (!current) return;
-      game = createZoneGame({
+      const options = {
         parent,
         mapJson,
         map: parsed.value,
         state: latest.current.zoneState,
         start: latest.current.progress?.at ?? null,
-        onEvent: (event) => latest.current.onZoneEvent(event),
-      });
+        onEvent: (event: ZoneEvent) => latest.current.onZoneEvent(event),
+      };
+      game = null;
+      // The 3D prototype, only when asked for (?quest3d=1). A browser that
+      // cannot start WebGL gets the 2D zone instead of a broken screen.
+      if (wantsThreeD()) {
+        try {
+          const { createZoneGame } = await import('../game/zoneGame3d.ts');
+          if (!current) return;
+          game = createZoneGame(options);
+        } catch {
+          game = null;
+        }
+      }
+      if (!game) {
+        const { createZoneGame } = await import('../game/zoneGame.ts');
+        if (!current) return;
+        game = createZoneGame(options);
+      }
       game.setPaused(latest.current.paused);
       gameRef.current = game;
     };
