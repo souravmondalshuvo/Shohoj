@@ -26,6 +26,7 @@ import {
   walkGrid,
 } from '../src/features/quest/world/zoneMap.ts';
 import { SPANS, buildBridgeMap, serialise } from '../scripts/quest_bridge_map.mjs';
+import { isLookName } from '../src/features/quest/assets/looks.ts';
 
 // ── A small map, drawn in text ──────────────────────────────────────────────
 //
@@ -167,6 +168,54 @@ test('a gate may carry its quest the way older Tiled wrote properties', () => {
   const parsed = parseZoneMap(source);
   assert.ok(parsed.ok);
   assert.equal(parsed.value.gates[0].quest, 'a');
+});
+
+/** The small map with a `scenery` layer holding `objects`. */
+function withScenery(objects) {
+  const map = tiled(ROWS);
+  map.layers.push({ id: 7, name: 'scenery', type: 'objectgroup', objects });
+  return parseZoneMap(map);
+}
+
+test('scenery adds people who stand in the way, and tiles that may float', () => {
+  const parsed = withScenery([
+    {
+      name: 'figure',
+      point: true,
+      x: 2 * 16 + 8,
+      y: 3 * 16 + 8,
+      properties: [{ name: 'look', type: 'string', value: 'seller' }],
+    },
+    // A tile object sits on its bottom-left corner, as Tiled places one.
+    { name: 'float', gid: 7, x: 5 * 16, y: 2 * 16, width: 16, height: 16 },
+    { name: '', gid: 9, x: 6 * 16, y: 3 * 16, width: 16, height: 16 },
+  ]);
+  assert.ok(parsed.ok, parsed.ok ? '' : parsed.error.join(' '));
+  const map = parsed.value;
+  assert.deepEqual(map.scenery, [
+    { kind: 'figure', at: { x: 2, y: 3 }, look: 'seller' },
+    { kind: 'tile', at: { x: 5, y: 1 }, gid: 7, floats: true },
+    { kind: 'tile', at: { x: 6, y: 2 }, gid: 9, floats: false },
+  ]);
+  // Someone stands on that square; a boat on the water changes nothing.
+  assert.equal(canWalk(walkGrid(map, none), { x: 2, y: 3 }), false);
+  assert.equal(canWalk(walkGrid(map, none), { x: 5, y: 1 }), true);
+});
+
+test('a map with no scenery layer has no scenery', () => {
+  assert.deepEqual(small().scenery, []);
+});
+
+test('scenery the game cannot read is reported', () => {
+  const parsed = withScenery([
+    { name: 'figure', point: true, x: 24, y: 24 },
+    { name: 'cow', point: true, x: 40, y: 24 },
+  ]);
+  assert.equal(parsed.ok, false);
+  assert.deepEqual(parsed.error, [
+    'The figure at 1,1 needs a string property "look" naming a person.',
+    '"cow" is not scenery the game knows. Use a figure, or a tile object.',
+  ]);
 });
 
 test('every problem with a map is reported, in words an author can act on', () => {
@@ -317,6 +366,9 @@ test('every open zone has a map that reads cleanly and can be played through', (
       zone.id,
     );
     assert.match(registry, new RegExp(`\\b${zone.map}: \\(\\) => import\\('\\./${zone.map}\\.json'\\)`));
+    for (const item of parsed.value.scenery) {
+      if (item.kind === 'figure') assert.ok(isLookName(item.look), `${zone.id}: no look "${item.look}"`);
+    }
   }
 });
 
