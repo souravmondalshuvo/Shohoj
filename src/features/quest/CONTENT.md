@@ -164,7 +164,7 @@ both built layers.
 | Layer name starts with | What it does |
 | --- | --- |
 | `blocked` | Never drawn. Any tile on it marks a square nobody can walk on. Use any tile. |
-| `built` | Drawn faintly inside a gate that is shut, and fully once it opens: what a quest builds. |
+| `built` | Hidden inside a gate that is shut, drawn once it opens: what a quest builds. Put what is there before the work (a bridge's piles, a foundation) on an ordinary layer, so the student sees what the quest is for. |
 | `barrier` | Drawn only inside a gate that is shut: what a quest removes. |
 | `above` | Drawn over the characters: treetops, a lintel. |
 | anything else | Always drawn, under the characters. |
@@ -187,6 +187,16 @@ and the exit.
 Draw the map as it looks when everything is solved, then lay the gates over
 the parts that have to be earned.
 
+An optional object layer named `scenery` brings the place to life. Nothing on
+it changes the rules, except that nobody walks through a person:
+
+| Object | What it is |
+| --- | --- |
+| `figure` (point) | A person standing about. Give it a custom property `look` (string) naming one of `LOOKS` in `assets/looks.ts`: `seller`, `fisher`, `farmer`, `villager`. They breathe gently, and block their square. |
+| a tile object | Any tile from the sheet, placed with **Insert Tile**. Name it `float` and it bobs on the water: a boat at its mooring. |
+
+Movement stops for a student whose system asks for reduced motion.
+
 `npm run test:one questWorld` reads every open zone's map and fails, saying
 why, if a gate names a quest that does not exist, if a new player cannot reach
 the quest-giver, if the exit cannot be reached with every quest solved, or if
@@ -198,9 +208,16 @@ changing it; the tests fail if the committed map is stale. Opening
 `assets/maps/bridge.json` in Tiled shows how the layers and markers fit
 together.
 
-Art is Kenney's "Roguelike/RPG Pack" and "Roguelike Characters", both CC0. To
-draw the quest-giver or the hero from a different tile, or to change what the
-hero board is drawn with, edit `assets/sprites.ts`.
+Art is Kenney's "Roguelike/RPG Pack" and "Roguelike Characters", both CC0.
+People are built from the characters sheet in layers (body, trousers, shoes,
+shirt, hair, hat), so a new person is a new entry in `LOOKS` in
+`assets/looks.ts`; the hero and the quest-giver (`hero`, `boatman`) are there
+too. What the hero board is drawn with is in `assets/sprites.ts`.
+
+The Bridge is a river village in Bengal, late in the afternoon: a ghat and
+jetty, a market by the road, paddy on both banks, kash and reeds along the
+water. Give a new zone a place of its own in the same spirit rather than an
+empty field: dense edges, people at work, something moving.
 
 ## Check your work
 
