@@ -61,29 +61,27 @@ html.quest-open body {
 
 /* ── The cursor ──────────────────────────────────────────────────────────── */
 
-/* css/style.css hides the system cursor everywhere (\`* { cursor: none }\`) and
+/* css/style.css hides the system cursor everywhere (`* { cursor: none }`) and
    draws a small green ring instead, which all but vanishes against a green
-   map. A game is aimed with the pointer, so here the system cursor comes back
-   and the site's ring goes: a hand over the map and anything to press, a text
-   bar where code is typed. */
-.quest-root,
-.quest-root * {
-  cursor: default !important;
+   map. A game is aimed with the pointer, so while it is open the system
+   cursor comes back and the site's ring goes: on the whole page, not only in
+   the game, because a dialog the site opens over it (a sync prompt, a toast)
+   is outside .quest-root and would otherwise have no cursor at all. A hand
+   over the map and anything to press, a text bar where text is typed. */
+body:has(.quest-root),
+body:has(.quest-root) * {
+  cursor: auto !important;
 }
-.quest-root canvas,
-.quest-root button,
-.quest-root a,
-.quest-root summary,
-.quest-root label {
+.quest-root canvas {
   cursor: pointer !important;
 }
-.quest-root textarea,
-.quest-root input,
-.quest-root .cm-content,
-.quest-root .cm-content * {
+body:has(.quest-root) :is(button, a, summary, label, [role='button']) {
+  cursor: pointer !important;
+}
+body:has(.quest-root) :is(textarea, input, [contenteditable='true'], .cm-content, .cm-content *) {
   cursor: text !important;
 }
-.quest-root button:disabled {
+body:has(.quest-root) button:disabled {
   cursor: not-allowed !important;
 }
 body:has(.quest-root) #cursor-dot,
