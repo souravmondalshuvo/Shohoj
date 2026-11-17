@@ -61,36 +61,51 @@ html.quest-open body {
 
 /* ── HUD ─────────────────────────────────────────────────────────────────── */
 
+/* A glass pill floating over the zone, in the site's own look, so the map
+   runs to the top of the screen instead of stopping under a flat bar. */
 .quest-hud {
-  position: relative;
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 10px;
+  right: 10px;
   z-index: 2;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  padding-top: max(8px, env(safe-area-inset-top));
-  background: var(--quest-panel-bg);
-  border-bottom: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+  padding: 5px 6px 5px 6px;
+  border-radius: 999px;
+  background: rgba(8, 22, 15, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 8px 24px rgba(4, 14, 9, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  color: #eef5f0;
 }
 .quest-hud-back {
-  color: var(--text2, #8aab90);
+  color: #cfe0d4;
   text-decoration: none;
   font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
-  padding: 8px 4px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 /* On the legacy site the way back is a button (it closes a tab), and it must
    look like the shell's link. */
 button.quest-hud-back {
-  background: none;
-  border: 0;
   margin: 0;
   font-family: inherit;
   line-height: inherit;
   cursor: pointer;
 }
 .quest-hud-back:hover {
-  color: var(--text, #e8f0ea);
+  color: #fff;
+  background: rgba(46, 204, 113, 0.2);
+  border-color: rgba(46, 204, 113, 0.45);
 }
 .quest-hud-title {
   flex: 1;
@@ -104,10 +119,46 @@ button.quest-hud-back {
   text-overflow: ellipsis;
 }
 .quest-hud-xp {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
-  color: var(--ink-amber, #f1c40f);
+  color: #f5c542;
   white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(245, 197, 66, 0.12);
+  border: 1px solid rgba(245, 197, 66, 0.3);
+}
+.quest-hud .quest-button {
+  min-height: 34px;
+  padding: 6px 14px;
+  background: #2ecc71;
+  border-color: #2ecc71;
+  color: #06180d;
+  font-weight: 700;
+}
+.quest-hud .quest-button:hover {
+  background: #3ddc80;
+}
+/* A phone: everything in the bar a little tighter, so the zone's name fits. */
+@media (max-width: 420px) {
+  .quest-hud {
+    left: 8px;
+    right: 8px;
+    gap: 6px;
+  }
+  .quest-hud-back {
+    padding: 6px 10px;
+  }
+  .quest-hud-title {
+    font-size: 15px;
+  }
+  .quest-hud-xp {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .quest-hud .quest-button {
+    padding: 6px 10px;
+  }
 }
 
 /* ── The zone ────────────────────────────────────────────────────────────── */
@@ -121,6 +172,19 @@ button.quest-hud-back {
 }
 .quest-stage canvas {
   display: block;
+}
+/* Late afternoon over the river: warm light from the west, the edges of the
+   view a little darker, so the eye goes to the middle. Over the canvas and
+   under the tip; it never takes a tap. */
+.quest-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(18, 28, 22, 0.42) 100%),
+    radial-gradient(ellipse 80% 70% at 0% 0%, rgba(255, 190, 110, 0.26), transparent 70%),
+    linear-gradient(180deg, rgba(255, 176, 96, 0.1), rgba(255, 120, 60, 0.06) 60%, rgba(40, 24, 60, 0.1));
 }
 .quest-stage-note {
   position: absolute;
