@@ -151,6 +151,7 @@ class ZoneScene extends Phaser.Scene {
   private hero: Phaser.GameObjects.Container | null = null;
   private heroShadow: Phaser.GameObjects.Ellipse | null = null;
   private tap: Phaser.GameObjects.Arc | null = null;
+  private hover: Phaser.GameObjects.Rectangle | null = null;
   private layers: { readonly layer: Phaser.Tilemaps.TilemapLayer; readonly role: LayerRole }[] = [];
   private marks = new Map<string, Phaser.GameObjects.Container>();
   private keys: Record<
@@ -194,6 +195,7 @@ class ZoneScene extends Phaser.Scene {
     }
     // Nothing moves behind a panel, so stop drawing: a phone's battery matters
     // more than an idle animation nobody can see.
+    this.hover?.setVisible(false);
     if (paused) this.game.loop.sleep();
     else this.game.loop.wake();
   }
@@ -247,11 +249,13 @@ class ZoneScene extends Phaser.Scene {
     const giverAt = centre(this.map.giver);
     this.addPerson(LOOKS.boatman, giverAt.x, giverAt.y, DEPTH.characters - 1, true);
 
+    // The hero's shadow walks with them (update), so it is made here and not
+    // left behind on the square they started from.
     const heroAt = centre(this.cell);
     this.heroShadow = this.add
       .ellipse(heroAt.x, heroAt.y + 7, 10, 4, 0x000000, 0.25)
       .setDepth(DEPTH.characters - 2);
-    this.hero = this.addPerson(LOOKS.hero, heroAt.x, heroAt.y, DEPTH.characters, false);
+    this.hero = this.addPerson(LOOKS.hero, heroAt.x, heroAt.y, DEPTH.characters, false, false);
     this.animateWater();
 
     this.tap = this.add
@@ -259,6 +263,26 @@ class ZoneScene extends Phaser.Scene {
       .setStrokeStyle(1, 0xffffff, 0.9)
       .setDepth(DEPTH.markers - 1)
       .setVisible(false);
+    // The square under a mouse pointer, outlined: where a click would walk to.
+    // A touch screen has no hover, so it never shows there.
+    this.hover = this.add
+      .rectangle(0, 0, size - 1, size - 1)
+      .setStrokeStyle(1, 0xffffff, 0.85)
+      .setFillStyle(0xffffff, 0.12)
+      .setDepth(DEPTH.markers - 2)
+      .setVisible(false);
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, (pointer: Phaser.Input.Pointer) => {
+      if (!this.hover) return;
+      if (this.paused || pointer.wasTouch) {
+        this.hover.setVisible(false);
+        return;
+      }
+      const x = Math.floor(pointer.worldX / size);
+      const y = Math.floor(pointer.worldY / size);
+      const inside = x >= 0 && y >= 0 && x < this.map.width && y < this.map.height;
+      this.hover.setPosition(x * size + size / 2, y * size + size / 2).setVisible(inside);
+    });
+    this.input.on(Phaser.Input.Events.GAME_OUT, () => this.hover?.setVisible(false));
 
     const camera = this.cameras.main;
     camera.setBounds(0, 0, this.map.width * size, this.map.height * size);
@@ -335,8 +359,9 @@ class ZoneScene extends Phaser.Scene {
     y: number,
     depth: number,
     idle: boolean,
+    shadow = true,
   ): Phaser.GameObjects.Container {
-    this.add.ellipse(x, y + 7, 10, 4, 0x000000, 0.25).setDepth(depth - 1);
+    if (shadow) this.add.ellipse(x, y + 7, 10, 4, 0x000000, 0.25).setDepth(depth - 1);
     const person = this.add.container(
       x,
       y,
