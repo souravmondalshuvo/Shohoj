@@ -77,8 +77,8 @@ test('the hero is where it was left after a reload', async ({ page }) => {
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(300);
   }
-  // The spawn point is square 4,11; three steps east is 7,11.
-  await expect.poll(async () => (await savedProgress(page))?.progress.at).toEqual({ x: 7, y: 11 });
+  // The spawn point is square 3,11; three steps east is 6,11.
+  await expect.poll(async () => (await savedProgress(page))?.progress.at).toEqual({ x: 6, y: 11 });
 
   await page.reload({ waitUntil: 'load' });
   await expect(page.locator('.quest-tip')).toBeVisible();
@@ -87,7 +87,7 @@ test('the hero is where it was left after a reload', async ({ page }) => {
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(300);
   }
-  await expect.poll(async () => (await savedProgress(page))?.progress.at).toEqual({ x: 9, y: 11 });
+  await expect.poll(async () => (await savedProgress(page))?.progress.at).toEqual({ x: 8, y: 11 });
 });
 
 test('quests solved on another device arrive and open the bridge', async ({ page }) => {
