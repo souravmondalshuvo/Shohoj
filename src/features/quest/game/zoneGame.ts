@@ -24,11 +24,14 @@
 import * as Phaser from 'phaser';
 
 import {
-  CHARACTERS,
   CHARACTERS_SHEET,
+  LOOKS,
+  TILE_SIZE,
   charactersUrl,
   frameOf,
+  isLookName,
   tilesUrl,
+  type Look,
 } from '../assets/sprites.ts';
 import {
   canWalk,
@@ -91,12 +94,20 @@ const MAP_KEY = 'quest-zone';
 
 /** Milliseconds to walk one square. */
 const STEP_MS = 120;
-/** How faintly an unbuilt part of the place shows. */
-const GHOST_ALPHA = 0.22;
+/**
+ * How an unbuilt part of the place shows: not at all. What stays there is
+ * drawn on a layer of its own (The Bridge's piles stand in the river), so the
+ * student sees the work to be done, not a faded copy of it that looks broken.
+ */
+const GHOST_ALPHA = 0;
 const WATER = '#5ec3d3';
-/** At least this many squares are on screen in each direction. */
-const MIN_VIEW = { columns: 11, rows: 9 };
-const DEPTH = { characters: 50, above: 100, markers: 200 };
+/** The sheet's two water tiles, as map ids: swapped back and forth, the river moves. */
+const WATER_TILES = [1, 2] as const;
+const WATER_MS = 900;
+/** About this many squares are on screen across, on a wide screen. */
+const MIN_VIEW = { columns: 20, rows: 12 };
+const MAX_ZOOM = 6;
+const DEPTH = { scenery: 40, characters: 50, above: 100, markers: 200 };
 
 type Intent = { readonly kind: 'giver' } | { readonly kind: 'gate'; readonly gate: Gate } | null;
 
@@ -137,7 +148,7 @@ class ZoneScene extends Phaser.Scene {
   /** The direction key pressed since the last frame looked, as a step. */
   private pressed: Cell | null = null;
 
-  private hero: Phaser.GameObjects.Sprite | null = null;
+  private hero: Phaser.GameObjects.Container | null = null;
   private heroShadow: Phaser.GameObjects.Ellipse | null = null;
   private tap: Phaser.GameObjects.Arc | null = null;
   private layers: { readonly layer: Phaser.Tilemaps.TilemapLayer; readonly role: LayerRole }[] = [];
@@ -191,7 +202,12 @@ class ZoneScene extends Phaser.Scene {
 
   preload(): void {
     this.load.once('loaderror', () => this.options.onEvent({ kind: 'failed' }));
-    this.load.image(TILES_KEY, tilesUrl);
+    // One texture for the map and for single tiles (boats and the like).
+    this.load.spritesheet(TILES_KEY, tilesUrl, {
+      frameWidth: TILE_SIZE,
+      frameHeight: TILE_SIZE,
+      spacing: 1,
+    });
     this.load.spritesheet(CHARACTERS_KEY, charactersUrl, {
       frameWidth: 16,
       frameHeight: 16,
@@ -227,21 +243,16 @@ class ZoneScene extends Phaser.Scene {
     });
 
     const centre = (cell: Cell) => ({ x: cell.x * size + size / 2, y: cell.y * size + size / 2 });
+    this.addScenery(centre);
     const giverAt = centre(this.map.giver);
-    this.add
-      .ellipse(giverAt.x, giverAt.y + 7, 10, 4, 0x000000, 0.25)
-      .setDepth(DEPTH.characters - 2);
-    this.add
-      .sprite(giverAt.x, giverAt.y, CHARACTERS_KEY, frameOf(CHARACTERS_SHEET, CHARACTERS.giver))
-      .setDepth(DEPTH.characters - 1);
+    this.addPerson(LOOKS.boatman, giverAt.x, giverAt.y, DEPTH.characters - 1, true);
 
     const heroAt = centre(this.cell);
     this.heroShadow = this.add
       .ellipse(heroAt.x, heroAt.y + 7, 10, 4, 0x000000, 0.25)
       .setDepth(DEPTH.characters - 2);
-    this.hero = this.add
-      .sprite(heroAt.x, heroAt.y, CHARACTERS_KEY, frameOf(CHARACTERS_SHEET, CHARACTERS.hero))
-      .setDepth(DEPTH.characters);
+    this.hero = this.addPerson(LOOKS.hero, heroAt.x, heroAt.y, DEPTH.characters, false);
+    this.animateWater();
 
     this.tap = this.add
       .circle(0, 0, 5)
@@ -315,6 +326,84 @@ class ZoneScene extends Phaser.Scene {
     if (gate) this.options.onEvent({ kind: 'gate', quest: gate.quest });
   }
 
+  // ── Life in the place ─────────────────────────────────────────────────────
+
+  /** A person, as the layers of their look, standing on a soft shadow. */
+  private addPerson(
+    look: Look,
+    x: number,
+    y: number,
+    depth: number,
+    idle: boolean,
+  ): Phaser.GameObjects.Container {
+    this.add.ellipse(x, y + 7, 10, 4, 0x000000, 0.25).setDepth(depth - 1);
+    const person = this.add.container(
+      x,
+      y,
+      look.map((cell) => this.add.sprite(0, 0, CHARACTERS_KEY, frameOf(CHARACTERS_SHEET, cell))),
+    );
+    person.setDepth(depth);
+    // People who stand about breathe: a pixel up and down, out of step.
+    if (idle && !this.calm) {
+      this.tweens.add({
+        targets: person,
+        y: y - 1,
+        duration: 1100 + ((x * 7 + y * 3) % 600),
+        delay: (x * 13 + y * 5) % 900,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+    return person;
+  }
+
+  /** The map's scenery layer: people about their day, boats on the water. */
+  private addScenery(centre: (cell: Cell) => { x: number; y: number }): void {
+    for (const item of this.map.scenery) {
+      const at = centre(item.at);
+      if (item.kind === 'figure') {
+        // An unknown look draws nobody; the unit tests catch it in a real map.
+        if (isLookName(item.look)) {
+          this.addPerson(LOOKS[item.look], at.x, at.y, DEPTH.scenery + item.at.y / 100, true);
+        }
+        continue;
+      }
+      const thing = this.add.sprite(at.x, at.y, TILES_KEY, item.gid - 1).setDepth(DEPTH.scenery);
+      if (item.floats && !this.calm) {
+        this.tweens.add({
+          targets: thing,
+          y: at.y + 1,
+          duration: 1300 + ((item.at.x * 11) % 500),
+          delay: (item.at.x * 17 + item.at.y * 7) % 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+    }
+  }
+
+  /** Swap the river's two water tiles back and forth, so the water moves. */
+  private animateWater(): void {
+    if (this.calm) return;
+    const ground = this.layers[0]?.layer;
+    if (!ground) return;
+    const [still, moving] = WATER_TILES;
+    const water: Phaser.Tilemaps.Tile[] = [];
+    ground.forEachTile((tile) => {
+      if (tile.index === still || tile.index === moving) water.push(tile);
+    });
+    if (water.length === 0) return;
+    this.time.addEvent({
+      delay: WATER_MS,
+      loop: true,
+      callback: () => {
+        for (const tile of water) tile.index = tile.index === still ? moving : still;
+      },
+    });
+  }
+
   // ── Walking ───────────────────────────────────────────────────────────────
 
   private walkTo(target: Cell): void {
@@ -340,7 +429,8 @@ class ZoneScene extends Phaser.Scene {
       return;
     }
     const size = this.map.tileSize;
-    if (next.x !== this.cell.x) hero.setFlipX(next.x < this.cell.x);
+    // Face the way of the walk. A person is layers, so the whole of them turns.
+    if (next.x !== this.cell.x) hero.setScale(next.x < this.cell.x ? -1 : 1, 1);
     this.walking = true;
     this.tweens.add({
       targets: hero,
@@ -476,7 +566,7 @@ class ZoneScene extends Phaser.Scene {
     const cover = Math.ceil(
       Math.max(width / (this.map.width * size), height / (this.map.height * size)),
     );
-    this.cameras.main.setZoom(Math.max(Math.min(Math.max(roomy, 2), 4), cover));
+    this.cameras.main.setZoom(Math.max(Math.min(Math.max(roomy, 2), MAX_ZOOM), cover));
   }
 }
 
