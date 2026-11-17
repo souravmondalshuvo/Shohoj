@@ -219,6 +219,21 @@ jetty, a market by the road, paddy on both banks, kash and reeds along the
 water. Give a new zone a place of its own in the same spirit rather than an
 empty field: dense edges, people at work, something moving.
 
+## The 3D prototype
+
+Add `?quest3d=1` to the page's address (on the main site:
+`…/Shohoj/?quest3d=1#calculator/quest`) and the zone is drawn in 3D by
+`game/zoneGame3d.ts` instead of the 2D tiles. It is a prototype, to judge the
+look; students get the 2D zone. A browser that cannot start WebGL falls back
+to 2D.
+
+It builds the place from the same map. `world/sceneKinds.ts` names each tile
+(a tree, a hut's door, a pile in the river, a span of deck), and the 3D
+version models that thing in its place. So a map works in both, with one
+condition: every tile it uses must be one `sceneKinds.ts` can name.
+`npm run test:one questScene` fails, listing the tile, if one is not. Name it
+there, and give it a model in `zoneGame3d.ts`.
+
 ## Check your work
 
 ```bash
