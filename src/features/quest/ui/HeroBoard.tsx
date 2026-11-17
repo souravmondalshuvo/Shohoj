@@ -15,13 +15,14 @@ import { useEffect, useState, type CSSProperties } from 'react';
 
 import {
   BOARD_TILES,
-  CHARACTERS,
   CHARACTERS_SHEET,
+  LOOKS,
   TILES_SHEET,
   TILE_PITCH,
   TILE_SIZE,
   charactersUrl,
   tilesUrl,
+  type Look,
   type SheetCell,
 } from '../assets/sprites.ts';
 import type { HeroLevel } from '../content/schema.ts';
@@ -42,6 +43,20 @@ function sprite(
     backgroundImage: `url(${url})`,
     backgroundSize: `${sheet.width * SCALE}px ${sheet.height * SCALE}px`,
     backgroundPosition: `-${cell.column * TILE_PITCH * SCALE}px -${cell.row * TILE_PITCH * SCALE}px`,
+  };
+}
+
+/** A person: every layer of their look, as stacked backgrounds, top layer first. */
+function person(look: Look): CSSProperties {
+  const layers = [...look].reverse();
+  const { width, height } = CHARACTERS_SHEET;
+  return {
+    backgroundImage: layers.map(() => `url(${charactersUrl})`).join(', '),
+    backgroundSize: layers.map(() => `${width * SCALE}px ${height * SCALE}px`).join(', '),
+    backgroundPosition: layers
+      .map((cell) => `-${cell.column * TILE_PITCH * SCALE}px -${cell.row * TILE_PITCH * SCALE}px`)
+      .join(', '),
+    backgroundRepeat: 'no-repeat',
   };
 }
 
@@ -148,7 +163,7 @@ export function HeroBoard({ level, run }: HeroBoardProps) {
           data-facing={hero.facing}
           style={{
             transform: `translate(${hero.x * CELL}px, ${hero.y * CELL}px)`,
-            ...sprite(charactersUrl, CHARACTERS_SHEET, CHARACTERS.hero),
+            ...person(LOOKS.hero),
           }}
         />
       </div>
