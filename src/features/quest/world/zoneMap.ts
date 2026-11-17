@@ -22,6 +22,12 @@
 //                be walked on until that quest is solved. A quest may have
 //                several gates, and a gate may sit anywhere.
 //
+//   An optional object layer named `scenery`, for life that is not rules:
+//     figure     a point with a string property `look` naming a person in
+//                assets/looks.ts. They stand there, and nobody walks through.
+//     a tile object (Insert Tile in Tiled), drawn where it is placed. Named
+//                `float`, it bobs on the water: a boat at its mooring.
+//
 // Outside every gate, `built` layers are drawn and `barrier` layers are not, so
 // a map looks finished in Tiled and the gates say what is missing at the start.
 //
@@ -55,6 +61,18 @@ export interface ZoneLayer {
   readonly above: boolean;
 }
 
+/** Life in the zone that is not rules: people standing about, boats. */
+export type Scenery =
+  | { readonly kind: 'figure'; readonly at: Cell; readonly look: string }
+  | {
+      readonly kind: 'tile';
+      readonly at: Cell;
+      /** The tile, as the map numbers it (Tiled's gid). */
+      readonly gid: number;
+      /** Bobs gently, as a boat does. */
+      readonly floats: boolean;
+    };
+
 export interface ZoneMap {
   /** In squares. */
   readonly width: number;
@@ -71,6 +89,8 @@ export interface ZoneMap {
   readonly giver: Cell;
   readonly exit: Rect;
   readonly gates: readonly Gate[];
+  /** Drawn, never consulted by the rules except that a figure stands in the way. */
+  readonly scenery: readonly Scenery[];
 }
 
 type Json = Record<string, unknown>;
@@ -86,17 +106,17 @@ function roleOf(name: string): LayerRole {
   return 'always';
 }
 
-/** A Tiled object's `quest` property, however this version of Tiled wrote it. */
-function questProperty(object: Json): string | null {
+/** A Tiled object's string property, however this version of Tiled wrote it. */
+function stringProperty(object: Json, key: string): string | null {
   const properties = object['properties'];
   if (Array.isArray(properties)) {
     for (const property of properties) {
-      if (isObject(property) && property['name'] === 'quest') {
+      if (isObject(property) && property['name'] === key) {
         return typeof property['value'] === 'string' ? property['value'] : null;
       }
     }
-  } else if (isObject(properties) && typeof properties['quest'] === 'string') {
-    return properties['quest'];
+  } else if (isObject(properties) && typeof properties[key] === 'string') {
+    return properties[key];
   }
   return null;
 }
@@ -129,12 +149,14 @@ export function parseZoneMap(input: unknown): Result<ZoneMap, readonly string[]>
   const layers: ZoneLayer[] = [];
   const names = new Set<string>();
   let markers: readonly unknown[] | null = null;
+  let sceneryObjects: readonly unknown[] = [];
 
   for (const layer of Array.isArray(rawLayers) ? rawLayers : []) {
     if (!isObject(layer)) continue;
     const name = typeof layer['name'] === 'string' ? layer['name'] : '';
     if (layer['type'] === 'objectgroup') {
       if (name === 'markers' && Array.isArray(layer['objects'])) markers = layer['objects'];
+      if (name === 'scenery' && Array.isArray(layer['objects'])) sceneryObjects = layer['objects'];
       continue;
     }
     if (layer['type'] !== 'tilelayer') {
@@ -223,7 +245,7 @@ export function parseZoneMap(input: unknown): Result<ZoneMap, readonly string[]>
       if (exit) problems.push('There are two "exit" markers. Keep one.');
       exit = rect;
     } else if (name === 'gate') {
-      const quest = questProperty(object);
+      const quest = stringProperty(object, 'quest');
       if (!quest) {
         problems.push(
           `The gate at ${cell.x},${cell.y} needs a string property "quest" holding a quest id.`,
@@ -236,6 +258,38 @@ export function parseZoneMap(input: unknown): Result<ZoneMap, readonly string[]>
     }
   }
 
+  const scenery: Scenery[] = [];
+  for (const object of sceneryObjects) {
+    if (!isObject(object)) continue;
+    const name = typeof object['name'] === 'string' ? object['name'] : '';
+    const gid = object['gid'];
+    // A tile object's position is its bottom-left corner, as Tiled places one.
+    const isTile = typeof gid === 'number' && Number.isInteger(gid) && gid > 0;
+    const left = pixels(object['x']);
+    const top = isTile ? pixels(object['y']) - tileSize : pixels(object['y']);
+    const cell = { x: toCell(left), y: toCell(top) };
+    if (!inside(cell)) {
+      problems.push(`A "${name || 'tile'}" in the scenery layer is outside the map.`);
+      continue;
+    }
+    if (isTile) {
+      scenery.push({ kind: 'tile', at: cell, gid, floats: name === 'float' });
+    } else if (name === 'figure') {
+      const look = stringProperty(object, 'look');
+      if (!look) {
+        problems.push(
+          `The figure at ${cell.x},${cell.y} needs a string property "look" naming a person.`,
+        );
+        continue;
+      }
+      scenery.push({ kind: 'figure', at: cell, look });
+      // Someone stands here.
+      blocked[cell.y * width + cell.x] = true;
+    } else {
+      problems.push(`"${name}" is not scenery the game knows. Use a figure, or a tile object.`);
+    }
+  }
+
   const spawn = points.get('spawn');
   const giver = points.get('giver');
   if (markers !== null) {
@@ -245,7 +299,19 @@ export function parseZoneMap(input: unknown): Result<ZoneMap, readonly string[]>
   }
   if (problems.length > 0 || !spawn || !giver || !exit || !tileset) return err(problems);
 
-  return ok({ width, height, tileSize, tileset, layers, blocked, spawn, giver, exit, gates });
+  return ok({
+    width,
+    height,
+    tileSize,
+    tileset,
+    layers,
+    blocked,
+    spawn,
+    giver,
+    exit,
+    gates,
+    scenery,
+  });
 }
 
 // ── Walking ─────────────────────────────────────────────────────────────────
