@@ -66,7 +66,8 @@ test('@a11y Quest: the zone screen has no serious/critical violations', async ({
 
 test('@a11y Quest: the quest-giver\'s dialog has no serious/critical violations', async ({ page }) => {
   await begin(page);
-  for (const key of ['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowUp', 'ArrowRight']) {
+  // Along the road to the head of the bridge, then up into Karim Majhi.
+  for (const key of [...Array(11).fill('ArrowRight'), 'ArrowUp']) {
     await page.keyboard.press(key);
     await page.waitForTimeout(300);
   }
