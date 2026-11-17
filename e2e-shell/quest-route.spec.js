@@ -56,10 +56,10 @@ test('the zone draws under the site CSP and fetches no Java', async ({ page }) =
 test('walking up to the quest-giver starts the first quest', async ({ page }) => {
   await openZone(page);
 
-  // From the spawn point: five squares east, one north, then into the giver.
-  for (let i = 0; i < 5; i += 1) await step(page, 'ArrowRight');
+  // From the spawn point: along the road to the head of the bridge, then up
+  // into the giver, who waits there by the water.
+  for (let i = 0; i < 11; i += 1) await step(page, 'ArrowRight');
   await step(page, 'ArrowUp');
-  await step(page, 'ArrowRight');
 
   const dialog = page.getByRole('dialog', { name: 'Karim Majhi speaks' });
   await expect(dialog).toContainText(bridge.quests[0].story[0]);
