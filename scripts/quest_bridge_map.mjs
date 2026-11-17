@@ -133,7 +133,7 @@ const TREES = [
 const PINES = [[7, 0], [12, 0], [39, 0], [45, 4], [30, 0]]; // prettier-ignore
 const FRUIT_TREES = [[9, 9], [4, 9], [40, 9], [37, 6]]; // prettier-ignore
 const BUSHES = [[11, 3], [6, 9], [2, 13], [43, 13], [36, 13], [10, 14], [31, 14]]; // prettier-ignore
-const ROCKS = [[13, 21], [42, 8]]; // prettier-ignore
+const ROCKS = [[13, 21], [43, 10]]; // prettier-ignore
 const FLOWERS = [
   [3, 8], [8, 4], [11, 9], [2, 10], [7, 13], [12, 13], [34, 4], [41, 4], [39, 7],
   [33, 10], [42, 10], [35, 14], [40, 14],
