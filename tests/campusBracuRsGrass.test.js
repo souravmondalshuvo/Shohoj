@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { RS_BUILDINGS, RS_GROUNDS, RS_WATER, pointInPolygon } from '../src/core/campusBracuRs.ts';
+import { RS_BUILDINGS, RS_GROUNDS, RS_ROADS, RS_WALL, RS_WATER, pointInPolygon } from '../src/core/campusBracuRs.ts';
 import { grassScatter, isEarth, isGrass } from '../src/features/campus/rsGrass.ts';
 import { crownGeometry } from '../src/features/campus/rsLandscape.ts';
 
@@ -41,6 +41,29 @@ test('no clump stands in a building, on a pitch or the court, or in a pond', () 
     }
 });
 
+const segmentDistance = (p, a, b) => {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2)) : 0;
+    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+};
+
+test('no clump stands on a road, nor more than 45 m outside the wall', () => {
+    // Earth everywhere: the dusty roads outside the wall read as earth too.
+    const tufts = [...grassScatter(() => OLIVE), ...grassScatter(() => EARTH)];
+    for (const t of tufts) {
+        const p = [t.x, t.y];
+        for (const r of RS_ROADS) {
+            for (let i = 1; i < r.path.length; i++) {
+                assert.ok(segmentDistance(p, r.path[i - 1], r.path[i]) > 1.5, `on ${r.kind} road at ${p}`);
+            }
+        }
+        const fromWall = Math.min(...RS_WALL.map((a, i) => segmentDistance(p, a, RS_WALL[(i + 1) % RS_WALL.length])));
+        assert.ok(pointInPolygon(p, RS_WALL) || fromWall <= 45 + 1e-9, `${fromWall.toFixed(1)} m out at ${p}`);
+    }
+});
+
 test('paving gets no grass, bare earth only a sprinkle of weeds', () => {
     assert.equal(grassScatter(() => PAVING).length, 0);
     assert.equal(grassScatter(() => null).length, 0);
@@ -65,6 +88,14 @@ test('a country crown is several clumps, hanging from its top, the same each tim
     const box = a.boundingBox;
     assert.ok(box.max.y <= 1.2 && box.min.y >= -0.9, `y ${box.min.y}..${box.max.y}`);
     assert.ok(box.max.x - box.min.x > 1.6, `spread ${box.max.x - box.min.x}`);
-    // Six lumps of an icosphere: far more than one ball's 42 vertices.
-    assert.ok(a.getAttribute('position').count >= 6 * 42);
+    // Separate clumps, not one ball: count the pieces the triangles join into.
+    const index = a.getIndex().array;
+    const parent = Array.from({ length: a.getAttribute('position').count }, (_, i) => i);
+    const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    for (let i = 0; i < index.length; i += 3) {
+        parent[find(index[i + 1])] = find(index[i]);
+        parent[find(index[i + 2])] = find(index[i]);
+    }
+    const pieces = new Set(parent.map((_, i) => find(i)));
+    assert.equal(pieces.size, 6);
 });
