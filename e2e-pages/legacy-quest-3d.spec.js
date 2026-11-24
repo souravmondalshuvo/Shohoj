@@ -20,7 +20,7 @@ import { portFor } from '../e2e-support/port.js';
 
 const LEGACY = `http://127.0.0.1:${portFor(4179, 'PLAYWRIGHT_PAGES_LEGACY_PORT')}`;
 
-async function open(page, { query = '', noWebGL = false, gpu = null } = {}) {
+async function open(page, { query = '', noWebGL = false, gpu = null, wait = 30_000 } = {}) {
   await page.addInitScript(
     ({ withoutWebGL, rendererName }) => {
       if (window !== window.top) return;
@@ -56,7 +56,7 @@ async function open(page, { query = '', noWebGL = false, gpu = null } = {}) {
   );
   await page.route('https://**/*', (route) => route.abort());
   await page.goto(`${LEGACY}/index.html${query}#calculator/quest`, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('.quest-root canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.quest-root canvas')).toBeVisible({ timeout: wait });
 }
 
 const threeD = (page) => page.locator('.quest-root canvas[data-quest-renderer="3d"]');
@@ -111,6 +111,19 @@ test('a browser without WebGL gets the 2D zone by default', async ({ page }) => 
   await expect(threeD(page)).toHaveCount(0);
   await expect(page.locator('.quest-tip')).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('a 3D download that never arrives gives way to the 2D zone', async ({ page }) => {
+  test.setTimeout(90_000);
+  // The request for the 3D zone's code is held open: neither answered nor failed.
+  await page.route('**/zoneGame3d-*.js', () => {});
+  await open(page, {
+    query: '?quest3dq=low',
+    gpu: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro)',
+    wait: 60_000,
+  });
+  await expect(page.locator('.quest-tip')).toBeVisible();
+  await expect(threeD(page)).toHaveCount(0);
 });
 
 test('3D forced on a browser that cannot start WebGL falls back to 2D, not a broken screen', async ({ page }) => {
