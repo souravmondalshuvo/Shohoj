@@ -51,6 +51,7 @@ import {
   Sprite,
   SpriteMaterial,
   SRGBColorSpace,
+  type Texture,
   TorusGeometry,
   Vector2,
   Vector3,
@@ -58,7 +59,6 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import {
   RS_BUILDINGS,
@@ -73,15 +73,18 @@ import {
   RS_WALL,
   RS_WALL_HEIGHT,
   corner,
-  polygonArea,
   polygonCentre,
   rsSiteBounds,
   type Point,
 } from '../../core/campusBracuRs.ts';
-import { SELECT_TINT, buildBuildings, capGeometry, wallGeometry, type BuiltBuilding } from './rsBuildings.ts';
+import { SELECT_TINT, buildBuildings, type BuiltBuilding } from './rsBuildings.ts';
 import { GROUND_EXTENT, groundMaterial, groundTexture, paintGround } from './rsGround.ts';
-import { brick, genericFacade, groundDetail, plaster, rng } from './rsTextures.ts';
+import { buildCountry, countryPlan, countryScatter, drawNearCrop, paintCountry } from './rsLandscape.ts';
+import { buildNeighbours } from './rsNeighbours.ts';
+import { createPost } from './rsPost.ts';
+import { brick, groundDetail, plaster, rng } from './rsTextures.ts';
 import { buildTrees } from './rsTrees.ts';
+import { buildPonds } from './rsWater.ts';
 
 export interface RsSceneOptions {
   /** A building was clicked (its id), or empty ground (null). */
@@ -203,6 +206,10 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
   renderer.toneMappingExposure = 0.75;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFShadowMap;
+  // Nothing casting a shadow ever moves: draw the shadow map once, not on
+  // every frame (or every mirror render).
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   renderer.domElement.setAttribute('aria-hidden', 'true');
   container.appendChild(renderer.domElement);
 
@@ -226,8 +233,8 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
   track(sky.geometry);
   track(sky.material);
   scene.add(sky);
-  // The sky lights the scene and is what the glass reflects.
-  {
+  // The sky lights the scene and is what the glass and water reflect.
+  const envTex: Texture = (() => {
     const pmrem = new PMREMGenerator(renderer);
     const envScene = new Scene();
     const envSky = new Sky();
@@ -243,13 +250,17 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
     if (disc) disc.value = 0;
     envScene.add(envSky);
     const env = pmrem.fromScene(envScene, 0, 1, 20000);
-    scene.environment = track(env.texture);
-    scene.environmentIntensity = 0.1;
+    const texture = track(env.texture);
+    scene.environment = texture;
+    scene.environmentIntensity = 0.15;
     envSky.geometry.dispose();
     envSky.material.dispose();
     pmrem.dispose();
-  }
-  scene.fog = new FogExp2(HAZE, 0.001);
+    return texture;
+  })();
+  const FOG_DENSITY = 0.001;
+  const fog = new FogExp2(HAZE, FOG_DENSITY);
+  scene.fog = fog;
   scene.add(new HemisphereLight(new Color('#dfe8f0'), new Color('#8a7a5c'), 0.12));
   const sun = new DirectionalLight(new Color('#fff0d8'), 3.6);
   sun.position.copy(SUN_DIRECTION.clone().multiplyScalar(420));
@@ -268,18 +279,24 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
   scene.add(sun);
   scene.add(sun.target);
 
-  // ── Ground ──────────────────────────────────────────────────────────────
+  // ── Ground: the country to the horizon, the mapped area on top ──────────
   {
-    const far = new Mesh(track(new PlaneGeometry(6000, 6000)), track(new MeshStandardMaterial({ color: '#66693f', roughness: 1 })));
-    far.rotation.x = -Math.PI / 2;
-    far.position.y = -0.05;
-    far.receiveShadow = true;
-    scene.add(far);
-    const map = track(groundTexture(paintGround()));
+    const plan = countryPlan();
+    const scatter = countryScatter(plan, small ? 2 : 1);
+    const countryCanvas = paintCountry(plan, scatter);
+    const country = buildCountry(countryCanvas, plan, scatter);
+    disposables.push(country);
+    scene.add(country.group);
+    const map = track(groundTexture(paintGround((g, w, h) => drawNearCrop(g, countryCanvas, w, h))));
     const detail = track(groundDetail(405));
     const w = GROUND_EXTENT.x2 - GROUND_EXTENT.x1;
     const h = GROUND_EXTENT.y2 - GROUND_EXTENT.y1;
-    const ground = new Mesh(track(new PlaneGeometry(w, h)), track(groundMaterial(map, detail)));
+    const nearMat = track(groundMaterial(map, detail));
+    // Drawn over the country's plane, which runs on underneath.
+    nearMat.polygonOffset = true;
+    nearMat.polygonOffsetFactor = -2;
+    nearMat.polygonOffsetUnits = -4;
+    const ground = new Mesh(track(new PlaneGeometry(w, h)), nearMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.set((GROUND_EXTENT.x1 + GROUND_EXTENT.x2) / 2, 0, -(GROUND_EXTENT.y1 + GROUND_EXTENT.y2) / 2);
     ground.receiveShadow = true;
@@ -293,7 +310,8 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
     if (brickTex.normalMap) track(brickTex.normalMap);
     const brickMat = track(new MeshStandardMaterial({ map: brickTex.map, roughness: 0.95 }));
     if (brickTex.normalMap) brickMat.normalMap = brickTex.normalMap;
-    const concreteMat = track(new MeshStandardMaterial({ color: '#b9b5ab', roughness: 0.9 }));
+    // Rendered posts, greyed by the weather: they line the horizon from outside.
+    const concreteMat = track(new MeshStandardMaterial({ color: '#9a958a', roughness: 0.95 }));
     // Walk the wall as one path, opening at the gate.
     const gi = RS_WALL.findIndex((p) => p[0] === RS_GATE[0] && p[1] === RS_GATE[1]);
     const GAP = 7;
@@ -353,7 +371,7 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
   }
 
   // ── Buildings ───────────────────────────────────────────────────────────
-  const buildings = buildBuildings(RS_BUILDINGS);
+  const buildings = buildBuildings(RS_BUILDINGS, { envMap: envTex });
   disposables.push(buildings);
   const entries: Array<BuiltBuilding & { label: Sprite }> = [];
   const pickables: Object3D[] = [];
@@ -491,67 +509,31 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
 
   // ── The neighbourhood, for context ──────────────────────────────────────
   {
-    const tints: Array<[number, number, number]> = [
-      [196, 190, 176],
-      [186, 176, 158],
-      [200, 186, 176],
-      [176, 180, 176],
-    ];
-    const mats = tints.map((t, i) => {
-      const tex = genericFacade(t, 700 + i);
-      track(tex.map);
-      tex.map.repeat.set(4 / 3, 1);
-      if (tex.normalMap) track(tex.normalMap);
-      return track(new MeshStandardMaterial({ map: tex.map, roughness: 0.95 }));
-    });
-    // One merged mesh per material: 130 buildings in six draw calls.
-    const wallsBy: BufferGeometry[][] = mats.map(() => []);
-    const roofs: BufferGeometry[] = [];
-    const shedRoofs: BufferGeometry[] = [];
-    const roofMat = track(new MeshStandardMaterial({ color: '#85827a', roughness: 0.95 }));
-    const shedRoof = track(new MeshStandardMaterial({ color: '#6f7a80', roughness: 0.55, metalness: 0.5 }));
-    const r = rng(77);
-    for (const nb of RS_NEIGHBOURS) {
-      const area = Math.abs(polygonArea(nb));
-      if (area < 8) continue;
-      const shed = area > 1200;
-      // Heights are not published: sheds are drawn at 8 m, the rest at one
-      // to three storeys. Context, not a survey.
-      const h = shed ? 8 : 3.2 * (1 + Math.floor(r() * 3));
-      wallsBy[Math.floor(r() * mats.length) % mats.length]?.push(wallGeometry(nb, 0, h, 3.2));
-      (shed ? shedRoofs : roofs).push(capGeometry(nb, h).toNonIndexed());
-    }
-    const addMerged = (parts: BufferGeometry[], mat: Material): void => {
-      if (parts.length === 0) return;
-      const merged = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)));
-      for (const p of parts) p.dispose();
-      if (!merged) return;
-      const mesh = new Mesh(track(merged), mat);
-      mesh.castShadow = mesh.receiveShadow = true;
-      scene.add(mesh);
-    };
-    wallsBy.forEach((parts, i) => {
-      const mat = mats[i];
-      if (mat) addMerged(parts, mat);
-    });
-    addMerged(roofs, roofMat);
-    addMerged(shedRoofs, shedRoof);
+    const neighbours = buildNeighbours(RS_NEIGHBOURS);
+    disposables.push(neighbours);
+    scene.add(neighbours.group);
   }
 
   // ── Ponds ───────────────────────────────────────────────────────────────
-  {
-    const water = track(
-      new MeshStandardMaterial({ color: '#2f3f2a', roughness: 0.06, metalness: 0.2, envMapIntensity: 6 }),
-    );
-    for (const w of RS_WATER) {
-      const m = new Mesh(track(capGeometry(w.outline, 0.04)), water);
-      m.receiveShadow = true;
-      scene.add(m);
-    }
+  const drawing = renderer.getDrawingBufferSize(new Vector2());
+  const ponds = buildPonds(
+    RS_WATER.map((w) => w.outline),
+    { mirror: !small, env: envTex, width: drawing.x, height: drawing.y },
+  );
+  if (ponds) {
+    disposables.push(ponds);
+    scene.add(ponds.mesh);
   }
 
   // ── Camera ──────────────────────────────────────────────────────────────
   const camera = new PerspectiveCamera(40, 1, 0.5, 8000);
+  // Multisampling everywhere; ambient occlusion where the screen can afford it.
+  const site = rsSiteBounds();
+  const post = createPost(renderer, scene, camera, {
+    ao: !small,
+    clip: { min: new Vector3(site.x1 - 400, -2, -(site.y2 + 400)), max: new Vector3(site.x2 + 400, 80, -(site.y1 - 400)) },
+  });
+  disposables.push(post);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;
   controls.maxPolarAngle = Math.PI * 0.495;
@@ -635,7 +617,11 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
   function render(): void {
     frameRequested = false;
     if (disposed) return;
-    renderer.render(scene, camera);
+    // A narrow screen stands the camera further back to fit the campus in;
+    // thin the haze with it, so the campus reads the same on a phone.
+    const back = camera.position.distanceTo(controls.target);
+    fog.density = FOG_DENSITY * Math.min(1, Math.max(0.4, 400 / back));
+    post.render();
   }
   function requestRender(): void {
     if (frameRequested || disposed) return;
@@ -649,6 +635,9 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
     const w = container.clientWidth || 600;
     const h = container.clientHeight || 400;
     renderer.setSize(w, h, false);
+    post.setSize(w, h);
+    const buffer = renderer.getDrawingBufferSize(new Vector2());
+    ponds?.setSize(buffer.x, buffer.y);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (ready && !movedByReader) {
