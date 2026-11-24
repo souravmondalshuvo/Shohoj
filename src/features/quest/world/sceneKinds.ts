@@ -2,7 +2,7 @@
 //
 // What a zone's Tiled map shows, in words a 3D renderer can build from (#981).
 //
-// The 2D game draws the map's tiles as they are. The 3D prototype
+// The 2D game draws the map's tiles as they are. The 3D zone
 // (game/zoneGame3d.ts) cannot draw a picture of a tree; it needs to know that
 // a tree stands on that square. So this reads the same map, tile by tile, and
 // names what each tile is: water or road under foot, a hut, a pile in the
