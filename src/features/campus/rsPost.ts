@@ -17,9 +17,10 @@ import {
   Box3,
   type Camera,
   DepthTexture,
-  FloatType,
   HalfFloatType,
   type Scene,
+  UnsignedByteType,
+  UnsignedIntType,
   Vector2,
   Vector3,
   type WebGLRenderer,
@@ -44,10 +45,15 @@ export function createPost(
   options: { ao: boolean; clip: { min: Vector3; max: Vector3 } },
 ): Post {
   const size = renderer.getDrawingBufferSize(new Vector2());
+  // Only what every WebGL 2 device can draw into: half-float colour where the
+  // driver says it renders to it (8-bit otherwise), a 24-bit depth texture,
+  // and no more samples than it allows.
+  const ext = renderer.extensions;
+  const halfFloat = ext.has('EXT_color_buffer_float') || ext.has('EXT_color_buffer_half_float');
   const target = new WebGLRenderTarget(size.x, size.y, {
-    type: HalfFloatType,
-    samples: 4,
-    depthTexture: new DepthTexture(size.x, size.y, FloatType),
+    type: halfFloat ? HalfFloatType : UnsignedByteType,
+    samples: Math.min(4, renderer.capabilities.maxSamples),
+    depthTexture: new DepthTexture(size.x, size.y, UnsignedIntType),
   });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
