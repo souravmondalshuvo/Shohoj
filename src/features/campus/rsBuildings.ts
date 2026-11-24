@@ -255,6 +255,33 @@ function texturedMaterial(t: SurfaceTextures, extra: { roughness?: number; metal
   return m;
 }
 
+/**
+ * A flat concrete roof seen from above is not one tile repeated: monsoon
+ * after monsoon leaves broad damp patches and black mould where water stands.
+ * The slab's own map, sampled again at a coarse scale and divided by its
+ * average colour, darkens and lightens it in patches many metres across; the
+ * darkest of those patches go a mouldy grey-green.
+ */
+export function weathered(mat: MeshStandardMaterial): MeshStandardMaterial {
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+  vec3 slabMean = texture2D( map, vMapUv, 12.0 ).rgb + 0.001;
+  // From a blurred level: magnified, the tile's hairline cracks would turn
+  // into dark rivers across the roof; blurred, only the stains survive.
+  vec3 broad = texture2D( map, vMapUv * 0.19 + 0.21, 3.5 ).rgb / slabMean;
+  vec3 broader = texture2D( map, vMapUv * 0.067 + 0.53, 4.0 ).rgb / slabMean;
+  float damp = clamp( dot( broad * broader, vec3( 0.333 ) ), 0.4, 1.6 );
+  diffuseColor.rgb *= mix( 1.0, damp, 1.3 );
+  float mould = smoothstep( 0.88, 0.7, damp );
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( 0.55, 0.6, 0.52 ), mould );`,
+    );
+  };
+  mat.customProgramCacheKey = () => 'rs-weathered-slab';
+  return mat;
+}
+
 // ── Building assembly ───────────────────────────────────────────────────────
 
 export interface BuiltBuilding {
@@ -524,7 +551,7 @@ export function buildBuildings(
     // ── Roof ───────────────────────────────────────────────────────────
     let roofTop = top;
     if (b.roof === 'flat' || b.roof === 'flat-stubs') {
-      const roofMat = keep(texturedMaterial(P.slab, { roughness: 0.95 }));
+      const roofMat = keep(weathered(texturedMaterial(P.slab, { roughness: 0.95 })));
       tintable.push(roofMat);
       add(capGeometry(b.footprint, top), roofMat);
       // Parapet, both faces, with a coping line.
