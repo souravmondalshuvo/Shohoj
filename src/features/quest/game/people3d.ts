@@ -44,7 +44,11 @@ import womanUrl from '../assets/people/woman.glb.gz?url';
 /** Metres in the files to squares in the zone: a man is about 1.15 squares tall. */
 export const PEOPLE_SCALE = 0.66;
 
-/** The jog's own speed, in squares a second at PEOPLE_SCALE (5.26 m/s in the file). */
+/**
+ * The jog's own speed, in squares a second at PEOPLE_SCALE (5.26 m/s in the
+ * file). A figure moving at `speed` plays the jog at speed / JOG_SPEED, so its
+ * stride covers exactly the ground it moves over.
+ */
 export const JOG_SPEED = 5.26 * PEOPLE_SCALE;
 
 export type Build = 'man' | 'woman';
@@ -150,14 +154,35 @@ function readSource(scene: Group): Source {
   return { scene, parts, detail };
 }
 
-/** Load both builds. Rejects if either cannot be fetched or read. */
+/** How long the models may take to arrive before the zone gives up on them. */
+const LOAD_TIMEOUT_MS = 60_000;
+
+/**
+ * Load both builds. Rejects if either cannot be fetched or read, or has not
+ * arrived within LOAD_TIMEOUT_MS: a request that hangs would otherwise leave
+ * the zone "loading" for good instead of settling on its shapes.
+ */
 export async function loadPeople(signal?: AbortSignal): Promise<People> {
   const loader = new GLTFLoader();
-  const [man, woman] = await Promise.all(
-    [manUrl, womanUrl].map(async (url) =>
-      loader.parseAsync(await fetchExteriorGlb(url, signal), ''),
-    ),
-  );
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(new Error('people: timed out')), LOAD_TIMEOUT_MS);
+  const stop = () => deadline.abort(signal?.reason);
+  signal?.addEventListener('abort', stop, { once: true });
+  if (signal?.aborted) stop();
+  let models;
+  try {
+    models = await Promise.all(
+      [manUrl, womanUrl].map(async (url) => {
+        const glb = await fetchExteriorGlb(url, deadline.signal);
+        deadline.signal.throwIfAborted();
+        return loader.parseAsync(glb, '');
+      }),
+    );
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', stop);
+  }
+  const [man, woman] = models;
   if (!man || !woman) throw new Error('people: a model is missing');
   const clips = new Map<string, AnimationClip>();
   for (const clip of man.animations) clips.set(clip.name, fitClip(clip));
