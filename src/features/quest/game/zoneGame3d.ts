@@ -606,7 +606,7 @@ class Zone3d implements ZoneGame {
   private readonly sun: DirectionalLight;
   private readonly ground: Ground;
   private readonly finish: Finish;
-  private readonly skyTexture: { dispose(): void };
+  private readonly skyTarget: { dispose(): void };
   private readonly clock = new Clock();
   private readonly calm: boolean;
   private readonly coarse: boolean;
@@ -662,125 +662,150 @@ class Zone3d implements ZoneGame {
 
     // Throws where WebGL is unavailable; the quest screen falls back to 2D.
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.coarse ? 1.5 : 2));
-    this.renderer.outputColorSpace = SRGBColorSpace;
-    this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = PCFSoftShadowMap;
-    this.renderer.domElement.style.display = 'block';
-    this.renderer.domElement.style.touchAction = 'none';
-    // Says which version is drawing, for the browser tests.
-    this.renderer.domElement.dataset['questRenderer'] = '3d';
-    options.parent.append(this.renderer.domElement);
+    // What setup has made so far, so a failure partway leaves nothing behind
+    // beside the 2D zone that takes over.
+    const undo: (() => void)[] = [];
+    try {
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.coarse ? 1.5 : 2));
+      this.renderer.outputColorSpace = SRGBColorSpace;
+      this.renderer.toneMapping = ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.08;
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = PCFSoftShadowMap;
+      this.renderer.domElement.style.display = 'block';
+      this.renderer.domElement.style.touchAction = 'none';
+      // Says which version is drawing, for the browser tests.
+      this.renderer.domElement.dataset['questRenderer'] = '3d';
+      options.parent.append(this.renderer.domElement);
+      undo.push(() => this.renderer.domElement.remove());
 
-    const haze = new Color('#f3d8ac');
-    this.scene.background = haze;
-    this.scene.fog = new Fog(haze, 20, 52);
+      const haze = new Color('#f3d8ac');
+      this.scene.background = haze;
+      this.scene.fog = new Fog(haze, 20, 52);
 
-    const quality = pickQuality(this.renderer, this.coarse);
+      const quality = pickQuality(this.renderer, this.coarse);
 
-    // Late afternoon: the sky's own light on everything (effects3d.ts), a
-    // low warm sun in the west for shadows, a little green bounce from below.
-    const sky = skyLight(this.renderer, SUN);
-    this.skyTexture = sky;
-    this.scene.environment = sky;
-    this.scene.environmentIntensity = 0.14;
-    this.scene.add(new HemisphereLight('#dfe9ff', '#5a7a3a', 0.55));
-    this.sun = new DirectionalLight('#ffd49a', 2.7);
-    this.sun.castShadow = true;
-    const shadowSize = quality === 'high' ? 2048 : 1024;
-    this.sun.shadow.mapSize.set(shadowSize, shadowSize);
-    const reach = 16;
-    Object.assign(this.sun.shadow.camera, {
-      left: -reach,
-      right: reach,
-      top: reach,
-      bottom: -reach,
-      near: 1,
-      far: 60,
-    });
-    this.sun.shadow.bias = -0.0006;
-    this.sun.shadow.normalBias = 0.02;
-    this.scene.add(this.sun, this.sun.target);
+      // Late afternoon: the sky's own light on everything (effects3d.ts), a
+      // low warm sun in the west for shadows, a little green bounce from below.
+      const sky = skyLight(this.renderer, SUN);
+      this.skyTarget = sky;
+      undo.push(() => sky.dispose());
+      this.scene.environment = sky.texture;
+      this.scene.environmentIntensity = 0.14;
+      this.scene.add(new HemisphereLight('#dfe9ff', '#5a7a3a', 0.55));
+      this.sun = new DirectionalLight('#ffd49a', 2.7);
+      this.sun.castShadow = true;
+      const shadowSize = quality === 'high' ? 2048 : 1024;
+      this.sun.shadow.mapSize.set(shadowSize, shadowSize);
+      const reach = 16;
+      Object.assign(this.sun.shadow.camera, {
+        left: -reach,
+        right: reach,
+        top: reach,
+        bottom: -reach,
+        near: 1,
+        far: 60,
+      });
+      this.sun.shadow.bias = -0.0006;
+      this.sun.shadow.normalBias = 0.02;
+      this.scene.add(this.sun, this.sun.target);
 
-    this.description = describeScene(options.mapJson);
-    const banks = this.riverBanks();
-    this.ground = buildGround(this.description, { quality, occupied: this.occupiedSquares() });
-    this.scene.add(...this.ground.objects);
-    this.scene.add(buildSurroundings(this.kit, this.description, banks));
-    const { water, material } = buildWater(this.kit, this.description, banks);
-    this.waterMaterial = material;
-    this.scene.add(water);
+      this.description = describeScene(options.mapJson);
+      const banks = this.riverBanks();
+      const ground = buildGround(this.description, { quality, occupied: this.occupiedSquares() });
+      this.ground = ground;
+      undo.push(() => ground.dispose());
+      this.scene.add(...this.ground.objects);
+      this.scene.add(buildSurroundings(this.kit, this.description, banks));
+      const { water, material } = buildWater(this.kit, this.description, banks);
+      this.waterMaterial = material;
+      this.scene.add(water);
 
-    this.barriers = new Group();
-    this.scene.add(this.barriers);
-    this.buildProps();
-    this.buildBridge();
-    this.buildPeople();
+      this.barriers = new Group();
+      this.scene.add(this.barriers);
+      this.buildProps();
+      this.buildBridge();
+      this.buildPeople();
 
-    this.hero = person(this.kit, PEOPLE['hero'] as PersonLook);
-    const heroAt = this.onGround(centre(this.cell));
-    this.hero.group.position.copy(heroAt);
-    this.scene.add(this.hero.group);
-    this.heroShadow = this.kit.mesh(
-      new RingGeometry(0, 0.24, 16),
-      this.kit.keep(
-        new MeshBasicMaterial({
-          color: '#000000',
-          transparent: true,
-          opacity: 0.22,
-          depthWrite: false,
-        }),
-      ),
-      false,
-    );
-    this.heroShadow.rotation.x = -Math.PI / 2;
-    this.scene.add(this.heroShadow);
+      this.hero = person(this.kit, PEOPLE['hero'] as PersonLook);
+      const heroAt = this.onGround(centre(this.cell));
+      this.hero.group.position.copy(heroAt);
+      this.scene.add(this.hero.group);
+      this.heroShadow = this.kit.mesh(
+        new RingGeometry(0, 0.24, 16),
+        this.kit.keep(
+          new MeshBasicMaterial({
+            color: '#000000',
+            transparent: true,
+            opacity: 0.22,
+            depthWrite: false,
+          }),
+        ),
+        false,
+      );
+      this.heroShadow.rotation.x = -Math.PI / 2;
+      this.scene.add(this.heroShadow);
 
-    this.hover = this.kit.mesh(
-      new RingGeometry(0.36, 0.46, 4, 1, Math.PI / 4),
-      this.kit.keep(
-        new MeshBasicMaterial({
-          color: '#ffffff',
-          transparent: true,
-          opacity: 0.75,
-          depthWrite: false,
-        }),
-      ),
-      false,
-    );
-    this.hover.rotation.x = -Math.PI / 2;
-    this.hover.visible = false;
-    this.scene.add(this.hover);
-    this.tapRing = this.kit.mesh(
-      new RingGeometry(0.3, 0.38, 24),
-      this.kit.keep(
-        new MeshBasicMaterial({
-          color: '#ffffff',
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-        }),
-      ),
-      false,
-    );
-    this.tapRing.rotation.x = -Math.PI / 2;
-    this.scene.add(this.tapRing);
+      this.hover = this.kit.mesh(
+        new RingGeometry(0.36, 0.46, 4, 1, Math.PI / 4),
+        this.kit.keep(
+          new MeshBasicMaterial({
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0.75,
+            depthWrite: false,
+          }),
+        ),
+        false,
+      );
+      this.hover.rotation.x = -Math.PI / 2;
+      this.hover.visible = false;
+      this.scene.add(this.hover);
+      this.tapRing = this.kit.mesh(
+        new RingGeometry(0.3, 0.38, 24),
+        this.kit.keep(
+          new MeshBasicMaterial({
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+          }),
+        ),
+        false,
+      );
+      this.tapRing.rotation.x = -Math.PI / 2;
+      this.scene.add(this.tapRing);
 
-    this.finish = new Finish(this.renderer, this.scene, this.camera, quality, () => {
-      // Moved to "low" for running slow: a lighter screen too.
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+      const finish = new Finish(this.renderer, this.scene, this.camera, quality, () => {
+        // Moved to "low" for running slow: everything else that costs comes
+        // down with it. A lighter screen, a smaller shadow map (the old one is
+        // freed and redrawn at the new size), a third of the grass.
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+        this.sun.shadow.mapSize.set(1024, 1024);
+        this.sun.shadow.map?.dispose();
+        this.sun.shadow.map = null;
+        this.ground.lower();
+        this.fit();
+      });
+      this.finish = finish;
+      undo.push(() => finish.dispose());
+
+      this.cameraTarget.copy(this.clampTarget(heroAt));
+      this.showState(false);
+      this.listen();
+
+      const resize = new ResizeObserver(() => this.fit());
+      this.resize = resize;
+      undo.push(() => resize.disconnect());
+      resize.observe(options.parent);
       this.fit();
-    });
-
-    this.cameraTarget.copy(this.clampTarget(heroAt));
-    this.showState(false);
-    this.listen();
-
-    this.resize = new ResizeObserver(() => this.fit());
-    this.resize.observe(options.parent);
-    this.fit();
+    } catch (error) {
+      for (const step of undo.reverse()) step();
+      for (const cleanup of this.cleanups) cleanup();
+      for (const thing of this.kit.disposables) thing.dispose();
+      this.renderer.dispose();
+      throw error;
+    }
     this.renderer.setAnimationLoop(() => this.frame());
     this.options.onEvent({ kind: 'ready' });
   }
@@ -820,7 +845,7 @@ class Zone3d implements ZoneGame {
     for (const thing of this.kit.disposables) thing.dispose();
     this.ground.dispose();
     this.finish.dispose();
-    this.skyTexture.dispose();
+    this.skyTarget.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
