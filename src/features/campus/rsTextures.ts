@@ -457,21 +457,68 @@ export function bark(seed: number): SurfaceTextures {
 
 /**
  * Fine ground detail in mid-grey, multiplied over the painted ground map so
- * the ground has grain up close; the tile is 3 m square.
+ * the ground has grain up close; the tile is 3 m square. Under the grain,
+ * thousands of short blades in light and dark — dry-season grass, trodden
+ * flat in all directions — and a few bare, paler scuffs between them.
  */
 export function groundDetail(seed: number): Texture {
-  const size = 256;
+  const size = 512;
   const px = pixels(size);
   const r = rng(seed);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const n = fbm(x / size, y / size, 16, 4, seed);
-      const blade = r() < 0.18 ? (r() - 0.5) * 40 : 0;
-      const v = clamp(128 + (n - 0.5) * 60 + blade);
+      const v = clamp(128 + (n - 0.5) * 56 + (r() - 0.5) * 10);
       px.set(y * size + x, v, v, v);
     }
   }
-  return toCanvasTexture(px, false);
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const g = canvas.getContext('2d');
+  if (g) {
+    g.putImageData(new ImageData(px.data, size, size), 0, 0);
+    // Bare scuffs: soft pale patches where the grass is worn.
+    for (let i = 0; i < 14; i++) {
+      const x = r() * size;
+      const y = r() * size;
+      const rad = 10 + r() * 26;
+      for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]] as const) {
+        const grad = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+        grad.addColorStop(0, 'rgba(176,176,176,0.55)');
+        grad.addColorStop(1, 'rgba(176,176,176,0)');
+        g.fillStyle = grad;
+        g.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+      }
+    }
+    // Blades, each drawn again across every edge it crosses so the tile repeats.
+    g.lineCap = 'round';
+    const blades = 26000;
+    for (let i = 0; i < blades; i++) {
+      const x = r() * size;
+      const y = r() * size;
+      const a = r() * Math.PI * 2;
+      const len = 4 + r() * 11;
+      const shade = r() < 0.5 ? 70 + r() * 40 : 150 + r() * 50;
+      g.strokeStyle = `rgba(${shade | 0},${shade | 0},${shade | 0},${(0.35 + r() * 0.4).toFixed(2)})`;
+      g.lineWidth = 0.8 + r() * 1.1;
+      const dx = Math.cos(a) * len;
+      const dy = Math.sin(a) * len;
+      const bend = (r() - 0.5) * len * 0.6;
+      for (const ox of [0, -size, size]) {
+        for (const oy of [0, -size, size]) {
+          const sx = x + ox;
+          const sy = y + oy;
+          if (sx + len < 0 || sx - len > size || sy + len < 0 || sy - len > size) continue;
+          g.beginPath();
+          g.moveTo(sx, sy);
+          g.quadraticCurveTo(sx + dx / 2 - (dy / len) * bend, sy + dy / 2 + (dx / len) * bend, sx + dx, sy + dy);
+          g.stroke();
+        }
+      }
+    }
+  }
+  return finish(new CanvasTexture(canvas), false);
 }
 
 // ── Foliage (alpha) ─────────────────────────────────────────────────────────
