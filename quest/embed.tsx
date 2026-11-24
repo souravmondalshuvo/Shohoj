@@ -33,8 +33,9 @@ import { createSyncedProgressStore } from '../src/features/quest/progress/synced
 import type { QuestProgressBackend } from '../src/platform/firebase/questProgressRepo';
 import { MemoryKeyValueStore, type KeyValueStore } from '../src/services/storage/keyValueStore';
 
-// The 3D prototype (?quest3d=1), offered here and not on the shell: only this
-// site plays it, and only a visit that asks for it downloads it.
+// The 3D zone, offered here and not on the shell: this is the site students
+// play on. It is fetched only for a browser that will draw it
+// (src/features/quest/game/rendererChoice.ts); the rest get the 2D zone.
 const loadZone3d = () => import('../src/features/quest/game/zoneGame3d');
 
 const QuestScreen = lazy(() =>
