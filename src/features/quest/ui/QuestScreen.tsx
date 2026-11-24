@@ -55,6 +55,26 @@ type View =
 
 type Stage = 'loading' | 'ready' | 'failed';
 
+/** How long the 3D zone's code may take to arrive before the 2D zone is drawn. */
+const ZONE_3D_WAIT_MS = 30_000;
+
+/** `promise`, or a rejection if it has not settled within `ms`. */
+function settlesWithin<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`not settled within ${ms} ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 // The defaults keep everything for as long as the page is open and no longer.
 // The route passes stores that outlast the visit (useQuestStores).
 const sessionStore = memoryProgressStore();
@@ -291,14 +311,16 @@ function ZoneScreen({
       const parsed = parseZoneMap(mapJson);
       if (!parsed.ok) throw new Error(parsed.error.join(' '));
       if (!current) return;
-      const options = {
+      // Read when the game is made, after its code has arrived: the cloud may
+      // have restored where the hero stood in the meantime.
+      const options = (): ZoneGameOptions => ({
         parent,
         mapJson,
         map: parsed.value,
         state: latest.current.zoneState,
         start: latest.current.progress?.at ?? null,
         onEvent: (event: ZoneEvent) => latest.current.onZoneEvent(event),
-      };
+      });
       game = null;
       // 3D where the host offers it and the browser draws it well, unless the
       // address says otherwise (game/rendererChoice.ts). If it still cannot
@@ -306,9 +328,11 @@ function ZoneScreen({
       const asked = askedRenderer(window.location.search);
       if (loadZone3d && chooseRenderer(asked, true, probeWebGL) === '3d') {
         try {
-          const { createZoneGame } = await loadZone3d();
+          // A download that neither arrives nor fails must not hold the
+          // student on the loading screen: after a while, 2D.
+          const { createZoneGame } = await settlesWithin(loadZone3d(), ZONE_3D_WAIT_MS);
           if (!current) return;
-          game = createZoneGame(options);
+          game = createZoneGame(options());
           setDrawnIn3d(true);
         } catch {
           game = null;
@@ -318,7 +342,7 @@ function ZoneScreen({
         setDrawnIn3d(false);
         const { createZoneGame } = await import('../game/zoneGame.ts');
         if (!current) return;
-        game = createZoneGame(options);
+        game = createZoneGame(options());
       }
       game.setPaused(latest.current.paused);
       gameRef.current = game;
