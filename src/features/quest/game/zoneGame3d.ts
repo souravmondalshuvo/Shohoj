@@ -1,8 +1,8 @@
 // src/features/quest/game/zoneGame3d.ts
 //
-// The walkable zone in 3D (#981): a PROTOTYPE, behind a flag (?quest3d=1 on the
-// page's address), to judge whether Shohoj Quest should move from flat tiles
-// to a lit, modelled world. The 2D game (zoneGame.ts) is what students get.
+// The walkable zone in 3D (#981), what students get on the main site. The 2D
+// game (zoneGame.ts) is the fallback: for a browser that cannot draw 3D well,
+// for ?quest3d=0, and on the shell (rendererChoice.ts says which).
 //
 // It is the same game, drawn differently. It takes the same options and gives
 // the same ZoneGame back, so the quest screen, panels, progress and Java are
