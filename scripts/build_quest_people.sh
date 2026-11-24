@@ -69,6 +69,12 @@ for figure in man woman; do
   npx -y "@gltf-transform/cli@$GLTF_TRANSFORM_VERSION" optimize "$WORK/$figure.glb" "$WORK/$figure.q.glb" \
     --compress quantize --texture-compress false --simplify false --palette false \
     --instance false --join false --flatten false >/dev/null
-  gzip -9 -n -c "$WORK/$figure.q.glb" > "$OUT_DIR/$figure.glb.gz"
-  echo "==> $figure: raw $(kb "$WORK/$figure.glb") KB -> quantized $(kb "$WORK/$figure.q.glb") KB -> gzip $(kb "$OUT_DIR/$figure.glb.gz") KB"
+  gzip -9 -n -c "$WORK/$figure.q.glb" > "$WORK/$figure.glb.gz"
+  echo "==> $figure: raw $(kb "$WORK/$figure.glb") KB -> quantized $(kb "$WORK/$figure.q.glb") KB -> gzip $(kb "$WORK/$figure.glb.gz") KB"
+done
+# Only now, with both built: a failure above leaves the committed pair as it
+# was, never a new man beside an old woman.
+for figure in man woman; do
+  mv "$WORK/$figure.glb.gz" "$OUT_DIR/$figure.glb.gz"
+  echo "    $OUT_DIR/$figure.glb.gz"
 done
