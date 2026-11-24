@@ -279,9 +279,11 @@ export function RsCampus() {
           tree (rain tree, mast tree, coconut, banana) stands where is a likely mix, not a survey. A
           building with no name in any source is described, not named, and what most buildings are
           used for is not published. Interiors are not drawn, and the curtains in the windows are
-          for colour. Outside the wall only the buildings&apos; outlines are mapped: whether each is
-          a tin hut, a house of one to six storeys or a factory shed, and its walls and roof, are a
-          likely mix for the neighbourhood, not a survey. Do not use this map to find an exit.
+          for colour. Close up, clumps of grass stand wherever the ground reads as grass, and a few
+          weeds on bare earth; they are not counted. Outside the wall only the buildings&apos;
+          outlines are mapped: whether each is a tin hut, a house of one to six storeys or a factory
+          shed, and its walls and roof, are a likely mix for the neighbourhood, not a survey. Do not
+          use this map to find an exit.
         </p>
         <p>
           <strong>Illustrative:</strong> the country past the mapped area, about 300 m from the wall
