@@ -3,9 +3,9 @@
 // The 3D prototype of Shohoj Quest (#981), on the legacy page. It is drawn
 // only when the address asks for it (?quest3d=1); students get the 2D zone.
 // The game behind it is the same, so what is checked here is the switch: the
-// 3D renderer runs when asked and only then, the hero walks in it and the
-// quest-giver answers, and a browser with no WebGL gets the 2D zone instead of
-// a broken screen.
+// 3D renderer runs when asked and only then, its people's models load, the
+// hero walks in it and the quest-giver answers, and a browser with no WebGL
+// gets the 2D zone instead of a broken screen.
 //
 // The legacy page's Firebase never loads (every https request is aborted), and
 // the module is served from the pages build under dist-pages/, as in
@@ -53,6 +53,9 @@ test('?quest3d=1 draws the zone in 3D, and the quest-giver answers', async ({ pa
   await open(page, { query: '?quest3d=1' });
   await expect(threeD(page)).toHaveCount(1);
   await expect(page.locator('.quest-tip')).toBeVisible();
+  // The people's models arrive after the zone opens, and replace the shapes.
+  await expect(threeD(page)).toHaveAttribute('data-quest-people', 'models', { timeout: 30_000 });
+  await expect(page.getByRole('link', { name: 'People by Quaternius' })).toBeVisible();
 
   // Along the road to the head of the bridge, then up into Karim Majhi. Each
   // step is waited for, by where the game saved the hero: a CI runner draws
@@ -70,6 +73,7 @@ test('?quest3d=1 draws the zone in 3D, and the quest-giver answers', async ({ pa
 test('without the flag, students get the 2D zone', async ({ page }) => {
   await open(page);
   await expect(threeD(page)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'People by Quaternius' })).toHaveCount(0);
 });
 
 test('a browser that cannot start WebGL gets the 2D zone, not a broken screen', async ({ page }) => {
