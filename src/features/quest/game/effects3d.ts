@@ -207,13 +207,27 @@ export class Finish {
   private lower(): void {
     if (this.quality === 'low') return;
     this.quality = 'low';
-    this.composer?.dispose();
-    this.composer = null;
+    this.dropComposer();
     this.onQuality('low');
   }
 
-  dispose(): void {
-    this.composer?.dispose();
+  /**
+   * Free everything the passes hold on the graphics card, then the composer.
+   * The composer's own dispose() frees only its buffers; GTAO and bloom keep
+   * render targets and materials of their own, and on a device moved to "low"
+   * for being slow, that memory is exactly what it needs back.
+   */
+  private dropComposer(): void {
+    const composer = this.composer;
+    if (!composer) return;
+    for (const pass of composer.passes) pass.dispose();
+    composer.dispose();
     this.composer = null;
+    this.tiltH = null;
+    this.tiltV = null;
+  }
+
+  dispose(): void {
+    this.dropComposer();
   }
 }
