@@ -1,6 +1,6 @@
 // tests/questScene.test.js
 //
-// The 3D prototype of Shohoj Quest (#981) reads what stands where from the
+// The 3D zone of Shohoj Quest (#981) reads what stands where from the
 // same Tiled map the 2D game draws (src/features/quest/world/sceneKinds.ts).
 // These hold that reading to the map: every tile is named, so nothing in a map
 // silently vanishes in 3D, and the named things are where the map puts them.
