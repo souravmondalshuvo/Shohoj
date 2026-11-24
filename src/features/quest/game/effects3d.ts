@@ -18,8 +18,8 @@
 //
 // Quality: "high" is all of the above. "low" draws the scene straight to the
 // screen with the sky light only. A touch screen, a software renderer (no
-// graphics card: a CI runner, a locked-down laptop) or ?quest3dq=low gets
-// "low"; so does any device whose frames run slow for about three seconds on
+// graphics card: a CI runner, a locked-down laptop; it only gets 3D when
+// ?quest3d=1 forces it) or ?quest3dq=low gets "low"; so does any device whose frames run slow for about three seconds on
 // "high" (a device that does not name its renderer starts on "high").
 // ?quest3dq=high forces "high".
 //
@@ -47,6 +47,7 @@ import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltSh
 import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js';
 
 import type { Quality } from './ground3d.ts';
+import { isSoftwareRenderer } from './rendererChoice.ts';
 
 /** The quality to start at, from the device and the address. */
 export function pickQuality(renderer: WebGLRenderer, coarse: boolean): Quality {
@@ -57,16 +58,9 @@ export function pickQuality(renderer: WebGLRenderer, coarse: boolean): Quality {
     /* no address to read */
   }
   if (coarse) return 'low';
-  try {
-    const gl = renderer.getContext();
-    const info = gl.getExtension('WEBGL_debug_renderer_info');
-    const name = info
-      ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL))
-      : String(gl.getParameter(gl.RENDERER));
-    if (/swiftshader|llvmpipe|software|basic render/i.test(name)) return 'low';
-  } catch {
-    /* the name is not ours to read */
-  }
+  // Reached on a software renderer only when the address forced 3D
+  // (?quest3d=1): by default such a browser gets the 2D zone.
+  if (isSoftwareRenderer(renderer.getContext())) return 'low';
   // A device that does not say what it is starts on "high": Safari often hides
   // the name, and most of those are capable Macs. A slow one is moved to
   // "low" after about three seconds of slow frames (Finish.render).
