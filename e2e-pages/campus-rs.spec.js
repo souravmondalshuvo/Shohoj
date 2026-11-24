@@ -122,3 +122,14 @@ test('nothing on the page breaks the production CSP', async ({ page }) => {
   expect(violations.filter((v) => !v.endsWith(' eval'))).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test('the eye-level view stands at the gate without breaking the page', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await openRs(page);
+  await page.getByTestId('campus-eye-level').click();
+  await expect(page.getByTestId('campus-canvas').locator('canvas')).toBeVisible();
+  // Back to the whole campus from there.
+  await page.getByTestId('campus-reset-view').click();
+  expect(errors).toEqual([]);
+});
