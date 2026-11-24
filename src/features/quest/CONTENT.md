@@ -237,6 +237,23 @@ on "high" for about three seconds is moved to "low", with less grass and a
 smaller shadow map. `&quest3dq=high` or
 `&quest3dq=low` in the address forces one, to compare.
 
+The people are rigged, animated models (`game/people3d.ts`): Quaternius's
+CC0 Universal Base Characters, moved by his CC0 Universal Animation Library,
+built into `assets/people/{man,woman}.glb.gz` by
+`npm run build:quest-people` (`scripts/build_quest_people.sh`, which needs
+Blender and the two packs unzipped; their licence is beside the files). The
+files have no textures: each body vertex knows which part of the body it is,
+and the zone colours the parts from an outfit in `OUTFITS` in
+`zoneGame3d.ts` (a shirt is torso and upper arms; a lungi rolled to the knee
+is hips and thighs). A new person in the 3D zone is a new outfit there, as
+well as a `LOOKS` entry for 2D. A skirt (lungi, sari) hangs from the hips and
+barely follows the legs, so give it only to people who stand; a runner, a
+sitter or a kneeler wears trousers or a rolled lungi. They play an idle,
+talking, sitting or kneeling loop, and the hero jogs at the pace he moves.
+The models arrive after the zone opens (about 0.6 MB, once); until then, and
+for good if they cannot be loaded, everyone is drawn from simple shapes. The
+canvas says which: `data-quest-people` is `loading`, `models` or `shapes`.
+
 It builds the place from the same map. `world/sceneKinds.ts` names each tile
 (a tree, a hut's door, a pile in the river, a span of deck), and the 3D
 version models that thing in its place. So a map works in both, with one
