@@ -321,14 +321,59 @@ export function brick(seed: number): SurfaceTextures {
  */
 export function genericFacade(tint: readonly [number, number, number], seed: number): SurfaceTextures {
   const base = plaster(tint, seed, 1.6);
+  const src = base.map.image as HTMLCanvasElement | undefined;
+  const map = src ? facadeOver((g, size) => g.drawImage(src, 0, 0, size, size), seed) : base.map;
+  if (src) base.map.dispose();
+  return { map, ...(base.normalMap ? { normalMap: base.normalMap } : {}) };
+}
+
+/**
+ * The same façade in many colours from one painting of the grime: the plaster
+ * is painted once in white and multiplied by each tint. `brickTile`, when
+ * given, adds one façade of bare brick (an unfinished or unrendered house).
+ * Every map shares the returned normal map.
+ */
+export function facadeSet(
+  tints: readonly (readonly [number, number, number])[],
+  seed: number,
+  brickTile?: Texture,
+): { maps: Texture[]; brickMap: Texture | null; normalMap: Texture | null } {
+  const base = plaster([255, 255, 255], seed, 1.6);
+  const src = base.map.image as HTMLCanvasElement | undefined;
+  const maps = tints.map((t, i) =>
+    facadeOver((g, size) => {
+      g.fillStyle = `rgb(${t[0]},${t[1]},${t[2]})`;
+      g.fillRect(0, 0, size, size);
+      if (src) {
+        g.globalCompositeOperation = 'multiply';
+        g.drawImage(src, 0, 0, size, size);
+        g.globalCompositeOperation = 'source-over';
+      }
+    }, seed + i * 31),
+  );
+  let brickMap: Texture | null = null;
+  const brickImage = brickTile?.image as HTMLCanvasElement | undefined;
+  if (brickImage) {
+    // The brick tile is 1 m × 0.6 m; the façade tile 3 m × 3.2 m.
+    brickMap = facadeOver((g, size) => {
+      const tw = size / 3;
+      const th = (size * 0.6) / 3.2;
+      for (let y = size - th; y > -th; y -= th) for (let x = 0; x < size; x += tw) g.drawImage(brickImage, x, y, tw, th);
+    }, seed + 97);
+  }
+  base.map.dispose();
+  return { maps, brickMap, normalMap: base.normalMap ?? null };
+}
+
+/** Windows over a painted wall: one per 3 m bay and 3.2 m storey. */
+function facadeOver(paint: (g: CanvasRenderingContext2D, size: number) => void, seed: number): Texture {
   const canvas = document.createElement('canvas');
   const size = 256;
   canvas.width = size;
   canvas.height = size;
   const g = canvas.getContext('2d');
-  const src = base.map.image as HTMLCanvasElement | undefined;
-  if (g && src) {
-    g.drawImage(src, 0, 0, size, size);
+  if (g) {
+    paint(g, size);
     const r = rng(seed + 9);
     // Window 1.2 m wide, 1.3 m tall, sill at 0.9 m: in a 3 m × 3.2 m tile.
     const x0 = (0.9 / 3) * size;
@@ -350,8 +395,24 @@ export function genericFacade(tint: readonly [number, number, number], seed: num
     g.fillStyle = 'rgba(255,255,255,0.35)';
     g.fillRect(x0 - 8, y0 - 16, w + 16, 5); // sunshade edge
   }
-  base.map.dispose();
-  return { map: toCanvasTexture2(canvas), ...(base.normalMap ? { normalMap: base.normalMap } : {}) };
+  return toCanvasTexture2(canvas);
+}
+
+/**
+ * Ripples on still pond water, ruffled by a light breeze: a tileable normal
+ * map, stretched across the wind.
+ */
+export function ripples(seed: number): Texture {
+  const size = 256;
+  const height = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      height[y * size + x] = fbm(u, v, 4, 4, seed) * 0.6 + fbm(u, v * 1, 16, 3, seed + 1) * 0.4;
+    }
+  }
+  return normalMap(height, size, 6);
 }
 
 function toCanvasTexture2(canvas: HTMLCanvasElement): Texture {
