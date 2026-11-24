@@ -6,7 +6,7 @@
  * blades, scattered wherever the painted map is grass (and, sparsely, as
  * weeds on bare earth), inside the wall and a margin round it, each tinted with the ground colour under it so the clumps
  * and the map agree. The pitches and the court are mown or bare and stay
- * flat; buildings and ponds keep their ground clear.
+ * flat; buildings, roads and ponds keep their ground clear.
  *
  * A clump only shows near the camera: past about 70 m it shrinks away in the
  * vertex shader, where it would be under a pixel and only shimmer. It casts no
@@ -32,7 +32,7 @@ import {
   Vector3,
 } from 'three';
 
-import { RS_BUILDINGS, RS_GROUNDS, RS_WALL, RS_WATER, pointInPolygon, type Point } from '../../core/campusBracuRs.ts';
+import { RS_BUILDINGS, RS_GROUNDS, RS_ROADS, RS_WALL, RS_WATER, pointInPolygon, type Point } from '../../core/campusBracuRs.ts';
 import { rng } from './rsTextures.ts';
 
 type RGB = readonly [number, number, number];
@@ -48,7 +48,7 @@ export interface Tuft {
   rgb: RGB;
 }
 
-/** How far past the wall's bounding box grass is scattered, metres. */
+/** How far past the wall grass is scattered, metres. */
 const MARGIN = 45;
 /** Spacing of the jittered grid the clumps are dropped on, metres. */
 const SPACING = 1.15;
@@ -83,6 +83,49 @@ const KEEP_CLEAR = [
   return { outline, x1: Math.min(...xs), x2: Math.max(...xs), y1: Math.min(...ys), y2: Math.max(...ys) };
 });
 
+/** Distance from p to the segment a–b, metres. */
+function segmentDistance(p: Point, a: Point, b: Point): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2)) : 0;
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
+/**
+ * Half the painted width of each road and path, as rsGround.ts paints them,
+ * plus a little: a dusty road reads as bare earth, and must not grow weeds.
+ */
+function roadHalfWidth(kind: string, inside: boolean): number {
+  if (kind === 'trunk') return 6.3;
+  if (inside) return kind === 'footway' ? 1.6 : 2.6;
+  return kind === 'service' ? 1.9 : 2.7;
+}
+
+const ROAD_SEGMENTS = RS_ROADS.flatMap((r) => {
+  const half = roadHalfWidth(r.kind, r.inside);
+  return r.path.slice(1).map((b, i) => {
+    const a = r.path[i] ?? b;
+    return {
+      a,
+      b,
+      half,
+      x1: Math.min(a[0], b[0]) - half,
+      x2: Math.max(a[0], b[0]) + half,
+      y1: Math.min(a[1], b[1]) - half,
+      y2: Math.max(a[1], b[1]) + half,
+    };
+  });
+});
+
+const onRoad = (p: Point): boolean =>
+  ROAD_SEGMENTS.some((s) => p[0] >= s.x1 && p[0] <= s.x2 && p[1] >= s.y1 && p[1] <= s.y2 && segmentDistance(p, s.a, s.b) <= s.half);
+
+/** Inside the wall, or within MARGIN of it. */
+const nearWall = (p: Point): boolean =>
+  pointInPolygon(p, RS_WALL) ||
+  RS_WALL.some((a, i) => segmentDistance(p, a, RS_WALL[(i + 1) % RS_WALL.length] ?? a) <= MARGIN);
+
 /**
  * Where the clumps stand, seeded. `sample` gives the painted ground's colour
  * at a point in campus metres (null off the map); `density` thins them
@@ -113,7 +156,9 @@ export function grassScatter(sample: (x: number, y: number) => RGB | null, densi
       const rand = r();
       const rgb = sample(px, py);
       const weeds = rand < EARTH_SHARE;
-      if (!rgb || !(isGrass(rgb) || (weeds && isEarth(rgb))) || blocked([px, py])) continue;
+      if (!rgb || !(isGrass(rgb) || (weeds && isEarth(rgb)))) continue;
+      const p: Point = [px, py];
+      if (blocked(p) || onRoad(p) || !nearWall(p)) continue;
       if (rgb[1] < rgb[0] * 1.08) h *= 1.6;
       tufts.push({ x: px, y: py, w, h, turn, rgb });
     }
