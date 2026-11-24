@@ -202,6 +202,8 @@ export interface CountryScatter {
  * thins the trees (1 = all, 2 = about half).
  */
 export function countryScatter(plan: CountryPlan, density = 1): CountryScatter {
+  // Anything but a positive number would pack the lobes with endless trees.
+  if (!Number.isFinite(density) || density <= 0) density = 1;
   const r = rng(9604);
   const trees: CountryTree[] = [];
   const houses: CountryHouse[] = [];
