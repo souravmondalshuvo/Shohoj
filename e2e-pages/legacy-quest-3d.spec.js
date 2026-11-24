@@ -1,11 +1,15 @@
 // e2e-pages/legacy-quest-3d.spec.js
 //
-// The 3D prototype of Shohoj Quest (#981), on the legacy page. It is drawn
-// only when the address asks for it (?quest3d=1); students get the 2D zone.
-// The game behind it is the same, so what is checked here is the switch: the
-// 3D renderer runs when asked and only then, its people's models load, the
-// hero walks in it and the quest-giver answers, and a browser with no WebGL
-// gets the 2D zone instead of a broken screen.
+// The 3D zone of Shohoj Quest (#981), on the legacy page, where it is the
+// default. The game behind it is the same as in 2D, so what is checked here is
+// the switch (src/features/quest/game/rendererChoice.ts): a browser with a
+// graphics card gets 3D, one drawing in software or without WebGL gets 2D,
+// ?quest3d=0 and ?quest3d=1 override it; and in 3D the people's models load,
+// the hero walks and the quest-giver answers.
+//
+// A CI runner has no graphics card: Chromium draws WebGL in software
+// (SwiftShader). So the walk forces 3D with ?quest3d=1, and where the default
+// is checked, the renderer's name is made up (`gpu`), one way or the other.
 //
 // The legacy page's Firebase never loads (every https request is aborted), and
 // the module is served from the pages build under dist-pages/, as in
@@ -16,9 +20,9 @@ import { portFor } from '../e2e-support/port.js';
 
 const LEGACY = `http://127.0.0.1:${portFor(4179, 'PLAYWRIGHT_PAGES_LEGACY_PORT')}`;
 
-async function open(page, { query = '', noWebGL = false } = {}) {
+async function open(page, { query = '', noWebGL = false, gpu = null } = {}) {
   await page.addInitScript(
-    ({ withoutWebGL }) => {
+    ({ withoutWebGL, rendererName }) => {
       if (window !== window.top) return;
       try {
         localStorage.clear();
@@ -38,8 +42,17 @@ async function open(page, { query = '', noWebGL = false } = {}) {
           return /webgl/.test(String(type)) ? null : original.call(this, type, ...rest);
         };
       }
+      if (rendererName) {
+        // What the renderer calls itself, by both names a page can ask for.
+        for (const Context of [WebGLRenderingContext, WebGL2RenderingContext]) {
+          const original = Context.prototype.getParameter;
+          Context.prototype.getParameter = function (param) {
+            return param === 0x9246 || param === 0x1f01 ? rendererName : original.call(this, param);
+          };
+        }
+      }
     },
-    { withoutWebGL: noWebGL },
+    { withoutWebGL: noWebGL, rendererName: gpu },
   );
   await page.route('https://**/*', (route) => route.abort());
   await page.goto(`${LEGACY}/index.html${query}#calculator/quest`, { waitUntil: 'domcontentloaded' });
@@ -48,7 +61,7 @@ async function open(page, { query = '', noWebGL = false } = {}) {
 
 const threeD = (page) => page.locator('.quest-root canvas[data-quest-renderer="3d"]');
 
-test('?quest3d=1 draws the zone in 3D, and the quest-giver answers', async ({ page }) => {
+test('in 3D the people are models, the hero walks and the quest-giver answers', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page, { query: '?quest3d=1' });
   await expect(threeD(page)).toHaveCount(1);
@@ -70,13 +83,37 @@ test('?quest3d=1 draws the zone in 3D, and the quest-giver answers', async ({ pa
   await expect(page.getByRole('dialog', { name: 'Karim Majhi speaks' })).toBeVisible({ timeout: 15_000 });
 });
 
-test('without the flag, students get the 2D zone', async ({ page }) => {
-  await open(page);
+// Where the default is checked, the quality is held at "low": a made-up
+// graphics card would otherwise start the software renderer on "high".
+test('by default, a browser with a graphics card gets the 3D zone', async ({ page }) => {
+  test.setTimeout(60_000);
+  await open(page, { query: '?quest3dq=low', gpu: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro)' });
+  await expect(threeD(page)).toHaveCount(1);
+  await expect(page.locator('.quest-tip')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'People by Quaternius' })).toBeVisible();
+});
+
+test('by default, a browser drawing in software gets the 2D zone', async ({ page }) => {
+  await open(page, { gpu: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)' });
+  await expect(threeD(page)).toHaveCount(0);
+  await expect(page.locator('.quest-tip')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'People by Quaternius' })).toHaveCount(0);
+});
+
+test('?quest3d=0 gets the 2D zone, even with a graphics card', async ({ page }) => {
+  await open(page, { query: '?quest3d=0', gpu: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro)' });
   await expect(threeD(page)).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'People by Quaternius' })).toHaveCount(0);
 });
 
-test('a browser that cannot start WebGL gets the 2D zone, not a broken screen', async ({ page }) => {
+test('a browser without WebGL gets the 2D zone by default', async ({ page }) => {
+  await open(page, { noWebGL: true });
+  await expect(threeD(page)).toHaveCount(0);
+  await expect(page.locator('.quest-tip')).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('3D forced on a browser that cannot start WebGL falls back to 2D, not a broken screen', async ({ page }) => {
   await open(page, { query: '?quest3d=1', noWebGL: true });
   await expect(threeD(page)).toHaveCount(0);
   await expect(page.locator('.quest-tip')).toBeVisible();
