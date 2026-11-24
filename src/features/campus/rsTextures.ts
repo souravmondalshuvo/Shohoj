@@ -483,7 +483,9 @@ export function groundDetail(seed: number): Texture {
       const x = r() * size;
       const y = r() * size;
       const rad = 10 + r() * 26;
-      for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]] as const) {
+      // Every neighbouring tile, corners included, so a scuff near a corner
+      // carries on across both edges.
+      for (const [ox, oy] of [-size, 0, size].flatMap((dx) => [-size, 0, size].map((dy) => [dx, dy] as const))) {
         const grad = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
         grad.addColorStop(0, 'rgba(176,176,176,0.55)');
         grad.addColorStop(1, 'rgba(176,176,176,0)');
