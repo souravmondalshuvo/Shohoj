@@ -627,16 +627,32 @@ function palmHeadGeometry(): BufferGeometry {
   return geo;
 }
 
-function instanced(geo: BufferGeometry, mat: Material, list: Array<{ m: Matrix4; c: Color }>): InstancedMesh | null {
-  if (list.length === 0) return null;
-  const mesh = new InstancedMesh(geo, mat, list.length);
-  list.forEach((x, i) => {
-    mesh.setMatrixAt(i, x.m);
-    mesh.setColorAt(i, x.c);
+/** Instances are batched per tile of this many metres, so each batch can be culled. */
+const TILE = (COUNTRY_EXTENT.x2 - COUNTRY_EXTENT.x1) / 4;
+
+/**
+ * One instanced batch per tile of the country. A single batch spread over
+ * five kilometres has a bounding sphere every view intersects, so every tree
+ * would be drawn (and drawn again for the pond mirror) whatever the camera
+ * faced; per tile, the frustum drops the ones behind it.
+ */
+function instanced(geo: BufferGeometry, mat: Material, list: Array<{ m: Matrix4; c: Color }>): InstancedMesh[] {
+  const tiles = new Map<string, Array<{ m: Matrix4; c: Color }>>();
+  for (const item of list) {
+    const key = `${Math.floor(item.m.elements[12] / TILE)},${Math.floor(item.m.elements[14] / TILE)}`;
+    const tile = tiles.get(key) ?? [];
+    tile.push(item);
+    tiles.set(key, tile);
+  }
+  return [...tiles.values()].map((tile) => {
+    const mesh = new InstancedMesh(geo, mat, tile.length);
+    tile.forEach((x, i) => {
+      mesh.setMatrixAt(i, x.m);
+      mesh.setColorAt(i, x.c);
+    });
+    mesh.computeBoundingSphere();
+    return mesh;
   });
-  mesh.computeBoundingSphere();
-  mesh.frustumCulled = false; // spread over kilometres; the sphere would always pass
-  return mesh;
 }
 
 export interface Country {
@@ -728,13 +744,13 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
   const wallMat = keep(new MeshStandardMaterial({ roughness: 0.95 }));
   const roofMat = keep(new MeshStandardMaterial({ roughness: 0.5, metalness: 0.45 }));
   for (const mesh of [
-    instanced(crownGeo, leafMat, crowns),
-    instanced(palmGeo, palmMat, palms),
-    instanced(trunkGeo, trunkMat, trunks),
-    instanced(house.walls, wallMat, walls),
-    instanced(house.roof, roofMat, roofs),
+    ...instanced(crownGeo, leafMat, crowns),
+    ...instanced(palmGeo, palmMat, palms),
+    ...instanced(trunkGeo, trunkMat, trunks),
+    ...instanced(house.walls, wallMat, walls),
+    ...instanced(house.roof, roofMat, roofs),
   ]) {
-    if (mesh) group.add(mesh);
+    group.add(mesh);
   }
 
   // Kiln chimneys: tapering brick stacks, sooted at the top.
@@ -751,7 +767,7 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
       stacks.push({ m: new Matrix4().compose(new Vector3(k.x, h / 2, -k.y), q.identity(), new Vector3(1, h, 1)), c: white });
       tops.push({ m: new Matrix4().compose(new Vector3(k.x, h - 1.5, -k.y), q.identity(), new Vector3(1, 3, 1)), c: white });
     }
-    for (const mesh of [instanced(stack, brickMat, stacks), instanced(soot, sootMat, tops)]) if (mesh) group.add(mesh);
+    for (const mesh of [...instanced(stack, brickMat, stacks), ...instanced(soot, sootMat, tops)]) group.add(mesh);
   }
 
   return {
