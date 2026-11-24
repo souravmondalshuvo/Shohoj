@@ -23,7 +23,7 @@ import { Link } from 'react-router';
 import { ZONE_MAPS } from '../assets/maps/index.ts';
 import type { Quest, Zone } from '../content/schema.ts';
 import { findQuest, loadWorld, questState, totalXp, zonesInOrder } from '../content/world.ts';
-import type { ZoneEvent, ZoneGame, ZoneState } from '../game/zoneGame.ts';
+import type { ZoneEvent, ZoneGame, ZoneGameOptions, ZoneState } from '../game/zoneGame.ts';
 import { memoryDraftStore, type DraftStore } from '../progress/localProgress.ts';
 import {
   completedSet,
@@ -84,13 +84,25 @@ export interface QuestScreenProps {
    * from a tab and has no router, passes the function that closes the tab.
    */
   readonly onLeave?: () => void;
+  /**
+   * Loads the 3D prototype of the zone, for a host that offers it. Only the
+   * legacy site's embed does (quest/embed.tsx), so the shell's bundle does
+   * not carry three.js's finishing passes for a flag nobody uses there.
+   */
+  readonly loadZone3d?: LoadZone3d;
 }
+
+/** How a host hands over the 3D zone: the module, loaded when asked for. */
+export type LoadZone3d = () => Promise<{
+  createZoneGame(options: ZoneGameOptions): ZoneGame;
+}>;
 
 export function QuestScreen({
   store = sessionStore,
   drafts = sessionDrafts,
   javaSandboxUrl = null,
   onLeave,
+  loadZone3d,
 }: QuestScreenProps) {
   // Before any quest can open: this runs as the screen mounts, and a quest is
   // opened by the student afterwards.
@@ -111,7 +123,15 @@ export function QuestScreen({
       </section>
     );
   }
-  return <ZoneScreen zone={zone} store={store} drafts={drafts} onLeave={onLeave} />;
+  return (
+    <ZoneScreen
+      zone={zone}
+      store={store}
+      drafts={drafts}
+      onLeave={onLeave}
+      loadZone3d={loadZone3d}
+    />
+  );
 }
 
 function ZoneScreen({
@@ -119,11 +139,13 @@ function ZoneScreen({
   store,
   drafts,
   onLeave,
+  loadZone3d,
 }: {
   readonly zone: Zone;
   readonly store: ProgressStore;
   readonly drafts: DraftStore;
   readonly onLeave: (() => void) | undefined;
+  readonly loadZone3d: LoadZone3d | undefined;
 }) {
   const world = useMemo(() => loadWorld(), []);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -284,11 +306,12 @@ function ZoneScreen({
         onEvent: (event: ZoneEvent) => latest.current.onZoneEvent(event),
       };
       game = null;
-      // The 3D prototype, only when asked for (?quest3d=1). A browser that
-      // cannot start WebGL gets the 2D zone instead of a broken screen.
-      if (wantsThreeD()) {
+      // The 3D prototype, only when asked for (?quest3d=1) and only where the
+      // host offers it. A browser that cannot start WebGL gets the 2D zone
+      // instead of a broken screen.
+      if (wantsThreeD() && loadZone3d) {
         try {
-          const { createZoneGame } = await import('../game/zoneGame3d.ts');
+          const { createZoneGame } = await loadZone3d();
           if (!current) return;
           game = createZoneGame(options);
         } catch {
@@ -312,7 +335,7 @@ function ZoneScreen({
       gameRef.current = null;
       game?.destroy();
     };
-  }, [loaded, zone.map, attempt]);
+  }, [loaded, zone.map, attempt, loadZone3d]);
 
   useEffect(() => {
     gameRef.current?.setState(zoneState);
