@@ -526,28 +526,105 @@ function countryGround(map: Texture): BufferGeometry {
   return geo;
 }
 
-/** A lumpy crown, darker underneath: one instance is one tree at a distance. */
-function crownGeometry(seed: number): BufferGeometry {
-  const ico = new IcosahedronGeometry(1, 1);
-  ico.deleteAttribute('uv');
-  ico.deleteAttribute('normal');
-  const geo = mergeVertices(ico);
-  ico.dispose();
+/**
+ * A crown at a distance: a few clumps of foliage round a central one, as a
+ * rain tree or mango breaks into masses, each lump pushed in and out so no
+ * outline is smooth; darker underneath and in the hollows between clumps.
+ * One instance is one tree; the crown spans about ±1 across and hangs from
+ * +1 down to about -0.6.
+ */
+export function crownGeometry(seed: number): BufferGeometry {
   const r = rng(seed);
-  const pos = geo.getAttribute('position');
-  const colours = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const k = 0.82 + r() * 0.3;
-    const y = pos.getY(i);
-    pos.setXYZ(i, pos.getX(i) * k, y * (y < 0 ? 0.55 : 1) * k, pos.getZ(i) * k);
-    const shade = 0.55 + 0.45 * Math.min(1, Math.max(0, (y + 1) / 1.6));
-    colours[i * 3] = shade;
-    colours[i * 3 + 1] = shade;
-    colours[i * 3 + 2] = shade;
+  const lobes: Array<{ x: number; y: number; z: number; s: number }> = [{ x: 0, y: 0.15, z: 0, s: 0.68 }];
+  const ring = 5;
+  for (let i = 0; i < ring; i++) {
+    const a = (i / ring) * Math.PI * 2 + (r() - 0.5) * 0.7;
+    const d = 0.42 + r() * 0.12;
+    lobes.push({ x: Math.cos(a) * d, y: -0.05 + (r() - 0.3) * 0.35, z: Math.sin(a) * d, s: 0.46 + r() * 0.14 });
   }
-  geo.setAttribute('color', new Float32BufferAttribute(colours, 3));
+  const pos: number[] = [];
+  const col: number[] = [];
+  const index: number[] = [];
+  for (const l of lobes) {
+    const ico = new IcosahedronGeometry(1, 1);
+    ico.deleteAttribute('uv');
+    ico.deleteAttribute('normal');
+    const lump = mergeVertices(ico);
+    ico.dispose();
+    const p = lump.getAttribute('position');
+    const base = pos.length / 3;
+    for (let i = 0; i < p.count; i++) {
+      const k = 0.84 + r() * 0.3;
+      const ly = p.getY(i);
+      const x = l.x + p.getX(i) * l.s * k;
+      const y = l.y + ly * l.s * k * (ly < 0 ? 0.6 : 1);
+      const z = l.z + p.getZ(i) * l.s * k;
+      pos.push(x, y, z);
+      // Light falls off underneath, and toward the trunk inside the crown.
+      const under = Math.min(1, Math.max(0, (y + 0.6) / 1.4));
+      const inner = Math.min(1, Math.hypot(x, z) / 0.8);
+      const shade = 0.42 + 0.4 * under + 0.18 * inner;
+      col.push(shade, shade, shade);
+    }
+    const idx = lump.getIndex();
+    if (idx) for (let i = 0; i < idx.count; i++) index.push(base + idx.getX(i));
+    lump.dispose();
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new Float32BufferAttribute(col, 3));
+  geo.setIndex(index);
   geo.computeVertexNormals();
   return geo;
+}
+
+/**
+ * Foliage at a distance: a lump of leaves is lit leaf by leaf, not as a smooth
+ * ball. A 3D noise in the crown's own space breaks its colour into small
+ * light and dark clusters and tilts the shading normal with them, so the sun
+ * glints off some and others fall into shade.
+ */
+function foliageMaterial(): MeshStandardMaterial {
+  const mat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vLeaf;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLeaf = position * 7.0;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vLeaf;
+float leafHash( vec3 p ) {
+  p = fract( p * 0.3183099 + 0.1 );
+  p *= 17.0;
+  return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) );
+}
+float leafNoise( vec3 x ) {
+  vec3 i = floor( x );
+  vec3 f = fract( x );
+  f = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( mix( leafHash( i ), leafHash( i + vec3( 1, 0, 0 ) ), f.x ),
+                   mix( leafHash( i + vec3( 0, 1, 0 ) ), leafHash( i + vec3( 1, 1, 0 ) ), f.x ), f.y ),
+              mix( mix( leafHash( i + vec3( 0, 0, 1 ) ), leafHash( i + vec3( 1, 0, 1 ) ), f.x ),
+                   mix( leafHash( i + vec3( 0, 1, 1 ) ), leafHash( i + vec3( 1, 1, 1 ) ), f.x ), f.y ), f.z );
+}`,
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+  float leafA = leafNoise( vLeaf );
+  float leafB = leafNoise( vLeaf * 2.7 + 11.0 );
+  diffuseColor.rgb *= 0.62 + 0.55 * leafA * ( 0.6 + 0.4 * leafB );`,
+      )
+      .replace(
+        '#include <normal_fragment_begin>',
+        `#include <normal_fragment_begin>
+  normal = normalize( normal + 0.55 * ( vec3( leafNoise( vLeaf * 1.9 + 3.0 ), leafNoise( vLeaf * 1.9 + 7.0 ), leafNoise( vLeaf * 1.9 + 5.0 ) ) - 0.5 ) );`,
+      );
+  };
+  mat.customProgramCacheKey = () => 'rs-country-foliage';
+  return mat;
 }
 
 /** A unit house: a 1 × 1 × 1 box with a gable roof rising another half. */
@@ -684,7 +761,7 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
   const detail = keep(groundDetail(9607));
   const ground = new Mesh(
     keep(countryGround(map)),
-    keep(groundMaterial(map, detail, COUNTRY_EXTENT.x2 - COUNTRY_EXTENT.x1)),
+    keep(groundMaterial(map, detail, COUNTRY_EXTENT.x2 - COUNTRY_EXTENT.x1, GROUND_EXTENT)),
   );
   ground.position.y = -0.05;
   ground.receiveShadow = true;
@@ -720,7 +797,9 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
         m: new Matrix4().compose(new Vector3(t.x, t.top, -t.y), q, new Vector3(t.w, t.h, t.w * (0.8 + t.tone * 0.4))),
         c: leafy(t.tone, 1),
       });
-      trunks.push({ m: new Matrix4().compose(new Vector3(t.x, t.top / 2, -t.y), q, new Vector3(0.5, t.top, 0.5)), c: bark });
+      // Girth follows the spread of the crown: a broad rain tree on a stout trunk.
+      const girth = 0.15 * t.w;
+      trunks.push({ m: new Matrix4().compose(new Vector3(t.x, t.top / 2, -t.y), q, new Vector3(girth, t.top, girth)), c: bark });
     }
   }
   for (const hs of scatter.houses) {
@@ -732,11 +811,11 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
     roofs.push({ m, c: new Color(t < 0.5 ? '#a4a8a8' : t < 0.8 ? '#7d5a44' : '#6f7c80') });
   }
 
-  const leafMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  const leafMat = keep(foliageMaterial());
   const palmMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: DoubleSide }));
   const crownGeo = keep(crownGeometry(9605));
   const palmGeo = keep(palmHeadGeometry());
-  const trunkGeo = keep(new CylinderGeometry(0.5, 0.6, 1, 5, 1, true));
+  const trunkGeo = keep(new CylinderGeometry(0.4, 0.6, 1, 7, 1, true));
   const trunkMat = keep(new MeshStandardMaterial({ roughness: 1 }));
   const house = houseGeometry();
   keep(house.walls);
