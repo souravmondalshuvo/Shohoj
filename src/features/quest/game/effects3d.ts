@@ -19,7 +19,8 @@
 // Quality: "high" is all of the above. "low" draws the scene straight to the
 // screen with the sky light only. A touch screen, a software renderer (no
 // graphics card: a CI runner, a locked-down laptop) or ?quest3dq=low gets
-// "low"; so does any device whose frames run slow for a few seconds on "high".
+// "low"; so does any device whose frames run slow for about three seconds on
+// "high" (a device that does not name its renderer starts on "high").
 // ?quest3dq=high forces "high".
 //
 // No textures are fetched and nothing is compiled outside the graphics card,
@@ -33,7 +34,6 @@ import {
   Vector3,
   WebGLRenderTarget,
   type Camera,
-  type Texture,
   type WebGLRenderer,
 } from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -60,11 +60,16 @@ export function pickQuality(renderer: WebGLRenderer, coarse: boolean): Quality {
   try {
     const gl = renderer.getContext();
     const info = gl.getExtension('WEBGL_debug_renderer_info');
-    const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+    const name = info
+      ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL))
+      : String(gl.getParameter(gl.RENDERER));
     if (/swiftshader|llvmpipe|software|basic render/i.test(name)) return 'low';
   } catch {
-    /* the name is not ours to read: assume a real graphics card */
+    /* the name is not ours to read */
   }
+  // A device that does not say what it is starts on "high": Safari often hides
+  // the name, and most of those are capable Macs. A slow one is moved to
+  // "low" after about three seconds of slow frames (Finish.render).
   return 'high';
 }
 
@@ -72,7 +77,7 @@ export function pickQuality(renderer: WebGLRenderer, coarse: boolean): Quality {
  * The sky, rendered once into an environment map that lights the scene.
  * `sun` points from the ground towards the sun.
  */
-export function skyLight(renderer: WebGLRenderer, sun: Vector3): Texture {
+export function skyLight(renderer: WebGLRenderer, sun: Vector3): WebGLRenderTarget {
   const sky = new Sky();
   sky.scale.setScalar(100);
   const uniforms = sky.material.uniforms;
@@ -84,11 +89,13 @@ export function skyLight(renderer: WebGLRenderer, sun: Vector3): Texture {
   const scene = new Scene();
   scene.add(sky);
   const pmrem = new PMREMGenerator(renderer);
+  // The render target, not just its texture: the caller must dispose the
+  // target to free its framebuffer when the zone closes.
   const target = pmrem.fromScene(scene, 0.04);
   pmrem.dispose();
   sky.geometry.dispose();
   sky.material.dispose();
-  return target.texture;
+  return target;
 }
 
 /** Warmth, richness and a soft vignette, after tone mapping. */
@@ -130,7 +137,8 @@ export class Finish {
   private composer: EffectComposer | null = null;
   private tiltH: ShaderPass | null = null;
   private tiltV: ShaderPass | null = null;
-  private slowFrames = 0;
+  /** Seconds spent on slow frames lately, less a little for each quick one. */
+  private slowTime = 0;
   private size = new Vector2(1, 1);
 
   constructor(
@@ -195,10 +203,11 @@ export class Finish {
     if (this.composer) {
       this.composer.render(dt);
       // A device that cannot keep up with "high" for about three seconds is
-      // moved to "low" for the rest of the visit.
-      if (dt > 0.045) this.slowFrames += 1;
-      else this.slowFrames = Math.max(0, this.slowFrames - 2);
-      if (this.slowFrames > 90) this.lower();
+      // moved to "low" for the rest of the visit. Counted in time, not frames:
+      // at 10 frames a second, three seconds is thirty frames, not ninety.
+      if (dt > 0.045) this.slowTime += dt;
+      else this.slowTime = Math.max(0, this.slowTime - dt * 2);
+      if (this.slowTime > 3) this.lower();
       return;
     }
     this.renderer.render(this.scene, this.camera);
