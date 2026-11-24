@@ -1,0 +1,19 @@
+People of Shohoj Quest's 3D zone (man.glb.gz, woman.glb.gz)
+
+Made from two packs by Quaternius (https://quaternius.com), free "Standard"
+tier, downloaded from itch.io on 2026-11-24:
+
+  Universal Base Characters [Standard]
+  https://quaternius.itch.io/universal-base-characters
+
+  Universal Animation Library [Standard]
+  https://quaternius.itch.io/universal-animation-library
+
+Both are released under:
+
+  CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+  https://creativecommons.org/publicdomain/zero/1.0/
+
+Changed for Shohoj by scripts/build_quest_people.sh: textures removed, body
+parts written to vertex colours, clothes smoothed, a skirt and hairstyles
+added, five animations kept (idle, jog, talking, sitting, kneeling).
