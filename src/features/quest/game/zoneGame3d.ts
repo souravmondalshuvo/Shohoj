@@ -9,16 +9,20 @@
 // untouched. Where the hero may walk is still decided only by world/zoneMap.ts,
 // and what stands where is read from the same Tiled map (world/sceneKinds.ts).
 //
-// Everything is modelled here from simple shapes, with no files to download:
-// a Bengal river village late in the afternoon. Bamboo piles stand in the
+// The place is modelled here from simple shapes: a Bengal river village late
+// in the afternoon. Bamboo piles stand in the
 // river and each quest lays a span of bamboo deck across them; boats bob at
 // the jetty; kash and reeds sway; Karim Majhi waits at the head of the bridge
 // in his straw hat. Shadows are real, the sun is low in the west.
 //
-// What the page's Content-Security-Policy allows, this keeps to: no fetched
-// models or textures (the one texture, the stall's awning, is drawn on a
-// canvas), no workers, no eval. three.js is first-party code from npm, as on
-// the Campus Map.
+// The people are rigged, animated models (people3d.ts), fetched when the zone
+// opens. Until they arrive, and for good if they cannot be loaded, everyone is
+// drawn from shapes as well, so the zone never waits on them.
+//
+// What the page's Content-Security-Policy allows, this keeps to: no textures
+// fetched (the one texture, the stall's awning, is drawn on a canvas), the
+// people's files gunzipped by the browser itself, no workers, no eval.
+// three.js is first-party code from npm, as on the Campus Map.
 //
 // For phones: the pixel ratio and the shadow map are smaller on a touch
 // screen, and nothing is drawn while a panel covers the zone. With
@@ -68,6 +72,7 @@ import type { ZoneEvent, ZoneGame, ZoneGameOptions, ZoneState } from './zoneGame
 import { describeScene, type Prop, type ZoneScene } from '../world/sceneKinds.ts';
 import { Finish, pickQuality, skyLight } from './effects3d.ts';
 import { BEYOND, buildGround, type Ground } from './ground3d.ts';
+import { loadPeople, type Figure, type Outfit, type People } from './people3d.ts';
 import {
   canWalk,
   findRoute,
@@ -88,6 +93,8 @@ const WATER_Y = -0.22;
 /** Towards the sun: low in the west, late in the afternoon. Shadows fall long to the east. */
 const SUN = new Vector3(-16, 8, 4).normalize();
 const RIVERBED_Y = -0.9;
+/** The top of the jetty's planks (0.08 thick). */
+const JETTY_TOP = 0.06;
 
 const KEY_STEPS: Readonly<Record<string, Cell>> = {
   ArrowLeft: { x: -1, y: 0 },
@@ -130,6 +137,76 @@ interface PersonLook {
   readonly long?: boolean;
   readonly beard?: string;
 }
+
+/** The same people as rigged models (people3d.ts), when those have loaded. */
+const OUTFITS: Readonly<Record<string, Outfit>> = {
+  hero: {
+    build: 'man',
+    skin: SKIN[0],
+    top: '#2ecc71',
+    lower: '#2f3b4c',
+    legs: 'trousers',
+    hair: '#1c1814',
+    hairstyle: 'Hair_SimpleParted',
+    clip: 'idle',
+  },
+  boatman: {
+    build: 'man',
+    skin: SKIN[2],
+    top: '#efe6d2',
+    lower: '#3b7f86',
+    legs: 'skirt',
+    hair: '#dcd6cc',
+    hairstyle: 'Hair_SimpleParted',
+    beard: true,
+    hat: '#d8b264',
+    clip: 'idle',
+  },
+  seller: {
+    build: 'man',
+    skin: SKIN[1],
+    top: '#d9622b',
+    lower: '#efe6d2',
+    legs: 'skirt',
+    hair: '#1c1814',
+    hairstyle: 'Hair_SimpleParted',
+    clip: 'talk',
+  },
+  fisher: {
+    build: 'man',
+    skin: SKIN[2],
+    top: '#5f9e48',
+    lower: '#3b5f86',
+    legs: 'rolled',
+    hair: '#1c1814',
+    hairstyle: 'Hair_SimpleParted',
+    hat: '#2d8a7a',
+    stool: '#b98a4e',
+    clip: 'sit',
+  },
+  farmer: {
+    build: 'man',
+    skin: SKIN[2],
+    top: '#f1ece2',
+    lower: '#7d5a9e',
+    legs: 'rolled',
+    hair: '#1c1814',
+    hairstyle: 'Hair_SimpleParted',
+    hat: '#d8b264',
+    clip: 'kneel',
+  },
+  villager: {
+    build: 'woman',
+    skin: SKIN[0],
+    top: '#e0742e',
+    lower: '#b8392b',
+    legs: 'skirt',
+    pallu: '#b8392b',
+    hair: '#1c1814',
+    hairstyle: 'Hair_Buns',
+    clip: 'idle',
+  },
+};
 
 const PEOPLE: Readonly<Record<string, PersonLook>> = {
   hero: { skin: SKIN[0], shirt: '#2ecc71', lower: '#2f3b4c', hair: '#1c1814' },
@@ -527,9 +604,14 @@ interface Person {
   readonly group: Group;
   readonly legs: readonly Object3D[];
   readonly arms: readonly Object3D[];
+  /** Which of PEOPLE / OUTFITS this is. */
+  readonly look: string;
+  /** The rigged model, once loaded; until then the shapes above. */
+  figure: Figure | null;
 }
 
-function person(kit: Kit, look: PersonLook): Person {
+function person(kit: Kit, name: string): Person {
+  const look = PEOPLE[name] as PersonLook;
   const group = new Group();
   const legs: Object3D[] = [];
   for (const side of [-1, 1]) {
@@ -592,7 +674,7 @@ function person(kit: Kit, look: PersonLook): Person {
     eye.position.set(side * 0.05, 0.97, 0.135);
     group.add(eye);
   }
-  return { group, legs, arms };
+  return { group, legs, arms, look: name, figure: null };
 }
 
 // ── The scene ─────────────────────────────────────────────────────────────
@@ -614,7 +696,15 @@ class Zone3d implements ZoneGame {
   private readonly waterMaterial: ShaderMaterial;
   private readonly hero: Person;
   private readonly heroShadow: Mesh;
-  private readonly idlers: { group: Group; base: number; phase: number }[] = [];
+  private readonly idlers: { person: Person; base: number; phase: number }[] = [];
+  /** Everyone, the hero first: dressed as models when those arrive. */
+  private readonly people: Person[] = [];
+  private peopleKit: People | null = null;
+  private readonly peopleAbort = new AbortController();
+  /** Squares of the jetty, "x,y": people there stand on its planks. */
+  private jettyCells = new Set<string>();
+  /** Which way the hero faces; the model turns towards it. */
+  private heroYaw = 0;
   private readonly floaters: { group: Group; base: number; phase: number }[] = [];
   private readonly sway: Object3D[] = [];
   private readonly spans = new Map<string, Group>();
@@ -711,6 +801,9 @@ class Zone3d implements ZoneGame {
       this.scene.add(this.sun, this.sun.target);
 
       this.description = describeScene(options.mapJson);
+      this.jettyCells = new Set(
+        this.description.props.filter((p) => p.kind === 'jetty').map((p) => `${p.x},${p.y}`),
+      );
       const banks = this.riverBanks();
       const ground = buildGround(this.description, { quality, occupied: this.occupiedSquares() });
       this.ground = ground;
@@ -727,8 +820,9 @@ class Zone3d implements ZoneGame {
       this.buildBridge();
       this.buildPeople();
 
-      this.hero = person(this.kit, PEOPLE['hero'] as PersonLook);
-      const heroAt = this.onGround(centre(this.cell));
+      this.hero = person(this.kit, 'hero');
+      this.people.unshift(this.hero);
+      const heroAt = this.standing(this.cell);
       this.hero.group.position.copy(heroAt);
       this.scene.add(this.hero.group);
       this.heroShadow = this.kit.mesh(
@@ -808,6 +902,37 @@ class Zone3d implements ZoneGame {
     }
     this.renderer.setAnimationLoop(() => this.frame());
     this.options.onEvent({ kind: 'ready' });
+    this.loadPeople();
+  }
+
+  /** Swap the shapes for rigged models, if they load. If not, keep the shapes. */
+  private loadPeople(): void {
+    const canvas = this.renderer.domElement;
+    canvas.dataset['questPeople'] = 'loading';
+    loadPeople(this.peopleAbort.signal)
+      .then((kit) => {
+        if (this.destroyed) {
+          kit.dispose();
+          return;
+        }
+        this.peopleKit = kit;
+        for (const someone of this.people) {
+          const outfit = OUTFITS[someone.look];
+          if (!outfit) continue;
+          const figure = kit.figure(outfit);
+          // The shapes' geometry stays with the kit, freed with the zone.
+          someone.group.clear();
+          someone.group.add(figure.root);
+          someone.figure = figure;
+        }
+        // The shapes stood a little high for their bob; models stand on the ground.
+        for (const idler of this.idlers) idler.person.group.position.y = idler.base;
+        canvas.dataset['questPeople'] = 'models';
+        if (this.paused) this.finish.render();
+      })
+      .catch(() => {
+        if (!this.destroyed) canvas.dataset['questPeople'] = 'shapes';
+      });
   }
 
   // ── Called by the page ────────────────────────────────────────────────────
@@ -839,6 +964,8 @@ class Zone3d implements ZoneGame {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.peopleAbort.abort();
+    this.peopleKit?.dispose();
     this.renderer.setAnimationLoop(null);
     this.resize.disconnect();
     for (const cleanup of this.cleanups) cleanup();
@@ -878,11 +1005,6 @@ class Zone3d implements ZoneGame {
     const z = prop.y + 0.5 + (hash(prop.x, prop.y, 6) - 0.5) * jitter;
     object.position.set(x, grounded ? this.ground.heightAt(x, z) + y : y, z);
     this.scene.add(object);
-  }
-
-  /** The same point, standing on the ground. */
-  private onGround(at: Vector3): Vector3 {
-    return at.setY(this.ground.heightAt(at.x, at.z));
   }
 
   /** Squares where something stands, so the grass leaves them clear. */
@@ -1044,7 +1166,7 @@ class Zone3d implements ZoneGame {
             new BoxGeometry(1.0, 0.08, 1.0),
             kit.mat(prop.variant ? '#8a5f38' : '#94673d'),
           );
-          this.place(plank, prop, 0.02, 0, false);
+          this.place(plank, prop, JETTY_TOP - 0.04, 0, false);
           if ((prop.x + prop.y) % 2 === 0) {
             const leg = bamboo(kit, 1.0, 0.06, '#7a5232');
             leg.position.set(prop.x + 0.1, RIVERBED_Y + 0.45, prop.y + 0.1);
@@ -1139,23 +1261,27 @@ class Zone3d implements ZoneGame {
   }
 
   private buildPeople(): void {
-    const giver = person(this.kit, PEOPLE['boatman'] as PersonLook);
-    giver.group.position.copy(this.onGround(centre(this.options.map.giver)));
+    const giver = person(this.kit, 'boatman');
+    this.people.push(giver);
+    giver.group.position.copy(this.standing(this.options.map.giver));
     // Facing the road, where the student comes from.
     giver.group.rotation.y = Math.PI * 0.75;
     this.scene.add(giver.group);
-    this.idlers.push({ group: giver.group, base: giver.group.position.y, phase: 0.4 });
+    this.idlers.push({ person: giver, base: giver.group.position.y, phase: 0.4 });
 
     for (const item of this.options.map.scenery) {
       if (item.kind !== 'figure') continue;
-      const look = PEOPLE[item.look];
-      if (!look) continue;
-      const someone = person(this.kit, look);
-      someone.group.position.copy(this.onGround(centre(item.at)));
-      someone.group.rotation.y = hash(item.at.x, item.at.y) * Math.PI * 2;
+      if (!PEOPLE[item.look]) continue;
+      const someone = person(this.kit, item.look);
+      this.people.push(someone);
+      someone.group.position.copy(this.standing(item.at));
+      // On the jetty, out towards the open river (east); elsewhere, any way.
+      someone.group.rotation.y = this.jettyCells.has(`${item.at.x},${item.at.y}`)
+        ? Math.PI / 2
+        : hash(item.at.x, item.at.y) * Math.PI * 2;
       this.scene.add(someone.group);
       this.idlers.push({
-        group: someone.group,
+        person: someone,
         base: someone.group.position.y,
         phase: hash(item.at.x, item.at.y, 2) * 6,
       });
@@ -1324,7 +1450,7 @@ class Zone3d implements ZoneGame {
     this.stepFrom = centre(this.cell);
     this.stepTo = centre(next);
     this.stepT = 0;
-    this.hero.group.rotation.y = Math.atan2(next.x - this.cell.x, next.y - this.cell.y);
+    this.heroYaw = Math.atan2(next.x - this.cell.x, next.y - this.cell.y);
     this.cell = next;
   }
 
@@ -1374,7 +1500,7 @@ class Zone3d implements ZoneGame {
     if (!press) return;
     const map = this.options.map;
     if (sameCell(next, map.giver)) {
-      this.hero.group.rotation.y = Math.atan2(step.x, step.y);
+      this.heroYaw = Math.atan2(step.x, step.y);
       this.options.onEvent({ kind: 'giver' });
       return;
     }
@@ -1402,20 +1528,39 @@ class Zone3d implements ZoneGame {
     } else {
       this.walkPhase *= 0.8;
     }
-    const swing = Math.sin(this.walkPhase) * (this.stepTo ? 0.6 : 0);
-    hero.legs[0]?.rotation.set(swing, 0, 0);
-    hero.legs[1]?.rotation.set(-swing, 0, 0);
-    hero.arms[0]?.rotation.set(-swing * 0.8, 0, -0.12);
-    hero.arms[1]?.rotation.set(swing * 0.8, 0, 0.12);
+    // Turn towards where the hero is going, the short way round: a model
+    // snapping round reads as a glitch. The shapes turned at once.
+    const turn = Math.atan2(
+      Math.sin(this.heroYaw - hero.group.rotation.y),
+      Math.cos(this.heroYaw - hero.group.rotation.y),
+    );
+    hero.group.rotation.y += hero.figure ? turn * (1 - Math.exp(-dt * 18)) : turn;
     const under = this.groundUnder(hero.group.position.x, hero.group.position.z);
-    hero.group.position.y = under + (this.stepTo ? Math.abs(Math.sin(this.walkPhase)) * 0.05 : 0);
+    if (hero.figure) {
+      hero.figure.move(this.stepTo ? 1 / STEP_S : 0);
+      hero.group.position.y = under;
+    } else {
+      const swing = Math.sin(this.walkPhase) * (this.stepTo ? 0.6 : 0);
+      hero.legs[0]?.rotation.set(swing, 0, 0);
+      hero.legs[1]?.rotation.set(-swing, 0, 0);
+      hero.arms[0]?.rotation.set(-swing * 0.8, 0, -0.12);
+      hero.arms[1]?.rotation.set(swing * 0.8, 0, 0.12);
+      hero.group.position.y = under + (this.stepTo ? Math.abs(Math.sin(this.walkPhase)) * 0.05 : 0);
+    }
+    // With reduced motion, only the hero moves: everyone else holds still.
+    for (const someone of this.people) {
+      someone.figure?.update(someone === hero || !this.calm ? dt : 0);
+    }
     this.heroShadow.position.set(hero.group.position.x, under + 0.03, hero.group.position.z);
 
     if (!this.calm) {
       this.waterMaterial.uniforms['uTime']!.value = time;
       this.ground.update(time);
-      for (const idler of this.idlers)
-        idler.group.position.y = idler.base + Math.sin(time * 1.6 + idler.phase) * 0.012;
+      for (const idler of this.idlers) {
+        // A model breathes in its own idle; only the shapes bob.
+        if (idler.person.figure) continue;
+        idler.person.group.position.y = idler.base + Math.sin(time * 1.6 + idler.phase) * 0.012;
+      }
       for (const f of this.floaters) {
         f.group.position.y = f.base + Math.sin(time * 1.3 + f.phase) * 0.035;
         f.group.rotation.z = Math.sin(time * 1.1 + f.phase) * 0.04;
@@ -1505,13 +1650,20 @@ class Zone3d implements ZoneGame {
   }
 
   /**
-   * The ground under the hero, which on the bridge is the deck and not the
-   * river bed far below it.
+   * What someone stands on: on the bridge the deck, on the jetty its planks,
+   * not the river bed far below either.
    */
   private groundUnder(x: number, z: number): number {
     const square = { x: Math.floor(x), y: Math.floor(z) };
     if (this.description.deck.some((cell) => sameCell(cell, square))) return 0.17;
+    if (this.jettyCells.has(`${square.x},${square.y}`)) return JETTY_TOP;
     return this.ground.heightAt(x, z);
+  }
+
+  /** A person standing on a square: on its ground, deck or planks. */
+  private standing(cell: Cell): Vector3 {
+    const at = centre(cell);
+    return at.setY(this.groundUnder(at.x, at.z));
   }
 }
 
