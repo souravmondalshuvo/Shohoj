@@ -70,6 +70,7 @@ test('software renderers are told apart by the name they give', () => {
   for (const name of [
     'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)',
     'llvmpipe (LLVM 15.0.7, 256 bits)',
+    'softpipe',
     'Microsoft Basic Render Driver',
   ]) {
     assert.equal(isSoftwareRenderer(context(name)), true, name);
