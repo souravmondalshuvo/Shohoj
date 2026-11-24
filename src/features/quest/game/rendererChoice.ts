@@ -30,7 +30,7 @@ export interface WebGLProbe {
 }
 
 /** The names a renderer gives when there is no graphics card behind it. */
-const SOFTWARE_RENDERER = /swiftshader|llvmpipe|software|basic render/i;
+const SOFTWARE_RENDERER = /swiftshader|llvmpipe|softpipe|software|basic render/i;
 
 /** What the page's address asks for: ?quest3d=1 is 3D, ?quest3d=0 is 2D. */
 export function askedRenderer(search: string): RendererAsk {
