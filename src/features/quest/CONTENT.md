@@ -227,6 +227,13 @@ Add `?quest3d=1` to the page's address (on the main site:
 look; students get the 2D zone. A browser that cannot start WebGL falls back
 to 2D.
 
+It has two quality levels (`game/effects3d.ts`). "high" adds soft ambient
+shading, a little bloom, a miniature-style blur at the top and bottom of the
+view and a colour grade; "low" draws the scene directly. A touch screen or a
+software renderer starts on "low", and a device whose frames run slow on
+"high" for a few seconds is moved to "low". `&quest3dq=high` or
+`&quest3dq=low` in the address forces one, to compare.
+
 It builds the place from the same map. `world/sceneKinds.ts` names each tile
 (a tree, a hut's door, a pile in the river, a span of deck), and the 3D
 version models that thing in its place. So a map works in both, with one
