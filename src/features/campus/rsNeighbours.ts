@@ -33,7 +33,7 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import { polygonArea, type Point, type RsRect } from '../../core/campusBracuRs.ts';
-import { capGeometry, gableGeometry, rectCorners, wallGeometry } from './rsBuildings.ts';
+import { capGeometry, gableGeometry, rectCorners, wallGeometry, weathered } from './rsBuildings.ts';
 import { brick, concrete, corrugated, facadeSet, rng, type SurfaceTextures } from './rsTextures.ts';
 
 /** Colour washes seen on Savar's houses: off-white, cream, yellow, sky, mint, salmon. */
@@ -216,7 +216,7 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[]): Neig
   if (slab.normalMap) keep(slab.normalMap);
   slab.map.repeat.set(1 / 8, 1 / 8);
   slab.normalMap?.repeat.set(1 / 8, 1 / 8);
-  const slabMat = keep(new MeshStandardMaterial({ map: slab.map, roughness: 0.95 }));
+  const slabMat = keep(weathered(new MeshStandardMaterial({ map: slab.map, roughness: 0.95 })));
   if (slab.normalMap) slabMat.normalMap = slab.normalMap;
   const parapetMat = keep(new MeshStandardMaterial({ color: '#a9a69c', roughness: 0.95 }));
   const tankMat = keep(new MeshStandardMaterial({ color: '#1b1d1f', roughness: 0.5 }));
