@@ -278,9 +278,16 @@ export function RsCampus() {
           balconies follow a regular rhythm per bay, not a survey of each opening, and which kind of
           tree (rain tree, mast tree, coconut, banana) stands where is a likely mix, not a survey. A
           building with no name in any source is described, not named, and what most buildings are
-          used for is not published. Interiors are not drawn. The buildings outside the wall are
-          drawn one to three storeys high, and the large sheds at 8 m, because none of their heights
-          is published. Do not use this map to find an exit.
+          used for is not published. Interiors are not drawn, and the curtains in the windows are
+          for colour. Outside the wall only the buildings&apos; outlines are mapped: whether each is
+          a tin hut, a house of one to six storeys or a factory shed, and its walls and roof, are a
+          likely mix for the neighbourhood, not a survey. Do not use this map to find an exit.
+        </p>
+        <p>
+          <strong>Illustrative:</strong> the country past the mapped area, about 300 m from the wall
+          onward. Its fields, villages, ponds and brick kilns are laid out to look like the land
+          round Savar in the dry season, not where they really are. The highway follows its
+          OpenStreetMap line for about a kilometre each way, then carries straight on.
         </p>
         <div className="campus-evidence-links">
           <a href={OSM_CAMPUS_URL} target="_blank" rel="noreferrer">
