@@ -212,7 +212,7 @@ A 2D game where the hero only gets across the map by solving CSE110 problems in 
 - **Saves and resumes** — progress is kept on the device and synced to the student's account, so it follows them to another device. Graded in the browser, so it is self-study data: nothing is awarded on it
 - **Content is data** — a quest is an object in a typed file and a zone's map is drawn in Tiled, so new quests and zones need no engine code. See [CONTENT.md](src/features/quest/CONTENT.md)
 
-Played on the main site from Courses ▸ Quest (a tab, `#calculator/quest`), and on the React Router shell at `/quest`; marked beta while the first zone is tested. Art is by [Kenney](https://kenney.nl/) (CC0); the people of the 3D prototype (`?quest3d=1`) are by [Quaternius](https://quaternius.com/) (CC0).
+Played on the main site from Courses ▸ Quest (a tab, `#calculator/quest`), and on the React Router shell at `/quest`; marked beta while the first zone is tested. Art is by [Kenney](https://kenney.nl/) (CC0); the people of the 3D zone, the main site's default, are by [Quaternius](https://quaternius.com/) (CC0).
 
 ### 🗓️ Routine Builder
 
