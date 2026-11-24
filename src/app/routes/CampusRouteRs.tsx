@@ -263,8 +263,8 @@ export function RsCampus() {
           <strong>Measured:</strong> the campus wall, the buildings&apos; outlines and where they
           stand, the fields, the court, the gardens, the roads and the ponds round the campus, from
           OpenStreetMap. Two small sheds OpenStreetMap does not have are traced from the satellite
-          image (5 February 2026), and every tree, inside the wall and out, stands where that image
-          shows a canopy.
+          image (5 February 2026), and every tree within the mapped area, inside the wall and out,
+          stands where that image shows a canopy.
         </p>
         <p>
           <strong>Read from sources:</strong> the names Nikunja, Maloncho, Anandapur, Duronto and
@@ -285,8 +285,8 @@ export function RsCampus() {
         </p>
         <p>
           <strong>Illustrative:</strong> the country past the mapped area, about 300 m from the wall
-          onward. Its fields, villages, ponds and brick kilns are laid out to look like the land
-          round Savar in the dry season, not where they really are. The highway follows its
+          onward. Its fields, villages, trees, ponds and brick kilns are laid out to look like the
+          land round Savar in the dry season, not where they really are. The highway follows its
           OpenStreetMap line for about a kilometre each way, then carries straight on.
         </p>
         <div className="campus-evidence-links">
