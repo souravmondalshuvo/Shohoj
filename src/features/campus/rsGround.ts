@@ -415,24 +415,52 @@ export function groundTexture(canvas: HTMLCanvasElement): Texture {
  * twice — at a 3 m tile for grain up close, and at 27 m for the patches of
  * grass and bare earth that keep the middle distance from going smooth.
  * `span` is how many metres the map's UVs cover.
+ *
+ * With `hole` (campus metres), the ground is not drawn inside that rectangle:
+ * the country's plane runs under the near map, and drawing both there would
+ * need the near map pulled forward with a polygon offset — which, at a
+ * grazing angle, pulls it in front of anything low standing on it too.
  */
 export function groundMaterial(
   map: Texture,
   detail: Texture,
   span: number = GROUND_EXTENT.x2 - GROUND_EXTENT.x1,
+  hole?: { x1: number; x2: number; y1: number; y2: number },
 ): MeshStandardMaterial {
   const mat = new MeshStandardMaterial({ map, roughness: 0.97, metalness: 0 });
   const repeat = span / 3; // a 3 m detail tile
+  // Three metres' overlap all round: at a grazing angle any less leaves
+  // dashes of sky along the seam.
+  const cut = hole
+    ? `if ( vGroundAt.x > ${(hole.x1 + 3).toFixed(2)} && vGroundAt.x < ${(hole.x2 - 3).toFixed(2)} && -vGroundAt.y > ${(hole.y1 + 3).toFixed(2)} && -vGroundAt.y < ${(hole.y2 - 3).toFixed(2)} ) discard;`
+    : '';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms['detailMap'] = { value: detail };
     shader.uniforms['detailRepeat'] = { value: repeat };
+    if (hole) {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vGroundAt;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGroundAt = ( modelMatrix * vec4( transformed, 1.0 ) ).xz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vGroundAt;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\n  ${cut}`);
+    }
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform sampler2D detailMap;\nuniform float detailRepeat;')
       .replace(
         '#include <map_fragment>',
-        '#include <map_fragment>\n  diffuseColor.rgb *= texture2D( detailMap, vMapUv * detailRepeat ).rgb * 2.0;\n  diffuseColor.rgb *= mix( 1.0, texture2D( detailMap, vMapUv * detailRepeat / 9.0 + 0.37 ).r * 2.0, 0.8 );',
+        `#include <map_fragment>
+  // Blades and grain up close, calmer with distance (where they would only
+  // shimmer); broader patches of lighter and darker, greener and drier
+  // ground at the two coarser scales, which also hide the tile's repeat.
+  float detailNear = 1.0 - smoothstep( 15.0, 260.0, length( vViewPosition ) );
+  vec3 blades = texture2D( detailMap, vMapUv * detailRepeat ).rgb * 2.0;
+  diffuseColor.rgb *= mix( vec3( 1.0 ), blades, 0.55 + 0.75 * detailNear );
+  diffuseColor.rgb *= mix( 1.0, texture2D( detailMap, vMapUv * detailRepeat / 9.0 + 0.37 ).r * 2.0, 0.8 );
+  float patchy = texture2D( detailMap, vMapUv * detailRepeat / 31.0 + 0.71 ).r * 2.0 - 1.0;
+  diffuseColor.rgb *= vec3( 1.0 + 0.10 * patchy, 1.0 + 0.02 * patchy, 1.0 - 0.10 * patchy );`,
       );
   };
-  mat.customProgramCacheKey = () => 'rs-ground-detail';
+  mat.customProgramCacheKey = () => (hole ? 'rs-ground-detail-2-holed' : 'rs-ground-detail-2');
   return mat;
 }
