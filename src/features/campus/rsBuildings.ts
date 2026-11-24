@@ -274,7 +274,7 @@ export function weathered(mat: MeshStandardMaterial): MeshStandardMaterial {
   vec3 broader = texture2D( map, vMapUv * 0.067 + 0.53, 4.0 ).rgb / slabMean;
   float damp = clamp( dot( broad * broader, vec3( 0.333 ) ), 0.4, 1.6 );
   diffuseColor.rgb *= mix( 1.0, damp, 1.3 );
-  float mould = smoothstep( 0.88, 0.7, damp );
+  float mould = 1.0 - smoothstep( 0.7, 0.88, damp );
   diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( 0.55, 0.6, 0.52 ), mould );`,
     );
   };
