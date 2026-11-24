@@ -219,14 +219,20 @@ jetty, a market by the road, paddy on both banks, kash and reeds along the
 water. Give a new zone a place of its own in the same spirit rather than an
 empty field: dense edges, people at work, something moving.
 
-## The 3D prototype
+## The 3D zone
 
-Add `?quest3d=1` to the page's address (on the main site:
-`…/Shohoj/?quest3d=1#calculator/quest`) and the zone is drawn in 3D by
-`game/zoneGame3d.ts` instead of the 2D tiles. It is a prototype, to judge the
-look; students get the 2D zone. A browser that cannot start WebGL falls back
-to 2D. Only the main site offers it (`quest/embed.tsx` hands the 3D module to
-the screen); the shell's `/quest` stays 2D, so its bundle does not carry it.
+On the main site the zone is drawn in 3D by `game/zoneGame3d.ts`. The 2D
+tiles are the fallback (`game/rendererChoice.ts` decides):
+
+- a browser that cannot start WebGL 2, or whose WebGL runs in software with
+  no graphics card behind it (3D there is a few frames a second), gets 2D;
+- `?quest3d=0` in the address asks for 2D, `?quest3d=1` for 3D even on a
+  software renderer (on the main site: `…/Shohoj/?quest3d=0#calculator/quest`);
+- a 3D zone that still fails to start falls back to 2D.
+
+Only the main site offers 3D (`quest/embed.tsx` hands the 3D module to the
+screen); the shell's `/quest` stays 2D, so its bundle does not carry it. So
+every zone must be playable in both: the same Tiled map drives both.
 
 It has two quality levels (`game/effects3d.ts`). "high" adds soft ambient
 shading, a little bloom, a miniature-style blur at the top and bottom of the
