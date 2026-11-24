@@ -12,7 +12,8 @@
  *   - buildings with real window, sunshade, balcony and fin geometry and
  *     textured roofs (rsBuildings.ts);
  *   - the ground painted as one map: earth, grass, fields, paving and shade
- *     (rsGround.ts);
+ *     (rsGround.ts), with clumps of grass standing up off it near the camera
+ *     (rsGrass.ts);
  *   - rain trees, mast trees, coconut palms and bananas (rsTrees.ts);
  *   - the brick boundary wall with its posts, the east gate, goals, hoops,
  *     cricket stumps, the water tower and the ring sculptures;
@@ -84,6 +85,7 @@ import { buildNeighbours } from './rsNeighbours.ts';
 import { createPost } from './rsPost.ts';
 import { brick, groundDetail, plaster, rng } from './rsTextures.ts';
 import { buildTrees } from './rsTrees.ts';
+import { buildGrass, grassScatter } from './rsGrass.ts';
 import { buildPonds } from './rsWater.ts';
 
 export interface RsSceneOptions {
@@ -300,20 +302,34 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
       const country = buildCountry(countryCanvas, plan, scatter);
       disposables.push(country);
       scene.add(country.group);
-      const map = track(groundTexture(paintGround((g, w, h) => drawNearCrop(g, countryCanvas, w, h))));
+      const nearCanvas = paintGround((g, w, h) => drawNearCrop(g, countryCanvas, w, h));
+      const map = track(groundTexture(nearCanvas));
       const detail = track(groundDetail(405));
       const w = GROUND_EXTENT.x2 - GROUND_EXTENT.x1;
       const h = GROUND_EXTENT.y2 - GROUND_EXTENT.y1;
+      // The country's plane leaves this rectangle to it (see groundMaterial).
       const nearMat = track(groundMaterial(map, detail));
-      // Drawn over the country's plane, which runs on underneath.
-      nearMat.polygonOffset = true;
-      nearMat.polygonOffsetFactor = -2;
-      nearMat.polygonOffsetUnits = -4;
       const ground = new Mesh(track(new PlaneGeometry(w, h)), nearMat);
       ground.rotation.x = -Math.PI / 2;
       ground.position.set((GROUND_EXTENT.x1 + GROUND_EXTENT.x2) / 2, 0, -(GROUND_EXTENT.y1 + GROUND_EXTENT.y2) / 2);
       ground.receiveShadow = true;
       scene.add(ground);
+
+      // Grass standing up off the lawns, tinted from the map under it.
+      const pixels = nearCanvas.getContext('2d')?.getImageData(0, 0, nearCanvas.width, nearCanvas.height);
+      if (pixels) {
+        const res = w / nearCanvas.width;
+        const sample = (x: number, y: number): [number, number, number] | null => {
+          const i = Math.floor((x - GROUND_EXTENT.x1) / res);
+          const j = Math.floor((GROUND_EXTENT.y2 - y) / res);
+          if (i < 0 || j < 0 || i >= pixels.width || j >= pixels.height) return null;
+          const k = (j * pixels.width + i) * 4;
+          return [pixels.data[k] ?? 0, pixels.data[k + 1] ?? 0, pixels.data[k + 2] ?? 0];
+        };
+        const grass = buildGrass(grassScatter(sample, light ? 2 : 1));
+        disposables.push(grass);
+        scene.add(grass.group);
+      }
     }
 
     // ── The wall, its posts and the gate ─────────────────────────────────────
