@@ -153,6 +153,15 @@ export function fitRect(outline: readonly Point[]): RsRect {
   return best;
 }
 
+/**
+ * Whether a footprint is rectangle enough to draw on its fitted rectangle
+ * (for a gable roof) without visibly changing its mapped outline.
+ */
+export function gableFits(outline: readonly Point[]): boolean {
+  const r = fitRect(outline);
+  return Math.abs(polygonArea(outline)) >= 0.9 * r.length * r.width;
+}
+
 export interface Neighbours {
   group: Group;
   dispose(): void;
@@ -234,12 +243,18 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[]): Neig
     const wallMat = plan.walls === 'tin' ? tinWall : plan.walls === 'brick' ? brickMat : (washMats[plan.walls] ?? parapetMat);
 
     if (plan.roof !== 'flat') {
-      // Sheet roof on its fitted rectangle; walls on the same rectangle so
-      // the gables meet them.
-      const outline = rectCorners(rect, 0);
       const h = plan.kind === 'shed' ? 7 + r() * 2 : plan.kind === 'hut' ? 2.5 + r() * 0.4 : 3.1;
+      const storey = plan.walls === 'tin' ? 1 : 3.1;
+      if (!gableFits(nb)) {
+        // Not a rectangle: keep the mapped outline, under a flat sheet roof.
+        put(wallMat, wallGeometry(nb, 0, h, storey));
+        put(roofMats[plan.roof], capGeometry(nb, h));
+        return;
+      }
+      // Sheet gable on the fitted rectangle (within a tenth of the footprint);
+      // walls on the same rectangle so the gables meet them.
       const rise = Math.min(plan.kind === 'shed' ? 4 : 2.2, rect.width * (plan.kind === 'shed' ? 0.12 : 0.28));
-      put(wallMat, wallGeometry(outline, 0, h, plan.walls === 'tin' ? 1 : 3.1));
+      put(wallMat, wallGeometry(rectCorners(rect, 0), 0, h, storey));
       const { roof, gables } = gableGeometry(rect, h, rise);
       put(roofMats[plan.roof], roof);
       put(plan.walls === 'tin' ? tinWall : roofMats[plan.roof], gables);
