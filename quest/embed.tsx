@@ -33,6 +33,10 @@ import { createSyncedProgressStore } from '../src/features/quest/progress/synced
 import type { QuestProgressBackend } from '../src/platform/firebase/questProgressRepo';
 import { MemoryKeyValueStore, type KeyValueStore } from '../src/services/storage/keyValueStore';
 
+// The 3D prototype (?quest3d=1), offered here and not on the shell: only this
+// site plays it, and only a visit that asks for it downloads it.
+const loadZone3d = () => import('../src/features/quest/game/zoneGame3d');
+
 const QuestScreen = lazy(() =>
   import('../src/features/quest/ui/QuestScreen').then((module) => ({
     default: module.QuestScreen,
@@ -86,6 +90,7 @@ export function mountQuest(container: HTMLElement, options: QuestMountOptions): 
           drafts={drafts}
           javaSandboxUrl={options.javaSandboxUrl ?? null}
           onLeave={options.onLeave}
+          loadZone3d={loadZone3d}
         />
       </Suspense>
     </StrictMode>,
