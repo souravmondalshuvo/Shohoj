@@ -152,6 +152,8 @@ function ZoneScreen({
   const [view, setView] = useState<View>({ kind: 'world' });
   const [stage, setStage] = useState<Stage>('loading');
   const [attempt, setAttempt] = useState(0);
+  /** The zone is drawn in 3D, whose people are Quaternius's models. */
+  const [drawnIn3d, setDrawnIn3d] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<ZoneGame | null>(null);
@@ -314,11 +316,13 @@ function ZoneScreen({
           const { createZoneGame } = await loadZone3d();
           if (!current) return;
           game = createZoneGame(options);
+          setDrawnIn3d(true);
         } catch {
           game = null;
         }
       }
       if (!game) {
+        setDrawnIn3d(false);
         const { createZoneGame } = await import('../game/zoneGame.ts');
         if (!current) return;
         game = createZoneGame(options);
@@ -460,6 +464,14 @@ function ZoneScreen({
         <a href="https://kenney.nl/" target="_blank" rel="noreferrer">
           Art by Kenney
         </a>
+        {drawnIn3d ? (
+          <>
+            <span> · </span>
+            <a href="https://quaternius.com/" target="_blank" rel="noreferrer">
+              People by Quaternius
+            </a>
+          </>
+        ) : null}
       </p>
 
       {view.kind === 'talk' && talkQuest ? (
