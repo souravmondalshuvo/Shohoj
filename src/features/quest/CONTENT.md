@@ -225,13 +225,16 @@ Add `?quest3d=1` to the page's address (on the main site:
 `…/Shohoj/?quest3d=1#calculator/quest`) and the zone is drawn in 3D by
 `game/zoneGame3d.ts` instead of the 2D tiles. It is a prototype, to judge the
 look; students get the 2D zone. A browser that cannot start WebGL falls back
-to 2D.
+to 2D. Only the main site offers it (`quest/embed.tsx` hands the 3D module to
+the screen); the shell's `/quest` stays 2D, so its bundle does not carry it.
 
 It has two quality levels (`game/effects3d.ts`). "high" adds soft ambient
 shading, a little bloom, a miniature-style blur at the top and bottom of the
-view and a colour grade; "low" draws the scene directly. A touch screen or a
-software renderer starts on "low", and a device whose frames run slow on
-"high" for a few seconds is moved to "low". `&quest3dq=high` or
+view and a colour grade; "low" draws the scene directly. A touch screen, or a
+software renderer that names itself, starts on "low"; a device that keeps its
+renderer's name to itself starts on "high". Any device whose frames run slow
+on "high" for about three seconds is moved to "low", with less grass and a
+smaller shadow map. `&quest3dq=high` or
 `&quest3dq=low` in the address forces one, to compare.
 
 It builds the place from the same map. `world/sceneKinds.ts` names each tile
