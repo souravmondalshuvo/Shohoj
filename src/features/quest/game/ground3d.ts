@@ -44,6 +44,8 @@ export interface Ground {
   heightAt(x: number, z: number): number;
   /** Advance the wind. */
   update(time: number): void;
+  /** Draw a third of the grass, for a device moved to "low" quality. */
+  lower(): void;
   dispose(): void;
 }
 
@@ -300,7 +302,13 @@ function paddyWater(
 ): Mesh {
   const positions: number[] = [];
   for (const { x, y } of cells) {
-    const h = heightAt(x + 0.5, y + 0.5) + 0.045;
+    // Above the highest ground anywhere in the square, so no bump of mud
+    // shows through the water.
+    let top = -Infinity;
+    for (let i = 0; i <= 4; i += 1) {
+      for (let j = 0; j <= 4; j += 1) top = Math.max(top, heightAt(x + i / 4, y + j / 4));
+    }
+    const h = top + 0.02;
     positions.push(x, h, y, x, h, y + 1, x + 1, h, y, x + 1, h, y, x, h, y + 1, x + 1, h, y + 1);
   }
   const geometry = new BufferGeometry();
@@ -362,6 +370,13 @@ export function buildGround(scene: ZoneScene, options: GroundOptions): Ground {
       }
     }
   }
+  // In an order that thins evenly, so drawing the first third of them covers
+  // the whole field more sparsely rather than a third of it fully.
+  grassSpots.sort(
+    (a, b) =>
+      hash(Math.floor(a.x * 97), Math.floor(a.z * 89), 5) -
+      hash(Math.floor(b.x * 97), Math.floor(b.z * 89), 5),
+  );
   const grass = scatter(
     keep(tuftGeometry(5, 0.26, 0.03, '#3d7a26', '#a7d060')),
     keep(windMaterial(time, 0.22)),
@@ -404,6 +419,9 @@ export function buildGround(scene: ZoneScene, options: GroundOptions): Ground {
     heightAt,
     update(now) {
       time.value = now;
+    },
+    lower() {
+      grass.count = Math.ceil(grassSpots.length / 3);
     },
     dispose() {
       for (const thing of disposables) thing.dispose();
