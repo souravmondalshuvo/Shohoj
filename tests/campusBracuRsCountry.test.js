@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { RS_NEIGHBOURS, RS_WATER, pointInPolygon, polygonArea } from '../src/core/campusBracuRs.ts';
 import { countryPlan, countryScatter, inNearArea } from '../src/features/campus/rsLandscape.ts';
-import { fitRect, planNeighbour } from '../src/features/campus/rsNeighbours.ts';
+import { fitRect, gableFits, planNeighbour } from '../src/features/campus/rsNeighbours.ts';
 
 const inPond = (x, y) => RS_WATER.some((w) => pointInPolygon([x, y], w.outline));
 
@@ -39,6 +39,18 @@ test('no country tree or house stands on the map or in a mapped pond', () => {
         assert.ok(!inPond(t.x, t.y), `tree in a pond at ${t.x}, ${t.y}`);
     }
     for (const h of houses) assert.ok(!inNearArea(h.x, h.y, 10), `house at ${h.x}, ${h.y}`);
+});
+
+test('a density that is not a positive number falls back to the full country', () => {
+    const plan = countryPlan();
+    const full = countryScatter(plan, 1).trees.length;
+    for (const d of [0, -1, Number.NaN, Infinity]) assert.equal(countryScatter(plan, d).trees.length, full, String(d));
+});
+
+test('only a near-rectangular footprint is redrawn on its rectangle for a gable', () => {
+    assert.equal(gableFits([[0, 0], [10, 0], [10, 6], [0, 6]]), true);
+    // An L: a third of its bounding rectangle is empty.
+    assert.equal(gableFits([[0, 0], [12, 0], [12, 4], [4, 4], [4, 9], [0, 9]]), false);
 });
 
 test('a small screen gets about half the country trees', () => {
