@@ -16,6 +16,8 @@ import {
     RS_LANDMARKS,
     RS_NEIGHBOURS,
     RS_ORIGIN,
+    RS_OUTER_TREES,
+    RS_WATER,
     RS_ROADS,
     RS_TREES,
     RS_WALL,
@@ -163,4 +165,23 @@ test('the campus has roads of its own and the trunk road outside the gate', () =
     // The neighbours are context: none of them is inside the wall.
     assert.ok(RS_NEIGHBOURS.length > 50);
     for (const n of RS_NEIGHBOURS) assert.ok(!pointInPolygon(polygonCentre(n), RS_WALL));
+});
+
+test('the ponds round the campus are OpenStreetMap\'s, and none is inside the wall', () => {
+    assert.ok(RS_WATER.length >= 4);
+    for (const w of RS_WATER) {
+        assert.ok(Number.isInteger(w.osmWay) && w.osmWay > 0);
+        assert.ok(w.outline.length >= 3);
+        assert.ok(!pointInPolygon(polygonCentre(w.outline), RS_WALL), `pond ${w.osmWay}`);
+    }
+});
+
+test('trees outside the wall stand on open ground round the campus', () => {
+    assert.ok(RS_OUTER_TREES.length > 1000, 'the land round the campus is wooded');
+    for (const t of RS_OUTER_TREES) {
+        assert.ok(!pointInPolygon(t, RS_WALL), `outer tree ${t} is inside the wall`);
+        assert.ok(Math.abs(t[0]) <= 330 && Math.abs(t[1]) <= 240, `outer tree ${t} beyond the map`);
+        for (const w of RS_WATER) assert.ok(!pointInPolygon(t, w.outline), `outer tree ${t} in a pond`);
+        for (const n of RS_NEIGHBOURS) assert.ok(!pointInPolygon(t, n), `outer tree ${t} in a building`);
+    }
 });
