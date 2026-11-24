@@ -23,6 +23,7 @@ import { Link } from 'react-router';
 import { ZONE_MAPS } from '../assets/maps/index.ts';
 import type { Quest, Zone } from '../content/schema.ts';
 import { findQuest, loadWorld, questState, totalXp, zonesInOrder } from '../content/world.ts';
+import { askedRenderer, chooseRenderer, probeWebGL } from '../game/rendererChoice.ts';
 import type { ZoneEvent, ZoneGame, ZoneGameOptions, ZoneState } from '../game/zoneGame.ts';
 import { memoryDraftStore, type DraftStore } from '../progress/localProgress.ts';
 import {
@@ -54,15 +55,6 @@ type View =
 
 type Stage = 'loading' | 'ready' | 'failed';
 
-/** Whether this visit asked for the 3D prototype, with ?quest3d=1 in the address. */
-function wantsThreeD(): boolean {
-  try {
-    return new URLSearchParams(window.location.search).get('quest3d') === '1';
-  } catch {
-    return false;
-  }
-}
-
 // The defaults keep everything for as long as the page is open and no longer.
 // The route passes stores that outlast the visit (useQuestStores).
 const sessionStore = memoryProgressStore();
@@ -85,9 +77,9 @@ export interface QuestScreenProps {
    */
   readonly onLeave?: () => void;
   /**
-   * Loads the 3D prototype of the zone, for a host that offers it. Only the
-   * legacy site's embed does (quest/embed.tsx), so the shell's bundle does
-   * not carry three.js's finishing passes for a flag nobody uses there.
+   * Loads the 3D zone, for a host that offers it; without it the zone is 2D.
+   * Only the legacy site's embed does (quest/embed.tsx), where students play,
+   * so the shell's bundle does not carry three.js's finishing passes.
    */
   readonly loadZone3d?: LoadZone3d;
 }
@@ -308,10 +300,11 @@ function ZoneScreen({
         onEvent: (event: ZoneEvent) => latest.current.onZoneEvent(event),
       };
       game = null;
-      // The 3D prototype, only when asked for (?quest3d=1) and only where the
-      // host offers it. A browser that cannot start WebGL gets the 2D zone
-      // instead of a broken screen.
-      if (wantsThreeD() && loadZone3d) {
+      // 3D where the host offers it and the browser draws it well, unless the
+      // address says otherwise (game/rendererChoice.ts). If it still cannot
+      // start, the student gets the 2D zone instead of a broken screen.
+      const asked = askedRenderer(window.location.search);
+      if (loadZone3d && chooseRenderer(asked, true, probeWebGL) === '3d') {
         try {
           const { createZoneGame } = await loadZone3d();
           if (!current) return;
