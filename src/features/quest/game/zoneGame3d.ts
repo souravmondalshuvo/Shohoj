@@ -930,8 +930,12 @@ class Zone3d implements ZoneGame {
         canvas.dataset['questPeople'] = 'models';
         if (this.paused) this.finish.render();
       })
-      .catch(() => {
-        if (!this.destroyed) canvas.dataset['questPeople'] = 'shapes';
+      .catch((error: unknown) => {
+        if (this.destroyed) return;
+        canvas.dataset['questPeople'] = 'shapes';
+        // The shapes are a fine fallback for a student, but a broken asset
+        // deployment should not look like one in the console.
+        console.warn('Shohoj Quest: the people models did not load; drawing shapes.', error);
       });
   }
 
@@ -1537,6 +1541,8 @@ class Zone3d implements ZoneGame {
     hero.group.rotation.y += hero.figure ? turn * (1 - Math.exp(-dt * 18)) : turn;
     const under = this.groundUnder(hero.group.position.x, hero.group.position.z);
     if (hero.figure) {
+      // The hero's real speed: the figure plays its jog faster or slower to
+      // match it, so the feet keep pace with the ground (people3d.ts).
       hero.figure.move(this.stepTo ? 1 / STEP_S : 0);
       hero.group.position.y = under;
     } else {
@@ -1655,8 +1661,9 @@ class Zone3d implements ZoneGame {
    */
   private groundUnder(x: number, z: number): number {
     const square = { x: Math.floor(x), y: Math.floor(z) };
-    if (this.description.deck.some((cell) => sameCell(cell, square))) return 0.17;
+    // The jetty first: a square that is both is a jetty plank, not bridge deck.
     if (this.jettyCells.has(`${square.x},${square.y}`)) return JETTY_TOP;
+    if (this.description.deck.some((cell) => sameCell(cell, square))) return 0.17;
     return this.ground.heightAt(x, z);
   }
 
