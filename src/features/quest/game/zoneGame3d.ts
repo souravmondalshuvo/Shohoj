@@ -41,8 +41,6 @@ import {
   Group,
   HemisphereLight,
   IcosahedronGeometry,
-  InstancedMesh,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -67,7 +65,9 @@ import {
 } from 'three';
 
 import type { ZoneEvent, ZoneGame, ZoneGameOptions, ZoneState } from './zoneGame.ts';
-import { describeScene, type GroundKind, type Prop, type ZoneScene } from '../world/sceneKinds.ts';
+import { describeScene, type Prop, type ZoneScene } from '../world/sceneKinds.ts';
+import { Finish, pickQuality, skyLight } from './effects3d.ts';
+import { BEYOND, buildGround, type Ground } from './ground3d.ts';
 import {
   canWalk,
   findRoute,
@@ -85,6 +85,8 @@ const STEP_S = 0.16;
 /** Arrow presses kept while the hero is still walking the last one. */
 const MAX_QUEUED_PRESSES = 3;
 const WATER_Y = -0.22;
+/** Towards the sun: low in the west, late in the afternoon. Shadows fall long to the east. */
+const SUN = new Vector3(-16, 8, 4).normalize();
 const RIVERBED_Y = -0.9;
 
 const KEY_STEPS: Readonly<Record<string, Cell>> = {
@@ -116,16 +118,6 @@ function gapTo(gate: Gate, cell: Cell): number {
 
 // ── Palette ────────────────────────────────────────────────────────────────
 // Late afternoon in Bengal: warm light, deep greens, red earth, straw.
-
-const GROUND_COLOURS: Readonly<Record<GroundKind, readonly string[]>> = {
-  grass: ['#6aae3f', '#74b845', '#63a33a', '#7bbd4c'],
-  water: ['#5b8c62'],
-  'bank-west': ['#6f7a3e'],
-  'bank-east': ['#6f7a3e'],
-  road: ['#b5814f', '#b88553', '#b07c4c'],
-  sand: ['#e2cc98', '#dcc48e'],
-  mud: ['#6e4a2f', '#664429'],
-};
 
 const SKIN = ['#c68e62', '#a8714a', '#8d5b3b'] as const;
 
@@ -192,155 +184,27 @@ class Kit {
   }
 }
 
-// ── The ground ──────────────────────────────────────────────────────────────
-
-function groundHeight(kind: GroundKind): number {
-  switch (kind) {
-    case 'water':
-      return RIVERBED_Y;
-    case 'bank-west':
-    case 'bank-east':
-      return -0.42;
-    case 'road':
-      return -0.03;
-    case 'sand':
-      return -0.06;
-    case 'mud':
-      return -0.1;
-    default:
-      return 0;
-  }
-}
-
-/** One faceted mesh for the whole zone, a little uneven, coloured square by square. */
-function buildTerrain(kit: Kit, scene: ZoneScene): Mesh {
-  const { width, height, ground } = scene;
-  const kindAt = (x: number, y: number): GroundKind =>
-    ground[Math.min(height - 1, Math.max(0, y)) * width + Math.min(width - 1, Math.max(0, x))] ??
-    'grass';
-  // A corner is shared by four squares; it sits at their average height, so
-  // banks slope and roads dip gently instead of stepping.
-  const corner = (cx: number, cy: number) => {
-    let sum = 0;
-    for (const [dx, dy] of [
-      [-1, -1],
-      [0, -1],
-      [-1, 0],
-      [0, 0],
-    ] as const)
-      sum += groundHeight(kindAt(cx + dx, cy + dy));
-    const flat = sum / 4;
-    const land = flat > -0.2;
-    return flat + (land ? (hash(cx, cy, 3) - 0.5) * 0.06 : 0);
-  };
-
-  // Each square's own colour, a little varied.
-  const cellColour = (x: number, y: number): Color => {
-    const options = GROUND_COLOURS[kindAt(x, y)];
-    return new Color(
-      options[Math.floor(hash(x, y, 1) * options.length)] ?? options[0] ?? '#6aae3f',
-    );
-  };
-  // A corner's colour is its four squares' mixed, so one kind of ground runs
-  // into the next instead of stopping at a square's edge.
-  // A road, the ghat's sand or a field's mud keeps its own colour to its
-  // edge: where one meets grass, the corner takes the path's colour, so a
-  // two-square road stays a road and only the grass beside it softens.
-  const PATHS: ReadonlySet<GroundKind> = new Set(['road', 'sand', 'mud']);
-  const cornerColour = (cx: number, cy: number): Color => {
-    const around = (
-      [
-        [-1, -1],
-        [0, -1],
-        [-1, 0],
-        [0, 0],
-      ] as const
-    ).map(([dx, dy]) => ({ kind: kindAt(cx + dx, cy + dy), x: cx + dx, y: cy + dy }));
-    const path = around.find((cell) => PATHS.has(cell.kind));
-    const jitter = 0.97 + hash(cx, cy, 8) * 0.06;
-    if (path && around.filter((cell) => cell.kind === path.kind).length >= 2) {
-      return cellColour(path.x, path.y).multiplyScalar(jitter);
-    }
-    const mixed = new Color(0, 0, 0);
-    for (const cell of around) {
-      const c = cellColour(cell.x, cell.y);
-      mixed.r += c.r / 4;
-      mixed.g += c.g / 4;
-      mixed.b += c.b / 4;
-    }
-    return mixed.multiplyScalar(jitter);
-  };
-
-  // Each square is four triangles fanned from a raised or sunken middle, so
-  // the ground reads as soft, uneven earth rather than a board of tiles.
-  const positions: number[] = [];
-  const colours: number[] = [];
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const kind = kindAt(x, y);
-      const middleHeight =
-        groundHeight(kind) + (groundHeight(kind) > -0.2 ? (hash(x, y, 4) - 0.5) * 0.08 : 0);
-      const middle: [number, number, number] = [
-        x + 0.5 + (hash(x, y, 11) - 0.5) * 0.3,
-        middleHeight,
-        y + 0.5 + (hash(x, y, 12) - 0.5) * 0.3,
-      ];
-      const middleColour = cellColour(x, y);
-      const corners: [number, number][] = [
-        [x, y],
-        [x + 1, y],
-        [x + 1, y + 1],
-        [x, y + 1],
-      ];
-      for (let k = 0; k < 4; k += 1) {
-        const [ax, ay] = corners[k] as [number, number];
-        const [bx, by] = corners[(k + 1) % 4] as [number, number];
-        const ca = cornerColour(ax, ay);
-        const cb = cornerColour(bx, by);
-        // Flat-shaded: one colour per triangle, the mean of its three points.
-        const tri = new Color(
-          (ca.r + cb.r + middleColour.r) / 3,
-          (ca.g + cb.g + middleColour.g) / 3,
-          (ca.b + cb.b + middleColour.b) / 3,
-        );
-        for (const v of [middle, [bx, corner(bx, by), by], [ax, corner(ax, ay), ay]] as const) {
-          positions.push(v[0], v[1], v[2]);
-          colours.push(tri.r, tri.g, tri.b);
-        }
-      }
-    }
-  }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
-  geometry.setAttribute('color', new BufferAttribute(new Float32Array(colours), 3));
-  geometry.computeVertexNormals();
-  const material = kit.keep(
-    new MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }),
-  );
-  const mesh = kit.mesh(geometry, material, false);
-  mesh.receiveShadow = true;
-  return mesh;
-}
+// ── Beyond the map ──────────────────────────────────────────────────────────
 
 /** Land beyond the map's edges, so the world runs on into the haze. */
 function buildSurroundings(kit: Kit, scene: ZoneScene, river: { west: number; east: number }) {
   const group = new Group();
   const reach = 40;
-  const land = kit.mat('#64a23b', { rough: 1 });
-  // Only outside the map: inside it, the terrain is the ground, and a plane
-  // laid over it would hide the road.
+  const land = kit.mat('#5a8f38', { rough: 1 });
+  // Only past the ground the terrain already draws (ground3d.ts carries it
+  // BEYOND squares out): a plane laid over the terrain would hide the road.
   const west = kit.mesh(new PlaneGeometry(reach, scene.height + reach * 2), land, false);
   west.rotation.x = -Math.PI / 2;
-  west.position.set(-reach / 2, -0.03, scene.height / 2);
+  west.position.set(-BEYOND - reach / 2, -0.03, scene.height / 2);
   const east = kit.mesh(new PlaneGeometry(reach, scene.height + reach * 2), land, false);
   east.rotation.x = -Math.PI / 2;
-  east.position.set(scene.width + reach / 2, -0.03, scene.height / 2);
-  // The land beyond the top and bottom of the map, either side of the river.
+  east.position.set(scene.width + BEYOND + reach / 2, -0.03, scene.height / 2);
+  // The land beyond the top and bottom, either side of the river.
   for (const [from, to] of [
-    [0, river.west],
-    [river.east, scene.width],
+    [-BEYOND, river.west],
+    [river.east, scene.width + BEYOND],
   ] as const) {
-    for (const z of [-reach / 2, scene.height + reach / 2]) {
+    for (const z of [-BEYOND - reach / 2, scene.height + BEYOND + reach / 2]) {
       const strip = kit.mesh(new PlaneGeometry(to - from, reach), land, false);
       strip.rotation.x = -Math.PI / 2;
       strip.position.set((from + to) / 2, -0.03, z);
@@ -740,6 +604,9 @@ class Zone3d implements ZoneGame {
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(34, 1, 0.1, 200);
   private readonly sun: DirectionalLight;
+  private readonly ground: Ground;
+  private readonly finish: Finish;
+  private readonly skyTexture: { dispose(): void };
   private readonly clock = new Clock();
   private readonly calm: boolean;
   private readonly coarse: boolean;
@@ -811,11 +678,18 @@ class Zone3d implements ZoneGame {
     this.scene.background = haze;
     this.scene.fog = new Fog(haze, 20, 52);
 
-    // Late afternoon: a low, warm sun in the west, a warm sky, green bounce.
-    this.scene.add(new HemisphereLight('#dfe9ff', '#5a7a3a', 1.15));
-    this.sun = new DirectionalLight('#ffd9a3', 2.5);
+    const quality = pickQuality(this.renderer, this.coarse);
+
+    // Late afternoon: the sky's own light on everything (effects3d.ts), a
+    // low warm sun in the west for shadows, a little green bounce from below.
+    const sky = skyLight(this.renderer, SUN);
+    this.skyTexture = sky;
+    this.scene.environment = sky;
+    this.scene.environmentIntensity = 0.14;
+    this.scene.add(new HemisphereLight('#dfe9ff', '#5a7a3a', 0.55));
+    this.sun = new DirectionalLight('#ffd49a', 2.7);
     this.sun.castShadow = true;
-    const shadowSize = this.coarse ? 1024 : 2048;
+    const shadowSize = quality === 'high' ? 2048 : 1024;
     this.sun.shadow.mapSize.set(shadowSize, shadowSize);
     const reach = 16;
     Object.assign(this.sun.shadow.camera, {
@@ -832,7 +706,8 @@ class Zone3d implements ZoneGame {
 
     this.description = describeScene(options.mapJson);
     const banks = this.riverBanks();
-    this.scene.add(buildTerrain(this.kit, this.description));
+    this.ground = buildGround(this.description, { quality, occupied: this.occupiedSquares() });
+    this.scene.add(...this.ground.objects);
     this.scene.add(buildSurroundings(this.kit, this.description, banks));
     const { water, material } = buildWater(this.kit, this.description, banks);
     this.waterMaterial = material;
@@ -845,7 +720,7 @@ class Zone3d implements ZoneGame {
     this.buildPeople();
 
     this.hero = person(this.kit, PEOPLE['hero'] as PersonLook);
-    const heroAt = centre(this.cell);
+    const heroAt = this.onGround(centre(this.cell));
     this.hero.group.position.copy(heroAt);
     this.scene.add(this.hero.group);
     this.heroShadow = this.kit.mesh(
@@ -893,6 +768,12 @@ class Zone3d implements ZoneGame {
     this.tapRing.rotation.x = -Math.PI / 2;
     this.scene.add(this.tapRing);
 
+    this.finish = new Finish(this.renderer, this.scene, this.camera, quality, () => {
+      // Moved to "low" for running slow: a lighter screen too.
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+      this.fit();
+    });
+
     this.cameraTarget.copy(this.clampTarget(heroAt));
     this.showState(false);
     this.listen();
@@ -923,7 +804,7 @@ class Zone3d implements ZoneGame {
     // Nothing moves behind a panel: stop drawing, for a phone's battery.
     if (paused) {
       this.renderer.setAnimationLoop(null);
-      this.renderer.render(this.scene, this.camera);
+      this.finish.render();
     } else {
       this.clock.getDelta();
       this.renderer.setAnimationLoop(() => this.frame());
@@ -937,6 +818,9 @@ class Zone3d implements ZoneGame {
     this.resize.disconnect();
     for (const cleanup of this.cleanups) cleanup();
     for (const thing of this.kit.disposables) thing.dispose();
+    this.ground.dispose();
+    this.finish.dispose();
+    this.skyTexture.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
@@ -959,18 +843,46 @@ class Zone3d implements ZoneGame {
     return west < east ? { west, east } : { west: 0, east: 0 };
   }
 
-  private place(object: Object3D, prop: Cell, y = 0, jitter = 0.12): void {
-    object.position.set(
-      prop.x + 0.5 + (hash(prop.x, prop.y, 5) - 0.5) * jitter,
-      y,
-      prop.y + 0.5 + (hash(prop.x, prop.y, 6) - 0.5) * jitter,
-    );
+  /**
+   * Put something on a square, a little off centre. `y` is above the ground
+   * there, unless `grounded` is false (a boat on the water, a jetty plank):
+   * then it is the height itself.
+   */
+  private place(object: Object3D, prop: Cell, y = 0, jitter = 0.12, grounded = true): void {
+    const x = prop.x + 0.5 + (hash(prop.x, prop.y, 5) - 0.5) * jitter;
+    const z = prop.y + 0.5 + (hash(prop.x, prop.y, 6) - 0.5) * jitter;
+    object.position.set(x, grounded ? this.ground.heightAt(x, z) + y : y, z);
     this.scene.add(object);
+  }
+
+  /** The same point, standing on the ground. */
+  private onGround(at: Vector3): Vector3 {
+    return at.setY(this.ground.heightAt(at.x, at.z));
+  }
+
+  /** Squares where something stands, so the grass leaves them clear. */
+  private occupiedSquares(): Set<string> {
+    const taken = new Set<string>();
+    const add = (x: number, y: number) => taken.add(`${x},${y}`);
+    for (const prop of this.description.props) {
+      if (prop.kind === 'rice' || prop.kind === 'flowers') continue;
+      add(prop.x, prop.y);
+      // A hut stands on the four rows above its door, two squares wide.
+      if (prop.kind === 'hut')
+        for (let dy = -3; dy <= 0; dy += 1) for (const dx of [-1, 0]) add(prop.x + dx, prop.y + dy);
+      if (prop.kind === 'stall')
+        for (const [dx, dy] of [
+          [1, 0],
+          [0, 1],
+          [1, 1],
+        ] as const)
+          add(prop.x + dx, prop.y + dy);
+    }
+    return taken;
   }
 
   private buildProps(): void {
     const kit = this.kit;
-    const rice: Prop[] = [];
     for (const prop of this.description.props) {
       switch (prop.kind) {
         case 'tree':
@@ -996,7 +908,8 @@ class Zone3d implements ZoneGame {
           );
           rock.scale.set(1.2, 0.6, 1);
           rock.rotation.y = hash(prop.x, prop.y) * 6;
-          this.place(rock, prop, prop.kind === 'river-rock' ? WATER_Y + 0.05 : 0.1, 0.3);
+          if (prop.kind === 'river-rock') this.place(rock, prop, WATER_Y + 0.05, 0.3, false);
+          else this.place(rock, prop, 0.1, 0.3);
           break;
         }
         case 'reeds':
@@ -1032,18 +945,22 @@ class Zone3d implements ZoneGame {
           break;
         }
         case 'rice':
-          rice.push(prop);
+          // Rice grows as part of the ground (ground3d.ts), in its water.
           break;
         case 'hut': {
           // Named by its door; the hut stands on the four rows above it.
           const building = hut(kit);
-          building.position.set(prop.x, 0, prop.y - 0.6);
+          building.position.set(
+            prop.x,
+            this.ground.heightAt(prop.x, prop.y - 0.6) - 0.04,
+            prop.y - 0.6,
+          );
           this.scene.add(building);
           break;
         }
         case 'stall': {
           const shop = stall(kit);
-          shop.position.set(prop.x + 1, 0, prop.y + 1);
+          shop.position.set(prop.x + 1, this.ground.heightAt(prop.x + 1, prop.y + 1), prop.y + 1);
           this.scene.add(shop);
           break;
         }
@@ -1102,7 +1019,7 @@ class Zone3d implements ZoneGame {
             new BoxGeometry(1.0, 0.08, 1.0),
             kit.mat(prop.variant ? '#8a5f38' : '#94673d'),
           );
-          this.place(plank, prop, 0.02, 0);
+          this.place(plank, prop, 0.02, 0, false);
           if ((prop.x + prop.y) % 2 === 0) {
             const leg = bamboo(kit, 1.0, 0.06, '#7a5232');
             leg.position.set(prop.x + 0.1, RIVERBED_Y + 0.45, prop.y + 0.1);
@@ -1126,7 +1043,7 @@ class Zone3d implements ZoneGame {
         case 'boat': {
           const vessel = boat(kit, prop.variant === 0);
           vessel.rotation.y = hash(prop.x, prop.y) * 0.4 - 0.2;
-          this.place(vessel, prop, WATER_Y + 0.05, 0.2);
+          this.place(vessel, prop, WATER_Y + 0.05, 0.2, false);
           this.floaters.push({
             group: vessel,
             base: vessel.position.y,
@@ -1136,33 +1053,6 @@ class Zone3d implements ZoneGame {
         }
       }
     }
-    this.buildRice(rice);
-  }
-
-  /** Paddy: a few hundred young rice plants, one instanced mesh. */
-  private buildRice(cells: readonly Prop[]): void {
-    if (cells.length === 0) return;
-    const per = 5;
-    const geometry = this.kit.keep(new ConeGeometry(0.06, 0.38, 4));
-    const mesh = new InstancedMesh(geometry, this.kit.mat('#6db33f'), cells.length * per);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    const matrix = new Matrix4();
-    const tint = new Color();
-    let i = 0;
-    for (const cell of cells) {
-      for (let k = 0; k < per; k += 1) {
-        const x = cell.x + 0.15 + ((k % 3) / 2) * 0.7 + (hash(cell.x, cell.y, k) - 0.5) * 0.12;
-        const z = cell.y + 0.25 + Math.floor(k / 3) * 0.5 + (hash(cell.y, cell.x, k) - 0.5) * 0.12;
-        const s = 0.85 + hash(cell.x, k, cell.y) * 0.4;
-        matrix.makeScale(s, s, s).setPosition(x, -0.1 + 0.19 * s, z);
-        mesh.setMatrixAt(i, matrix);
-        tint.set(cell.variant ? '#5aa035' : '#79bf45');
-        mesh.setColorAt(i, tint);
-        i += 1;
-      }
-    }
-    this.scene.add(mesh);
   }
 
   /** One group of bamboo deck and rails per gate; shown when its quest is solved. */
@@ -1225,21 +1115,25 @@ class Zone3d implements ZoneGame {
 
   private buildPeople(): void {
     const giver = person(this.kit, PEOPLE['boatman'] as PersonLook);
-    giver.group.position.copy(centre(this.options.map.giver));
+    giver.group.position.copy(this.onGround(centre(this.options.map.giver)));
     // Facing the road, where the student comes from.
     giver.group.rotation.y = Math.PI * 0.75;
     this.scene.add(giver.group);
-    this.idlers.push({ group: giver.group, base: 0, phase: 0.4 });
+    this.idlers.push({ group: giver.group, base: giver.group.position.y, phase: 0.4 });
 
     for (const item of this.options.map.scenery) {
       if (item.kind !== 'figure') continue;
       const look = PEOPLE[item.look];
       if (!look) continue;
       const someone = person(this.kit, look);
-      someone.group.position.copy(centre(item.at));
+      someone.group.position.copy(this.onGround(centre(item.at)));
       someone.group.rotation.y = hash(item.at.x, item.at.y) * Math.PI * 2;
       this.scene.add(someone.group);
-      this.idlers.push({ group: someone.group, base: 0, phase: hash(item.at.x, item.at.y, 2) * 6 });
+      this.idlers.push({
+        group: someone.group,
+        base: someone.group.position.y,
+        phase: hash(item.at.x, item.at.y, 2) * 6,
+      });
     }
   }
 
@@ -1332,7 +1226,12 @@ class Zone3d implements ZoneGame {
       }
       const cell = cellAt(event);
       this.hover.visible = cell !== null;
-      if (cell) this.hover.position.set(cell.x + 0.5, 0.04, cell.y + 0.5);
+      if (cell)
+        this.hover.position.set(
+          cell.x + 0.5,
+          this.groundUnder(cell.x + 0.5, cell.y + 0.5) + 0.04,
+          cell.y + 0.5,
+        );
     };
     const onLeave = () => {
       this.hover.visible = false;
@@ -1378,7 +1277,11 @@ class Zone3d implements ZoneGame {
         : null;
     this.route = [...findRoute(this.grid, this.cell, target).steps];
     if (!this.calm) {
-      this.tapRing.position.set(target.x + 0.5, 0.05, target.y + 0.5);
+      this.tapRing.position.set(
+        target.x + 0.5,
+        this.groundUnder(target.x + 0.5, target.y + 0.5) + 0.05,
+        target.y + 0.5,
+      );
       this.tapT = 0;
     }
     if (!this.stepTo) this.advance();
@@ -1479,11 +1382,13 @@ class Zone3d implements ZoneGame {
     hero.legs[1]?.rotation.set(-swing, 0, 0);
     hero.arms[0]?.rotation.set(-swing * 0.8, 0, -0.12);
     hero.arms[1]?.rotation.set(swing * 0.8, 0, 0.12);
-    hero.group.position.y = this.stepTo ? Math.abs(Math.sin(this.walkPhase)) * 0.05 : 0;
-    this.heroShadow.position.set(hero.group.position.x, 0.03, hero.group.position.z);
+    const under = this.groundUnder(hero.group.position.x, hero.group.position.z);
+    hero.group.position.y = under + (this.stepTo ? Math.abs(Math.sin(this.walkPhase)) * 0.05 : 0);
+    this.heroShadow.position.set(hero.group.position.x, under + 0.03, hero.group.position.z);
 
     if (!this.calm) {
       this.waterMaterial.uniforms['uTime']!.value = time;
+      this.ground.update(time);
       for (const idler of this.idlers)
         idler.group.position.y = idler.base + Math.sin(time * 1.6 + idler.phase) * 0.012;
       for (const f of this.floaters) {
@@ -1517,7 +1422,7 @@ class Zone3d implements ZoneGame {
     const wanted = this.clampTarget(hero.group.position);
     this.cameraTarget.lerp(wanted, 1 - Math.exp(-dt * 5));
     this.placeCamera();
-    this.renderer.render(this.scene, this.camera);
+    this.finish.render(dt);
   }
 
   /**
@@ -1550,7 +1455,7 @@ class Zone3d implements ZoneGame {
     // like standing in a place rather than looking at a map.
     this.camera.position.set(t.x, t.y + distance * 0.64, t.z + distance * 0.77);
     this.camera.lookAt(t.x, t.y, t.z - 1.2);
-    this.sun.position.set(t.x - 14, 13, t.z + 3);
+    this.sun.position.set(t.x + SUN.x * 22, SUN.y * 22, t.z + SUN.z * 22);
     this.sun.target.position.set(t.x, 0, t.z);
   }
 
@@ -1563,6 +1468,7 @@ class Zone3d implements ZoneGame {
     this.renderer.domElement.style.height = `${height}px`;
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.finish.setSize(width, height);
     // The first time the view's shape is known, start the camera on the hero
     // rather than easing over from wherever a square view would have put it.
     if (!this.framed) {
@@ -1570,7 +1476,17 @@ class Zone3d implements ZoneGame {
       this.cameraTarget.copy(this.clampTarget(this.hero.group.position));
     }
     this.placeCamera();
-    if (this.paused) this.renderer.render(this.scene, this.camera);
+    if (this.paused) this.finish.render();
+  }
+
+  /**
+   * The ground under the hero, which on the bridge is the deck and not the
+   * river bed far below it.
+   */
+  private groundUnder(x: number, z: number): number {
+    const square = { x: Math.floor(x), y: Math.floor(z) };
+    if (this.description.deck.some((cell) => sameCell(cell, square))) return 0.17;
+    return this.ground.heightAt(x, z);
   }
 }
 
