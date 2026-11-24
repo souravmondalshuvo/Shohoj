@@ -218,7 +218,12 @@ function paintCourt(g: Ctx, q: [Point, Point, Point, Point]): void {
 }
 
 /** Paint the ground map. Takes a few hundred milliseconds; call once. */
-export function paintGround(): HTMLCanvasElement {
+/**
+ * Paints the map. `base`, when given, draws the country beyond (rsLandscape.ts)
+ * under it, cropped to this map: the scrub round the campus then fades into
+ * it toward the edges, so the near map and the country meet without a seam.
+ */
+export function paintGround(base?: (g: Ctx, w: number, h: number) => void): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -227,7 +232,35 @@ export function paintGround(): HTMLCanvasElement {
   g.imageSmoothingEnabled = true;
 
   // Land round the campus: fields and scrub, mottled green and earth.
-  g.drawImage(mottle([88, 104, 50], [126, 108, 74], 401, 10, 0.48, 2.5), 0, 0, W, H);
+  const scrub = mottle([88, 104, 50], [126, 108, 74], 401, 10, 0.48, 2.5);
+  if (base) {
+    base(g, W, H);
+    // The scrub, faded out over the last 35 m of the map.
+    const layer = document.createElement('canvas');
+    layer.width = W;
+    layer.height = H;
+    const mask = document.createElement('canvas');
+    mask.width = W;
+    mask.height = H;
+    const lg = layer.getContext('2d');
+    const mg = mask.getContext('2d');
+    if (lg && mg) {
+      // A soft-edged rectangle: its blurred shadow, the shape itself off-canvas.
+      const off = W * 2;
+      mg.translate(-off, 0);
+      mg.shadowOffsetX = off;
+      mg.shadowBlur = m(22);
+      mg.shadowColor = '#000';
+      mg.fillStyle = '#000';
+      mg.fillRect(m(35), m(35), W - m(70), H - m(70));
+      lg.drawImage(scrub, 0, 0, W, H);
+      lg.globalCompositeOperation = 'destination-in';
+      lg.drawImage(mask, 0, 0);
+      g.drawImage(layer, 0, 0);
+    }
+  } else {
+    g.drawImage(scrub, 0, 0, W, H);
+  }
 
   // Inside the wall: dusty earth with patchy, dry grass.
   g.save();
@@ -378,12 +411,18 @@ export function groundTexture(canvas: HTMLCanvasElement): Texture {
 }
 
 /**
- * The ground material: the painted map, with a fine detail texture
- * multiplied in at a few metres' repeat so the ground has grain up close.
+ * The ground material: the painted map, with a detail texture multiplied in
+ * twice — at a 3 m tile for grain up close, and at 27 m for the patches of
+ * grass and bare earth that keep the middle distance from going smooth.
+ * `span` is how many metres the map's UVs cover.
  */
-export function groundMaterial(map: Texture, detail: Texture): MeshStandardMaterial {
+export function groundMaterial(
+  map: Texture,
+  detail: Texture,
+  span: number = GROUND_EXTENT.x2 - GROUND_EXTENT.x1,
+): MeshStandardMaterial {
   const mat = new MeshStandardMaterial({ map, roughness: 0.97, metalness: 0 });
-  const repeat = (GROUND_EXTENT.x2 - GROUND_EXTENT.x1) / 3; // a 3 m detail tile
+  const repeat = span / 3; // a 3 m detail tile
   mat.onBeforeCompile = (shader) => {
     shader.uniforms['detailMap'] = { value: detail };
     shader.uniforms['detailRepeat'] = { value: repeat };
@@ -391,7 +430,7 @@ export function groundMaterial(map: Texture, detail: Texture): MeshStandardMater
       .replace('#include <common>', '#include <common>\nuniform sampler2D detailMap;\nuniform float detailRepeat;')
       .replace(
         '#include <map_fragment>',
-        '#include <map_fragment>\n  diffuseColor.rgb *= texture2D( detailMap, vMapUv * detailRepeat ).rgb * 2.0;',
+        '#include <map_fragment>\n  diffuseColor.rgb *= texture2D( detailMap, vMapUv * detailRepeat ).rgb * 2.0;\n  diffuseColor.rgb *= mix( 1.0, texture2D( detailMap, vMapUv * detailRepeat / 9.0 + 0.37 ).r * 2.0, 0.8 );',
       );
   };
   mat.customProgramCacheKey = () => 'rs-ground-detail';
