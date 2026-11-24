@@ -36,6 +36,7 @@ import {
   Quaternion,
   Shape,
   ShapeGeometry,
+  type Texture,
   Vector2,
   Vector3,
 } from 'three';
@@ -50,7 +51,7 @@ import {
   type RsBuilding,
   type RsRect,
 } from '../../core/campusBracuRs.ts';
-import { clayTiles, concrete, corrugated, plaster, brick, type SurfaceTextures } from './rsTextures.ts';
+import { clayTiles, concrete, corrugated, plaster, brick, rng, type SurfaceTextures } from './rsTextures.ts';
 
 const EAVE_OVERHANG = 0.8;
 const sx = (p: Point): number => p[0];
@@ -180,7 +181,7 @@ function hipGeometry(r: RsRect, y: number, rise: number, overhang = EAVE_OVERHAN
 }
 
 /** A pitched roof: two slopes to a ridge along the long side; returns slopes and gable ends. */
-function gableGeometry(r: RsRect, y: number, rise: number): { roof: BufferGeometry; gables: BufferGeometry } {
+export function gableGeometry(r: RsRect, y: number, rise: number): { roof: BufferGeometry; gables: BufferGeometry } {
   const o = EAVE_OVERHANG * 0.6;
   const [p0, p1, p2, p3] = rectCorners(r, o).map((p) => at(p, y)) as [Vector3, Vector3, Vector3, Vector3];
   const a = (r.angle * Math.PI) / 180;
@@ -226,6 +227,8 @@ interface Palette {
   slab: SurfaceTextures;
   brick: SurfaceTextures;
   glass: MeshStandardMaterial;
+  /** Glazing drawn as a plain mesh, without per-pane colours. */
+  ridgeGlass: MeshStandardMaterial;
   frame: MeshStandardMaterial;
   trim: MeshStandardMaterial;
   fin: MeshStandardMaterial;
@@ -268,16 +271,25 @@ export interface BuiltBuilding {
 /** Collects instance transforms of a unit box for one material. */
 class Boxes {
   readonly list: Matrix4[] = [];
-  constructor(readonly material: Material) {}
+  readonly colours: Color[] = [];
+  readonly material: Material;
+  readonly colour: (() => Color) | null;
+  /** `colour`, when given, picks each box's own colour (multiplied into the material's). */
+  constructor(material: Material, colour: (() => Color) | null = null) {
+    this.material = material;
+    this.colour = colour;
+  }
   /** A box in an edge's frame: x along the edge, y up, z out of the wall. */
   add(frame: EdgeFrame, along: number, y: number, out: number, w: number, h: number, d: number): void {
     const p = new Vector3(frame.ax + frame.ux * along + frame.nx * out, y, -(frame.ay + frame.uy * along + frame.ny * out));
     this.list.push(new Matrix4().compose(p, frame.q, new Vector3(w, h, d)));
+    if (this.colour) this.colours.push(this.colour());
   }
   mesh(unit: BoxGeometry): InstancedMesh | null {
     if (this.list.length === 0) return null;
     const m = new InstancedMesh(unit, this.material, this.list.length);
     this.list.forEach((x, i) => m.setMatrixAt(i, x));
+    this.colours.forEach((c, i) => m.setColorAt(i, c));
     m.castShadow = true;
     m.receiveShadow = true;
     m.computeBoundingSphere();
@@ -324,7 +336,18 @@ function edges(outline: readonly Point[]): EdgeFrame[] {
  * Builds every building. Call once; `dispose()` on the returned handle frees
  * the shared textures, geometries and materials.
  */
-export function buildBuildings(buildings: readonly RsBuilding[]): {
+/**
+ * What is seen through a pane on a winter morning: mostly the dark of the
+ * room, often a drawn curtain in a student's colour, sometimes a pale blind.
+ */
+const PANES = ['#1b2126', '#1b2126', '#1b2126', '#1b2126', '#20282e', '#20282e', '#3e342c', '#323c48', '#4a2e2e', '#58534a', '#2f4031', '#7d7a70'].map(
+  (c) => new Color(c),
+);
+
+export function buildBuildings(
+  buildings: readonly RsBuilding[],
+  options: { envMap?: Texture | null } = {},
+): {
   built: BuiltBuilding[];
   dispose(): void;
 } {
@@ -340,14 +363,21 @@ export function buildBuildings(buildings: readonly RsBuilding[]): {
   };
 
   const P: Palette = {
-    plaster: keepTex(plaster([236, 234, 228], 101)),
-    plasterWarm: keepTex(plaster([232, 226, 210], 102, 1.3)),
+    // Off-white, not paper-white: rendered walls a few monsoons old.
+    plaster: keepTex(plaster([224, 219, 207], 101, 1.35)),
+    plasterWarm: keepTex(plaster([222, 211, 189], 102, 1.5)),
     tiles: keepTex(clayTiles(103)),
     hallSheet: keepTex(corrugated([196, 58, 46], 104)),
     shedSheet: keepTex(corrugated([150, 76, 58], 105)),
-    slab: keepTex(concrete(106)),
+    // Flat roofs weather dark: algae and soot over a few monsoons.
+    slab: keepTex(concrete(106, 146)),
     brick: keepTex(brick(107)),
-    glass: keep(new MeshStandardMaterial({ color: '#22323b', roughness: 0.06, metalness: 0.4, envMapIntensity: 5 })),
+    // White: each pane's instance colour is what shows behind it. The sky is
+    // given as the pane's own environment map so its reflection is not
+    // scaled down with the scene's (three overrides envMapIntensity with
+    // scene.environmentIntensity for materials without one).
+    glass: keep(new MeshStandardMaterial({ color: '#ffffff', roughness: 0.05, metalness: 0, envMap: options.envMap ?? null, envMapIntensity: 0.6 })),
+    ridgeGlass: keep(new MeshStandardMaterial({ color: '#232c33', roughness: 0.05, envMap: options.envMap ?? null, envMapIntensity: 1 })),
     frame: keep(new MeshStandardMaterial({ color: '#d9dbd8', roughness: 0.45, metalness: 0.4 })),
     trim: keep(new MeshStandardMaterial({ color: '#e7e5df', roughness: 0.85 })),
     fin: keep(new MeshStandardMaterial({ color: '#e1b12c', roughness: 0.6 })),
@@ -397,7 +427,13 @@ export function buildBuildings(buildings: readonly RsBuilding[]): {
     add(wallGeometry(b.footprint, 0, 0.6, 0.6, 0.06), P.plinth, false);
 
     // ── Façade detail ──────────────────────────────────────────────────
-    const glass = new Boxes(P.glass);
+    const paneRng = rng(4100 + [...b.id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 100003, 0));
+    // Classrooms and the hall are mostly bare glass; rooms have curtains.
+    const curtained = b.facade === 'dorm' || b.facade === 'fins';
+    const glass = new Boxes(P.glass, () => {
+      const p = paneRng();
+      return (curtained ? PANES[Math.floor(p * PANES.length)] : PANES[p < 0.85 ? 0 : 3]) ?? PANES[0] ?? new Color();
+    });
     const frame = new Boxes(P.frame);
     const trim = new Boxes(P.trim);
     const fins = new Boxes(P.fin);
@@ -552,7 +588,7 @@ export function buildBuildings(buildings: readonly RsBuilding[]): {
             // Nikunja's raised ridge light: a glazed band under its own small hip.
             const inner: RsRect = { ...part, length: part.length * 0.55, width: part.width * 0.32 };
             const lift = rise * 0.62;
-            add(wallGeometry(rectCorners(inner), top + lift, top + lift + 1.3, 1.3), P.glass, false);
+            add(wallGeometry(rectCorners(inner), top + lift, top + lift + 1.3, 1.3), P.ridgeGlass, false);
             add(hipGeometry(inner, top + lift + 1.3, 1.1, 0.45), roofMat);
             roofTop = Math.max(roofTop, top + lift + 2.4);
           }
