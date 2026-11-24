@@ -184,6 +184,14 @@ export function RsCampus() {
         >
           Reset view
         </button>
+        <button
+          type="button"
+          className="shell-btn campus-meta-btn"
+          data-testid="campus-eye-level"
+          onClick={() => sceneRef.current?.eyeLevel()}
+        >
+          Eye level at the gate
+        </button>
       </div>
 
       {webglOk ? (
@@ -253,22 +261,26 @@ export function RsCampus() {
         <summary>How accurate is this map?</summary>
         <p>
           <strong>Measured:</strong> the campus wall, the buildings&apos; outlines and where they
-          stand, the fields, the court, the gardens and the roads, from OpenStreetMap. Two small
-          sheds OpenStreetMap does not have are traced from the satellite image (5 February 2026),
-          and trees are placed where that image shows a canopy.
+          stand, the fields, the court, the gardens, the roads and the ponds round the campus, from
+          OpenStreetMap. Two small sheds OpenStreetMap does not have are traced from the satellite
+          image (5 February 2026), and every tree, inside the wall and out, stands where that image
+          shows a canopy.
         </p>
         <p>
           <strong>Read from sources:</strong> the names Nikunja, Maloncho, Anandapur, Duronto and
           Durbar, from OpenStreetMap and the RS handbook. Roof shapes and colours come from the
-          satellite image, and wall finishes from the handbook&apos;s photographs. They are right in
-          kind, not in every dimension.
+          satellite image; the finishes (white plaster, deep window sunshades, the yellow fins, the
+          clay tiles, the brick boundary wall and the ring sculpture) come from the handbook&apos;s
+          and BRACU&apos;s photographs. They are right in kind, not in every dimension.
         </p>
         <p>
-          <strong>Estimated:</strong> any storey count not marked as from OpenStreetMap. A building
-          with no name in any source is described, not named, and what most buildings are used for
-          is not published. Interiors are not drawn, and the buildings outside the wall are drawn at
-          one uniform height because none of their heights is known. Do not use this map to find an
-          exit.
+          <strong>Estimated:</strong> any storey count not marked as from OpenStreetMap. Windows and
+          balconies follow a regular rhythm per bay, not a survey of each opening, and which kind of
+          tree (rain tree, mast tree, coconut, banana) stands where is a likely mix, not a survey. A
+          building with no name in any source is described, not named, and what most buildings are
+          used for is not published. Interiors are not drawn. The buildings outside the wall are
+          drawn one to three storeys high, and the large sheds at 8 m, because none of their heights
+          is published. Do not use this map to find an exit.
         </p>
         <div className="campus-evidence-links">
           <a href={OSM_CAMPUS_URL} target="_blank" rel="noreferrer">
