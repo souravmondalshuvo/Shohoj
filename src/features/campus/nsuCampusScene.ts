@@ -39,6 +39,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   NeutralToneMapping,
+  PCFShadowMap,
   type Object3D,
   PerspectiveCamera,
   Raycaster,
@@ -66,6 +67,7 @@ import {
   type NsuCampusModel,
   type NsuRect,
 } from '../../core/campusNsu.ts';
+import type { City } from './citySurroundings.ts';
 import { canDecompressGzip, fetchExteriorGlb, type ExteriorModelState } from './campusModel.ts';
 import type { RoomStatus, RoomTooltip } from './campusScene.ts';
 
@@ -178,16 +180,46 @@ export function createNsuCampusScene(
   renderer.outputColorSpace = SRGBColorSpace;
   // Keeps the model's own colours; ACES would shift its brick toward grey.
   renderer.toneMapping = NeutralToneMapping;
+  // Nothing casting a shadow moves on its own: the shadow map is redrawn only
+  // when what stands changes (a model arriving, a floor opening), never for
+  // a turn of the camera.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = PCFShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  let shadowsStale = true;
   renderer.domElement.setAttribute('aria-hidden', 'true');
   container.appendChild(renderer.domElement);
 
   const colors = options.colors;
   const scene = new Scene();
-  scene.add(new AmbientLight(0xffffff, 0.35));
-  scene.add(new HemisphereLight(new Color('#ffffff'), new Color('#b9b3a4'), 0.55));
-  const sun = new DirectionalLight(0xffffff, 2.1);
-  sun.position.set(-90, 160, 110);
+  // White light, so the brick and glass keep the colours the model gives
+  // them; a stronger sun over a weaker fill than a diagram needs, so the
+  // campus and the city round it stand in daylight with real shadows.
+  scene.add(new AmbientLight(0xffffff, 0.18));
+  scene.add(new HemisphereLight(new Color('#ffffff'), new Color('#b9b3a4'), 0.5));
+  const sun = new DirectionalLight(0xffffff, 2.7);
+  // A dry-season morning sun, low in the south-east: shadows fall to the
+  // north-west, across the default view rather than hidden behind what casts
+  // them.
+  sun.position.set(0.62, 0.62, 0.48).normalize().multiplyScalar(700);
+  // Shadows over the campus and the blocks round it.
+  const small = Math.min(window.innerWidth, window.innerHeight) < 600;
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(small ? 2048 : 4096, small ? 2048 : 4096);
+  const sc = sun.shadow.camera;
+  sc.left = -330;
+  sc.right = 330;
+  sc.top = 330;
+  sc.bottom = -330;
+  sc.near = 300;
+  sc.far = 1200;
+  sc.updateProjectionMatrix();
+  sun.shadow.bias = -0.0003;
+  sun.shadow.normalBias = 0.3;
   scene.add(sun);
+  // A daytime sky and haze; the city itself streams in after the first frame.
+  let daylight: { dispose(): void } | null = null;
+  let city: City | null = null;
 
   // Geometry and materials made here are tracked so dispose() frees them all.
   const disposables: Array<{ dispose(): void }> = [];
@@ -313,6 +345,7 @@ export function createNsuCampusScene(
           map: track(makeRoomLabel(building.shortName)),
           transparent: true,
           depthTest: false,
+          fog: false,
         }),
       ),
     );
@@ -375,6 +408,9 @@ export function createNsuCampusScene(
         levels,
       });
     }
+    root.traverse((object) => {
+      if (object instanceof Mesh) object.castShadow = object.receiveShadow = true;
+    });
     scene.add(root);
     const ground = GROUND_NODES.flatMap((name) => root.getObjectByName(name) ?? []);
     campusModel = { root, buildings, ground };
@@ -461,6 +497,7 @@ export function createNsuCampusScene(
           map: makeRoomLabel(entry.building.below ? slot.code : slot.code.slice(3)),
           transparent: true,
           depthTest: false,
+          fog: false,
         }),
       );
       label.scale.set(8, 3, 1);
@@ -482,7 +519,8 @@ export function createNsuCampusScene(
   }
 
   // --- Camera --------------------------------------------------------------
-  const camera = new PerspectiveCamera(42, 1, 0.5, 1200);
+  // Far enough for the sky and the city to the horizon.
+  const camera = new PerspectiveCamera(42, 1, 1, 6000);
   const controls = new OrbitControls(camera, renderer.domElement);
   // No damping: without an animation loop there is nothing to carry it.
   controls.enableDamping = false;
@@ -509,6 +547,8 @@ export function createNsuCampusScene(
     const underground = focused?.building.below ?? false;
     for (const mesh of drawnSite) mesh.visible = !campusModel && !underground;
     for (const node of campusModel?.ground ?? []) node.visible = !underground;
+    for (const node of city?.ground ?? []) node.visible = !underground;
+    shadowsStale = true;
     for (const storey of storeys) {
       const own = storey.building === focusBuilding;
       // Above an open floor the building is lifted away entirely. Basement
@@ -532,6 +572,8 @@ export function createNsuCampusScene(
       // Ten translucent storeys already read as a ghost of the building; ten
       // more layers of glass on top of them turn it to smoke.
       storey.band.visible = !faded;
+      // A ghost casts no shadow; with the model in, the model casts its own.
+      storey.mesh.castShadow = !faded && !campusModel;
       setFaded(storey.mesh.material, faded);
     }
     // Names orient the whole-campus view; once a building is open they are in
@@ -616,6 +658,8 @@ export function createNsuCampusScene(
     if (disposed || frameRequest !== 0) return;
     frameRequest = requestAnimationFrame(() => {
       frameRequest = 0;
+      renderer.shadowMap.needsUpdate = shadowsStale;
+      shadowsStale = false;
       renderer.render(scene, camera);
     });
   }
@@ -725,6 +769,46 @@ export function createNsuCampusScene(
 
   applyFocus();
   if (options.modelUrl) loadModel(options.modelUrl);
+  loadCity();
+
+  /**
+   * The sky, haze and the neighbourhood round the campus, from OpenStreetMap
+   * (see citySurroundings.ts). Loaded on its own after the campus, so the map
+   * is usable at once; any failure leaves the campus as it was.
+   */
+  function loadCity(): void {
+    void Promise.all([import('./citySurroundings.ts'), import('../../core/surroundingsNsu.generated.ts')])
+      .then(async ([cityModule, data]) => {
+        if (disposed) return;
+        daylight = cityModule.addDaylight(scene, renderer, {
+          sunDirection: sun.position.clone().normalize(),
+          hazeFrom: 380,
+          hazeTo: 1900,
+          skyScale: 5000,
+        });
+        const built = await cityModule.buildCity({
+          data: data.NSU_SURROUNDINGS,
+          site: NSU_SITE,
+          extent: 560,
+          mappedRadius: 520,
+          farOuter: 1700,
+          groundY: -0.12,
+          light: small,
+        });
+        // Torn down while it was building: free it instead.
+        if (disposed) {
+          built.dispose();
+          return;
+        }
+        city = built;
+        scene.add(city.group);
+        applyFocus(false);
+      })
+      .catch((error: unknown) => {
+        if (disposed) return;
+        console.warn('Campus map: surroundings unavailable; keeping the campus alone.', error);
+      });
+  }
 
   return {
     setFocus(building, floor) {
@@ -748,6 +832,8 @@ export function createNsuCampusScene(
       disposed = true;
       modelAbort.abort();
       if (campusModel) disposeModel(campusModel.root);
+      city?.dispose();
+      daylight?.dispose();
       if (frameRequest !== 0) cancelAnimationFrame(frameRequest);
       resizeObserver?.disconnect();
       canvas.removeEventListener('pointerdown', onPointerDown);
