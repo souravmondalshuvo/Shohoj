@@ -24,7 +24,10 @@ import {
   Color,
   Fog,
   Group,
+  Float32BufferAttribute,
   InstancedMesh,
+  LineBasicMaterial,
+  LineSegments,
   LinearFilter,
   LinearMipmapLinearFilter,
   type Material,
@@ -46,13 +49,18 @@ import {
   type WebGLRenderer,
 } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import {
   farCity,
   outlineArea,
+  roadTraffic,
   seeded,
+  streetPoles,
   streetTrees,
   urbanStoreys,
+  type Pole,
+  type VehicleKind,
   type SiteRect,
   type SPoint,
   type Surroundings,
@@ -161,7 +169,7 @@ export interface City {
   /** What lies on the ground. It never covers the campus's own site. */
   ground: Object3D[];
   /** How many mapped buildings and trees stand, and how many far blocks. */
-  counts: { buildings: number; trees: number; far: number };
+  counts: { buildings: number; trees: number; far: number; vehicles: number; poles: number };
   dispose(): void;
 }
 
@@ -370,6 +378,123 @@ function farMaterial(): MeshStandardMaterial {
   return mat;
 }
 
+/** Boxes merged into one geometry, each with a vertex shade (1 = the paint, less = darker). */
+function boxes(parts: Array<{ size: [number, number, number]; at: [number, number, number]; shade: number }>): BufferGeometry {
+  const geos = parts.map(({ size, at, shade }) => {
+    const g = new BoxGeometry(...size).translate(...at);
+    g.deleteAttribute('uv');
+    const n = g.getAttribute('position').count;
+    g.setAttribute('color', new Float32BufferAttribute(new Array(n * 3).fill(shade), 3));
+    return g;
+  });
+  const merged = mergeGeometries(geos) ?? new BoxGeometry(1, 1, 1);
+  for (const g of geos) g.dispose();
+  return merged;
+}
+
+/**
+ * A vehicle at a distance, its length along x, standing on y = 0: blocks of
+ * body and darker glass, wheels as dark skirts. Paint comes per instance.
+ */
+function vehicleGeometry(kind: VehicleKind): BufferGeometry {
+  switch (kind) {
+    case 'car':
+      return boxes([
+        { size: [4.3, 0.75, 1.75], at: [0, 0.6, 0], shade: 1 },
+        { size: [2.3, 0.6, 1.6], at: [-0.25, 1.27, 0], shade: 0.28 },
+        { size: [3.6, 0.32, 1.8], at: [0, 0.18, 0], shade: 0.12 },
+      ]);
+    case 'cng':
+      return boxes([
+        { size: [2.6, 1.05, 1.3], at: [0, 0.95, 0], shade: 1 },
+        { size: [2.4, 0.1, 1.38], at: [-0.05, 1.53, 0], shade: 0.2 },
+        { size: [2.2, 0.35, 1.3], at: [0, 0.22, 0], shade: 0.12 },
+      ]);
+    case 'rickshaw':
+      return boxes([
+        { size: [1.1, 0.5, 1.05], at: [-0.3, 0.75, 0], shade: 0.5 },
+        { size: [1.0, 0.75, 1.15], at: [-0.35, 1.45, 0], shade: 1 },
+        { size: [1.0, 0.25, 0.25], at: [0.55, 0.55, 0], shade: 0.25 },
+        { size: [1.9, 0.5, 1.1], at: [0, 0.3, 0], shade: 0.12 },
+      ]);
+    case 'bus':
+      return boxes([
+        { size: [10.5, 2.3, 2.5], at: [0, 1.65, 0], shade: 1 },
+        { size: [10.55, 0.85, 2.53], at: [0, 2.15, 0], shade: 0.22 },
+        { size: [9.4, 0.55, 2.52], at: [0, 0.32, 0], shade: 0.12 },
+      ]);
+  }
+}
+
+/** Dhaka's paint: mostly white, silver and black cars; green CNGs; bright rickshaw hoods; liveried buses. */
+function paint(kind: VehicleKind, tone: number): Color {
+  const pick = (list: readonly string[]): Color => new Color(list[Math.floor(tone * list.length) % list.length] ?? list[0] ?? '#cccccc');
+  switch (kind) {
+    case 'car':
+      return pick(['#e9e9e6', '#e9e9e6', '#e9e9e6', '#b9bcbf', '#b9bcbf', '#1c1d20', '#1c1d20', '#6d7176', '#8a1f22', '#23406b']);
+    case 'cng':
+      return pick(['#2f7a3c', '#2f7a3c', '#2f7a3c', '#3c8a46']);
+    case 'rickshaw':
+      return pick(['#2a4f9a', '#b8312f', '#d8a420', '#2f8f5b', '#6a2d84']);
+    case 'bus':
+      return pick(['#b42a28', '#2b6c3a', '#2b4f8c', '#d4c9a8']);
+  }
+}
+
+/** A concrete pole 9 m tall with a crossarm near its top, standing on y = 0. */
+function poleGeometry(): BufferGeometry {
+  return boxes([
+    { size: [0.24, 9, 0.24], at: [0, 4.5, 0], shade: 1 },
+    { size: [0.12, 0.12, 1.5], at: [0, 8.35, 0], shade: 0.8 },
+  ]);
+}
+
+/**
+ * Cables between neighbouring poles: three from the crossarm, sagging in the
+ * middle, and on most spans a few more slack ones looped between them — the
+ * tangle every Dhaka street has overhead. Line segments, one draw.
+ */
+function cableGeometry(poles: readonly Pole[], spans: ReadonlyArray<readonly [number, number]>, groundY: number, r: () => number): BufferGeometry {
+  const pos: number[] = [];
+  const STEPS = 8;
+  for (const [ia, ib] of spans) {
+    const a = poles[ia];
+    const b = poles[ib];
+    if (!a || !b) continue;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 1) continue;
+    // Across the span, along the crossarm.
+    const nx = -(b.y - a.y) / len;
+    const ny = (b.x - a.x) / len;
+    const cables: Array<{ off: number; h: number; sag: number }> = [
+      { off: -0.65, h: 8.35, sag: 0.35 },
+      { off: 0, h: 8.35, sag: 0.4 },
+      { off: 0.65, h: 8.35, sag: 0.35 },
+    ];
+    const extra = Math.floor(r() * 4);
+    for (let k = 0; k < extra; k++) cables.push({ off: (r() - 0.5) * 0.8, h: 7.2 + r() * 1.0, sag: 0.6 + r() * 1.4 });
+    for (const c of cables) {
+      const sag = c.sag * (len / 30);
+      let px = a.x + nx * c.off;
+      let py = a.y + ny * c.off;
+      let ph = c.h;
+      for (let s = 1; s <= STEPS; s++) {
+        const t = s / STEPS;
+        const x = a.x + (b.x - a.x) * t + nx * c.off;
+        const y = a.y + (b.y - a.y) * t + ny * c.off;
+        const h = c.h - sag * 4 * t * (1 - t);
+        pos.push(px, groundY + ph, -py, x, groundY + h, -y);
+        px = x;
+        py = y;
+        ph = h;
+      }
+    }
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new Float32BufferAttribute(pos, 3));
+  return geo;
+}
+
 /** Instances batched per tile of `tile` metres, so each batch can be culled. */
 function tiled(geo: BufferGeometry, mat: Material, list: Array<{ m: Matrix4; c: Color }>, tile: number): InstancedMesh[] {
   const tiles = new Map<string, Array<{ m: Matrix4; c: Color }>>();
@@ -459,7 +584,7 @@ export async function buildCity(setup: CitySetup): Promise<City> {
     const area = Math.abs(outlineArea(b.outline));
     return urbanPlan(area, urbanStoreys(area, b.levels, i), i);
   });
-  const neighbours = buildNeighbours(footprints, plans, true);
+  const neighbours = buildNeighbours(footprints, plans, { detailRadius: setup.light ? 0 : 300 });
   disposables.push(neighbours);
   neighbours.group.position.y = groundY;
   group.add(neighbours.group);
@@ -479,6 +604,60 @@ export async function buildCity(setup: CitySetup): Promise<City> {
   }
 
   await nextFrame();
+  // ── Traffic: cars, CNGs, rickshaws and buses on the mapped roads ─────────
+  await nextFrame();
+  const vehicles = roadTraffic(data, site, setup.light ? 2 : 1);
+  const vehicleMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.25 }));
+  const shapes: Record<VehicleKind, BufferGeometry> = {
+    car: keep(vehicleGeometry('car')),
+    cng: keep(vehicleGeometry('cng')),
+    rickshaw: keep(vehicleGeometry('rickshaw')),
+    bus: keep(vehicleGeometry('bus')),
+  };
+  for (const kind of ['car', 'cng', 'rickshaw', 'bus'] as const) {
+    const list = vehicles.filter((v) => v.kind === kind);
+    if (list.length === 0) continue;
+    const mesh = new InstancedMesh(shapes[kind], vehicleMat, list.length);
+    const qv = new Quaternion();
+    list.forEach((v, k) => {
+      qv.setFromAxisAngle(new Vector3(0, 1, 0), v.turn);
+      mesh.setMatrixAt(k, new Matrix4().compose(new Vector3(v.x, groundY, -v.y), qv, new Vector3(1, 1, 1)));
+      mesh.setColorAt(k, paint(kind, v.tone));
+    });
+    mesh.castShadow = true;
+    mesh.computeBoundingSphere();
+    group.add(mesh);
+  }
+
+  // ── Electricity poles, and the cables slung between them ─────────────────
+  const { poles, spans } = streetPoles(data, site);
+  if (poles.length > 0) {
+    const poleGeo = keep(poleGeometry());
+    const poleMat = keep(new MeshStandardMaterial({ color: '#8d8a83', roughness: 0.9 }));
+    const poleMesh = new InstancedMesh(poleGeo, poleMat, poles.length);
+    // Each pole's crossarm squares to the street: turned to its first span.
+    const facing = new Map<number, number>();
+    for (const [a, b] of spans) {
+      const pa = poles[a];
+      const pb = poles[b];
+      if (!pa || !pb) continue;
+      const ang = Math.atan2(pb.y - pa.y, pb.x - pa.x);
+      if (!facing.has(a)) facing.set(a, ang);
+      if (!facing.has(b)) facing.set(b, ang);
+    }
+    const qp = new Quaternion();
+    poles.forEach((p, k) => {
+      qp.setFromAxisAngle(new Vector3(0, 1, 0), facing.get(k) ?? 0);
+      poleMesh.setMatrixAt(k, new Matrix4().compose(new Vector3(p.x, groundY, -p.y), qp, new Vector3(1, 1, 1)));
+    });
+    poleMesh.castShadow = true;
+    poleMesh.computeBoundingSphere();
+    group.add(poleMesh);
+    const wire = keep(cableGeometry(poles, spans, groundY, seeded(4700)));
+    const wires = new LineSegments(wire, keep(new LineBasicMaterial({ color: '#1d1d1f' })));
+    group.add(wires);
+  }
+
   // ── The far city: one instanced box per block of flats ───────────────────
   const unit = keep(new BoxGeometry(1, 1, 1));
   const farMat = keep(farMaterial());
@@ -497,7 +676,7 @@ export async function buildCity(setup: CitySetup): Promise<City> {
   return {
     group,
     ground,
-    counts: { buildings: footprints.length, trees: trees.length, far: blocks.length },
+    counts: { buildings: footprints.length, trees: trees.length, far: blocks.length, vehicles: vehicles.length, poles: poles.length },
     dispose() {
       for (const d of disposables) d.dispose();
     },
