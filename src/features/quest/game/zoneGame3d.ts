@@ -50,7 +50,7 @@ import {
   MeshStandardMaterial,
   Object3D,
   OctahedronGeometry,
-  PCFSoftShadowMap,
+  PCFShadowMap,
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
@@ -774,7 +774,11 @@ class Zone3d implements ZoneGame {
       this.renderer.toneMapping = ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.08;
       this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = PCFSoftShadowMap;
+      // PCF, not PCFSoft: three r185 removed PCFSoftShadowMap and swaps it for
+      // PCF at the first shadow render, after prepare() has compiled the
+      // scene. Named up front, the compiled shaders are the ones that draw;
+      // otherwise every shadowed material compiles again on the first frame.
+      this.renderer.shadowMap.type = PCFShadowMap;
       this.renderer.domElement.style.display = 'block';
       this.renderer.domElement.style.touchAction = 'none';
       // Says which version is drawing, for the browser tests.
@@ -933,7 +937,7 @@ class Zone3d implements ZoneGame {
    */
   private async prepare(): Promise<void> {
     try {
-      await this.renderer.compileAsync(this.scene, this.camera);
+      await this.finish.compile(this.scene);
     } catch {
       // They are compiled on the first frame instead.
     }
@@ -980,7 +984,7 @@ class Zone3d implements ZoneGame {
       dressed.push({ someone, figure });
     }
     try {
-      await this.renderer.compileAsync(waiting, this.camera, this.scene);
+      await this.finish.compile(waiting);
     } catch {
       // Compiled when they are first drawn instead.
     }
