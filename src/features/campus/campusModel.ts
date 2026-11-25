@@ -26,6 +26,18 @@ export const MODEL_GROUND_Y = -3.17;
 /** Lifecycle of the exterior model, surfaced to the route for tests/fallback. */
 export type ExteriorModelState = 'loading' | 'loaded' | 'failed' | 'unavailable';
 
+/**
+ * True when WebGL is drawn in software (SwiftShader, llvmpipe and kin), with
+ * no GPU behind it. Such a renderer can draw a campus, but not the city round
+ * it: thousands of blocks and a large shadow map at a frame or two a second,
+ * which starves the rest of the page (#769). The city is left out there.
+ */
+export function isSoftwareRenderer(gl: WebGLRenderingContext | WebGL2RenderingContext): boolean {
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+  return /swiftshader|llvmpipe|softpipe|software|basic render driver/i.test(name);
+}
+
 /** True when this runtime can gunzip a fetched stream without a decoder library. */
 export function canDecompressGzip(): boolean {
   return typeof DecompressionStream === 'function';
