@@ -732,6 +732,54 @@ function instanced(geo: BufferGeometry, mat: Material, list: Array<{ m: Matrix4;
   });
 }
 
+/**
+ * Trees as instanced meshes: lobed crowns on trunks whose girth follows the
+ * crown, and coconut palms, batched per tile so each batch can be culled.
+ * Shared by the country and by the city campuses' street trees.
+ */
+export function treeMeshes(trees: readonly CountryTree[], keep: <T extends { dispose(): void }>(x: T) => T): InstancedMesh[] {
+  const greens: RGB[] = [
+    [62, 86, 40],
+    [52, 76, 36],
+    [74, 94, 46],
+    [58, 80, 44],
+    [84, 98, 52],
+  ];
+  const leafy = (tone: number, k: number): Color => {
+    const c = greens[Math.floor(tone * greens.length) % greens.length] ?? [60, 84, 40];
+    const lift = k * (0.85 + ((tone * 7.31) % 1) * 0.3);
+    return new Color().setRGB((c[0] / 255) * lift, (c[1] / 255) * lift, (c[2] / 255) * lift, SRGBColorSpace);
+  };
+  const up = new Vector3(0, 1, 0);
+  const q = new Quaternion();
+  const crowns: Array<{ m: Matrix4; c: Color }> = [];
+  const trunks: Array<{ m: Matrix4; c: Color }> = [];
+  const palms: Array<{ m: Matrix4; c: Color }> = [];
+  const bark = new Color('#4a3f33');
+  for (const t of trees) {
+    q.setFromAxisAngle(up, t.turn);
+    if (t.palm) {
+      trunks.push({ m: new Matrix4().compose(new Vector3(t.x, t.top / 2, -t.y), q, new Vector3(0.4, t.top, 0.4)), c: bark });
+      palms.push({ m: new Matrix4().compose(new Vector3(t.x, t.top, -t.y), q, new Vector3(t.w, t.w, t.w)), c: leafy(t.tone, 1.05) });
+    } else {
+      crowns.push({
+        m: new Matrix4().compose(new Vector3(t.x, t.top, -t.y), q, new Vector3(t.w, t.h, t.w * (0.8 + t.tone * 0.4))),
+        c: leafy(t.tone, 1),
+      });
+      // Girth follows the spread of the crown: a broad rain tree on a stout trunk.
+      const girth = 0.15 * t.w;
+      trunks.push({ m: new Matrix4().compose(new Vector3(t.x, t.top / 2, -t.y), q, new Vector3(girth, t.top, girth)), c: bark });
+    }
+  }
+  const leafMat = keep(foliageMaterial());
+  const palmMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: DoubleSide }));
+  const crownGeo = keep(crownGeometry(9605));
+  const palmGeo = keep(palmHeadGeometry());
+  const trunkGeo = keep(new CylinderGeometry(0.4, 0.6, 1, 7, 1, true));
+  const trunkMat = keep(new MeshStandardMaterial({ roughness: 1 }));
+  return [...instanced(crownGeo, leafMat, crowns), ...instanced(palmGeo, palmMat, palms), ...instanced(trunkGeo, trunkMat, trunks)];
+}
+
 export interface Country {
   group: Group;
   /** How many trees the country holds (for tests and budgets). */
@@ -767,41 +815,11 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
   ground.receiveShadow = true;
   group.add(ground);
 
-  const greens: RGB[] = [
-    [62, 86, 40],
-    [52, 76, 36],
-    [74, 94, 46],
-    [58, 80, 44],
-    [84, 98, 52],
-  ];
-  const leafy = (tone: number, k: number): Color => {
-    const c = greens[Math.floor(tone * greens.length) % greens.length] ?? [60, 84, 40];
-    const lift = k * (0.85 + ((tone * 7.31) % 1) * 0.3);
-    return new Color().setRGB((c[0] / 255) * lift, (c[1] / 255) * lift, (c[2] / 255) * lift, SRGBColorSpace);
-  };
+  for (const mesh of treeMeshes(scatter.trees, keep)) group.add(mesh);
   const up = new Vector3(0, 1, 0);
   const q = new Quaternion();
-  const crowns: Array<{ m: Matrix4; c: Color }> = [];
-  const trunks: Array<{ m: Matrix4; c: Color }> = [];
-  const palms: Array<{ m: Matrix4; c: Color }> = [];
   const walls: Array<{ m: Matrix4; c: Color }> = [];
   const roofs: Array<{ m: Matrix4; c: Color }> = [];
-  const bark = new Color('#4a3f33');
-  for (const t of scatter.trees) {
-    q.setFromAxisAngle(up, t.turn);
-    if (t.palm) {
-      trunks.push({ m: new Matrix4().compose(new Vector3(t.x, t.top / 2, -t.y), q, new Vector3(0.4, t.top, 0.4)), c: bark });
-      palms.push({ m: new Matrix4().compose(new Vector3(t.x, t.top, -t.y), q, new Vector3(t.w, t.w, t.w)), c: leafy(t.tone, 1.05) });
-    } else {
-      crowns.push({
-        m: new Matrix4().compose(new Vector3(t.x, t.top, -t.y), q, new Vector3(t.w, t.h, t.w * (0.8 + t.tone * 0.4))),
-        c: leafy(t.tone, 1),
-      });
-      // Girth follows the spread of the crown: a broad rain tree on a stout trunk.
-      const girth = 0.15 * t.w;
-      trunks.push({ m: new Matrix4().compose(new Vector3(t.x, t.top / 2, -t.y), q, new Vector3(girth, t.top, girth)), c: bark });
-    }
-  }
   for (const hs of scatter.houses) {
     q.setFromAxisAngle(up, hs.turn);
     const m = new Matrix4().compose(new Vector3(hs.x, 0, -hs.y), q, new Vector3(...hs.size));
@@ -811,21 +829,12 @@ export function buildCountry(canvas: HTMLCanvasElement, plan: CountryPlan, scatt
     roofs.push({ m, c: new Color(t < 0.5 ? '#a4a8a8' : t < 0.8 ? '#7d5a44' : '#6f7c80') });
   }
 
-  const leafMat = keep(foliageMaterial());
-  const palmMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: DoubleSide }));
-  const crownGeo = keep(crownGeometry(9605));
-  const palmGeo = keep(palmHeadGeometry());
-  const trunkGeo = keep(new CylinderGeometry(0.4, 0.6, 1, 7, 1, true));
-  const trunkMat = keep(new MeshStandardMaterial({ roughness: 1 }));
   const house = houseGeometry();
   keep(house.walls);
   keep(house.roof);
   const wallMat = keep(new MeshStandardMaterial({ roughness: 0.95 }));
   const roofMat = keep(new MeshStandardMaterial({ roughness: 0.5, metalness: 0.45 }));
   for (const mesh of [
-    ...instanced(crownGeo, leafMat, crowns),
-    ...instanced(palmGeo, palmMat, palms),
-    ...instanced(trunkGeo, trunkMat, trunks),
     ...instanced(house.walls, wallMat, walls),
     ...instanced(house.roof, roofMat, roofs),
   ]) {
