@@ -306,3 +306,141 @@ export function farCity(inner: number, outer: number, density = 1): FarBlock[] {
   }
   return out;
 }
+
+export type VehicleKind = 'car' | 'cng' | 'rickshaw' | 'bus';
+
+export interface Vehicle {
+  x: number;
+  y: number;
+  /** Heading, radians from +x (east in the campus frame) toward +y. */
+  turn: number;
+  kind: VehicleKind;
+  /** 0..1: which paint. */
+  tone: number;
+}
+
+/** How busy each kind of road is: vehicles per 10 m of road, both sides together. */
+const TRAFFIC: Record<string, number> = {
+  trunk: 2.2,
+  primary: 2.2,
+  secondary: 1.8,
+  tertiary: 1.4,
+  residential: 0.9,
+  unclassified: 0.8,
+  living_street: 0.6,
+  service: 0.35,
+};
+
+/**
+ * Traffic on the mapped roads: cars, green CNG auto-rickshaws, cycle
+ * rickshaws and, on the main roads, buses — some parked at the kerb, most in
+ * the lanes, the busier the road the more. Illustrative, not a count. Kept
+ * off the campus site. `density` thins it (1 = all, 2 = about half). Seeded.
+ */
+export function roadTraffic(data: Surroundings, site: SiteRect, density = 1): Vehicle[] {
+  const thin = Number.isFinite(density) && density > 0 ? density : 1;
+  const r = seeded(4500);
+  const out: Vehicle[] = [];
+  for (const rd of data.roads) {
+    const rate = TRAFFIC[rd.kind];
+    if (rate === undefined || rd.width < 4) continue;
+    const main = rd.width >= 10;
+    for (let i = 1; i < rd.path.length; i++) {
+      const a = rd.path[i - 1];
+      const b = rd.path[i];
+      if (!a || !b) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 2) continue;
+      const ux = (b[0] - a[0]) / len;
+      const uy = (b[1] - a[1]) / len;
+      const count = Math.floor((len / 10) * (rate / thin) + r());
+      for (let k = 0; k < count; k++) {
+        const s = 2 + r() * Math.max(0, len - 4);
+        const side = r() < 0.5 ? -1 : 1;
+        const parked = r() < (main ? 0.1 : 0.35);
+        const p = r();
+        const kind: VehicleKind =
+          main && p < 0.12
+            ? 'bus'
+            : p < (main ? 0.55 : 0.4)
+              ? 'car'
+              : p < 0.75
+                ? 'cng'
+                : 'rickshaw';
+        const half = rd.width / 2;
+        // In a lane: a quarter of the way out from the middle; parked: at the kerb.
+        const off = parked ? half - (kind === 'bus' ? 1.6 : 1.1) : half / 2;
+        const x = a[0] + ux * s - uy * off * side;
+        const y = a[1] + uy * s + ux * off * side;
+        if (inSite([x, y], site, 4)) continue;
+        // Traffic keeps left in Bangladesh: side +1 is the left of the path's
+        // direction, so it runs along the path; side -1 runs back against it.
+        const heading = Math.atan2(uy, ux) + (side < 0 ? Math.PI : 0) + (r() - 0.5) * 0.08;
+        out.push({ x, y, turn: heading, kind, tone: r() });
+      }
+    }
+  }
+  return out;
+}
+
+export interface Pole {
+  x: number;
+  y: number;
+}
+
+/**
+ * Electricity poles along the streets, 28–36 m apart on one side, just off
+ * the carriageway, and the runs of cable strung between neighbours on the
+ * same street (as index pairs into the poles). Not on the campus or in a
+ * building. Illustrative and seeded.
+ */
+export function streetPoles(
+  data: Surroundings,
+  site: SiteRect,
+): { poles: Pole[]; spans: Array<[number, number]> } {
+  const r = seeded(4600);
+  const built = boxes(
+    data.buildings.map((b) => b.outline),
+    0.5,
+  );
+  const poles: Pole[] = [];
+  const spans: Array<[number, number]> = [];
+  for (const rd of data.roads) {
+    if (!TREE_ROADS.has(rd.kind) && rd.kind !== 'service') continue;
+    const side = r() < 0.5 ? -1 : 1;
+    const off = rd.width / 2 + 0.7;
+    let next = r() * 20;
+    let prev = -1;
+    for (let i = 1; i < rd.path.length; i++) {
+      const a = rd.path[i - 1];
+      const b = rd.path[i];
+      if (!a || !b) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 0.01) continue;
+      const ux = (b[0] - a[0]) / len;
+      const uy = (b[1] - a[1]) / len;
+      for (; next < len; next += 28 + r() * 8) {
+        const p: SPoint = [a[0] + ux * next - uy * off * side, a[1] + uy * next + ux * off * side];
+        const blocked =
+          inSite(p, site, 3) ||
+          built.some(
+            (bb) =>
+              p[0] > bb.x1 &&
+              p[0] < bb.x2 &&
+              p[1] > bb.y1 &&
+              p[1] < bb.y2 &&
+              insidePolygon(p, bb.outline),
+          );
+        if (blocked) {
+          prev = -1;
+          continue;
+        }
+        poles.push({ x: p[0], y: p[1] });
+        if (prev >= 0) spans.push([prev, poles.length - 1]);
+        prev = poles.length - 1;
+      }
+      next -= len;
+    }
+  }
+  return { poles, spans };
+}
