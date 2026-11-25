@@ -536,6 +536,11 @@ export function NsuCampus({ siteRoot = '../' }: NsuCampusProps = {}) {
               everything the map does.
             </p>
           )}
+          {webglOk && (
+            <p className="shell-muted" data-testid="campus-attribution">
+              Map data © OpenStreetMap contributors
+            </p>
+          )}
 
           {inTerm ? (
             <div className="campus-legend" data-testid="campus-legend" role="status">
@@ -700,6 +705,14 @@ export function NsuCampus({ siteRoot = '../' }: NsuCampusProps = {}) {
               OAT rooms are shown in the Auditorium building, and rooms numbered B1xx–B3xx in the
               basements; both are our reading of the codes and not something NSU states. Do not use
               this map to find an exit.
+            </p>
+            <p>
+              <strong>Round the campus:</strong> the outlines of the buildings round it, and the
+              roads, water and green land within about 500 m, are from OpenStreetMap. How tall each
+              building stands is OpenStreetMap&apos;s storey count where it has one (only a handful
+              do) and otherwise a likely height for a plot that size. Their finishes, the street
+              trees, and the city past 500 m out to the horizon are illustrative, not where anything
+              really is.
             </p>
             <p>
               <strong>Timetable:</strong> NSU&apos;s section list for term {SNAPSHOT.term}, as
