@@ -335,10 +335,27 @@ export function genericFacade(tint: readonly [number, number, number], seed: num
  * given, adds one façade of bare brick (an unfinished or unrendered house).
  * Every map shares the returned normal map.
  */
+/**
+ * A façade's window, in metres within its 3 m × 3.2 m tile. `grille`: a
+ * painted steel grille over the glass, as on most Dhaka flats.
+ */
+export interface WindowSpec {
+  width: number;
+  height: number;
+  sill: number;
+  grille: boolean;
+}
+
+/** A village house's window: small, behind a sunshade. */
+export const VILLAGE_WINDOW: WindowSpec = { width: 1.2, height: 1.3, sill: 0.9, grille: false };
+/** A Dhaka flat's: wide, nearly a storey tall, behind a white grille. */
+export const CITY_WINDOW: WindowSpec = { width: 2.0, height: 1.55, sill: 0.75, grille: true };
+
 export function facadeSet(
   tints: readonly (readonly [number, number, number])[],
   seed: number,
   brickTile?: Texture,
+  window: WindowSpec = VILLAGE_WINDOW,
 ): { maps: Texture[]; brickMap: Texture | null; normalMap: Texture | null } {
   const base = plaster([255, 255, 255], seed, 1.6);
   const src = base.map.image as HTMLCanvasElement | undefined;
@@ -351,7 +368,7 @@ export function facadeSet(
         g.drawImage(src, 0, 0, size, size);
         g.globalCompositeOperation = 'source-over';
       }
-    }, seed + i * 31),
+    }, seed + i * 31, window),
   );
   let brickMap: Texture | null = null;
   const brickImage = brickTile?.image as HTMLCanvasElement | undefined;
@@ -361,14 +378,14 @@ export function facadeSet(
       const tw = size / 3;
       const th = (size * 0.6) / 3.2;
       for (let y = size - th; y > -th; y -= th) for (let x = 0; x < size; x += tw) g.drawImage(brickImage, x, y, tw, th);
-    }, seed + 97);
+    }, seed + 97, window);
   }
   base.map.dispose();
   return { maps, brickMap, normalMap: base.normalMap ?? null };
 }
 
 /** Windows over a painted wall: one per 3 m bay and 3.2 m storey. */
-function facadeOver(paint: (g: CanvasRenderingContext2D, size: number) => void, seed: number): Texture {
+function facadeOver(paint: (g: CanvasRenderingContext2D, size: number) => void, seed: number, win: WindowSpec = VILLAGE_WINDOW): Texture {
   const canvas = document.createElement('canvas');
   const size = 256;
   canvas.width = size;
@@ -377,13 +394,21 @@ function facadeOver(paint: (g: CanvasRenderingContext2D, size: number) => void, 
   if (g) {
     paint(g, size);
     const r = rng(seed + 9);
-    // Window 1.2 m wide, 1.3 m tall, sill at 0.9 m: in a 3 m × 3.2 m tile.
-    const x0 = (0.9 / 3) * size;
-    const w = (1.2 / 3) * size;
-    const y0 = size - ((0.9 + 1.3) / 3.2) * size;
-    const h = (1.3 / 3.2) * size;
+    // The window, centred in a 3 m × 3.2 m tile (a village house's: 1.2 m
+    // wide, 1.3 m tall, sill at 0.9 m).
+    const x0 = ((3 - win.width) / 2 / 3) * size;
+    const w = (win.width / 3) * size;
+    const y0 = size - ((win.sill + win.height) / 3.2) * size;
+    const h = (win.height / 3.2) * size;
     g.fillStyle = '#1f272b';
     g.fillRect(x0, y0, w, h);
+    // Curtains and what is behind the glass: some panes lighter than others.
+    for (let k = 0; k < 4; k++) {
+      const lit = r();
+      if (lit < 0.5) continue;
+      g.fillStyle = lit < 0.8 ? 'rgba(120,112,98,0.35)' : 'rgba(170,150,120,0.4)';
+      g.fillRect(x0 + (k * w) / 4, y0, w / 4, h);
+    }
     g.strokeStyle = r() < 0.5 ? '#5f6a6e' : '#2f5b4f';
     g.lineWidth = 3;
     for (let k = 1; k < 4; k++) {
@@ -391,6 +416,24 @@ function facadeOver(paint: (g: CanvasRenderingContext2D, size: number) => void, 
       g.moveTo(x0 + (k * w) / 4, y0);
       g.lineTo(x0 + (k * w) / 4, y0 + h);
       g.stroke();
+    }
+    if (win.grille) {
+      // A painted steel grille: close bars and a few rails, off-white.
+      g.strokeStyle = 'rgba(214,212,204,0.85)';
+      g.lineWidth = 1.5;
+      for (let x = x0 + 4; x < x0 + w; x += 7) {
+        g.beginPath();
+        g.moveTo(x, y0);
+        g.lineTo(x, y0 + h);
+        g.stroke();
+      }
+      g.lineWidth = 2.5;
+      for (const f of [0.02, 0.5, 0.98]) {
+        g.beginPath();
+        g.moveTo(x0, y0 + h * f);
+        g.lineTo(x0 + w, y0 + h * f);
+        g.stroke();
+      }
     }
     g.fillStyle = 'rgba(0,0,0,0.25)';
     g.fillRect(x0 - 6, y0 - 12, w + 12, 8); // sunshade shadow
