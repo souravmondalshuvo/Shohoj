@@ -307,6 +307,17 @@ function ZoneScreen({
 
     const start = async () => {
       if (!loadMap) throw new Error(`no map is registered for "${zone.map ?? ''}"`);
+      // 3D where the host offers it and the browser draws it well, unless the
+      // address says otherwise (game/rendererChoice.ts). Its code downloads
+      // while the map does. A download that neither arrives nor fails must
+      // not hold the student on the loading screen: after a while, 2D.
+      const asked = askedRenderer(window.location.search);
+      const zone3d =
+        loadZone3d && chooseRenderer(asked, true, probeWebGL) === '3d'
+          ? settlesWithin(loadZone3d(), ZONE_3D_WAIT_MS)
+          : null;
+      // Settled here too, so a map that fails first leaves nothing unhandled.
+      zone3d?.catch(() => undefined);
       const mapJson = await loadMap();
       const parsed = parseZoneMap(mapJson);
       if (!parsed.ok) throw new Error(parsed.error.join(' '));
@@ -322,15 +333,10 @@ function ZoneScreen({
         onEvent: (event: ZoneEvent) => latest.current.onZoneEvent(event),
       });
       game = null;
-      // 3D where the host offers it and the browser draws it well, unless the
-      // address says otherwise (game/rendererChoice.ts). If it still cannot
-      // start, the student gets the 2D zone instead of a broken screen.
-      const asked = askedRenderer(window.location.search);
-      if (loadZone3d && chooseRenderer(asked, true, probeWebGL) === '3d') {
+      // If 3D cannot start, the student gets the 2D zone, not a broken screen.
+      if (zone3d) {
         try {
-          // A download that neither arrives nor fails must not hold the
-          // student on the loading screen: after a while, 2D.
-          const { createZoneGame } = await settlesWithin(loadZone3d(), ZONE_3D_WAIT_MS);
+          const { createZoneGame } = await zone3d;
           if (!current) return;
           game = createZoneGame(options());
           setDrawnIn3d(true);
