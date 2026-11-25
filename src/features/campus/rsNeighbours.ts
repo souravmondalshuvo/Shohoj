@@ -28,6 +28,8 @@ import {
   Group,
   Quaternion,
   type Texture,
+  Color,
+  SRGBColorSpace,
   Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -197,12 +199,28 @@ export interface Neighbours {
   dispose(): void;
 }
 
+/** A Dhaka neighbourhood's extras: wide grilled windows, and relief on the nearer blocks. */
+export interface CityStyle {
+  /**
+   * Blocks whose middle is within this many metres of the origin get a ledge
+   * round every floor and balconies on their long sides; further off, haze
+   * would hide them and they would only cost frames.
+   */
+  detailRadius: number;
+}
+
 /**
  * Every footprint raised as `plans` say (by index), or by Savar's mix
  * (planNeighbour) where no plan is given. `city` gives the walls a Dhaka
- * flat's wide, grilled windows in place of a village house's.
+ * flat's wide, grilled windows in place of a village house's, starts each
+ * building somewhere different along its texture so no two weather alike,
+ * and puts floor ledges and balconies on the nearer blocks.
  */
-export function buildNeighbours(footprints: readonly (readonly Point[])[], plans?: readonly NeighbourPlan[], city = false): Neighbours {
+export function buildNeighbours(
+  footprints: readonly (readonly Point[])[],
+  plans?: readonly NeighbourPlan[],
+  city: CityStyle | null = null,
+): Neighbours {
   const disposables: Array<{ dispose(): void }> = [];
   const keep = <T extends { dispose(): void }>(x: T): T => {
     disposables.push(x);
@@ -268,7 +286,57 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[], plans
   const tanks: Matrix4[] = [];
   const heads: Matrix4[] = [];
   const stubs: Matrix4[] = [];
+  // Floor ledges and balconies: unit boxes, tinted to their building's wash.
+  const relief: Array<{ m: Matrix4; c: Color }> = [];
   const up = new Vector3(0, 1, 0);
+
+  /**
+   * A thin concrete ledge round every floor of a rectangular block (the
+   * chajja that throws a band of shadow down the wall below it), and on its
+   * long sides a balcony in some bays: a slab and a solid parapet. How many
+   * bays have one is the building's own habit.
+   */
+  function addRelief(
+    rect: RsRect,
+    plan: NeighbourPlan,
+    along: (u: number, v: number) => Vector3,
+    q: Quaternion,
+    r: () => number,
+  ): void {
+    const tint = plan.walls === 'brick' ? [150, 92, 70] : (WASHES[typeof plan.walls === 'number' ? plan.walls : 0] ?? [214, 208, 194]);
+    const c = new Color().setRGB(
+      Math.min(1, (tint[0] / 255) * 1.06),
+      Math.min(1, (tint[1] / 255) * 1.06),
+      Math.min(1, (tint[2] / 255) * 1.06),
+      SRGBColorSpace,
+    );
+    const L = rect.length;
+    const W = rect.width;
+    const box = (u: number, v: number, y: number, sx: number, sy: number, sz: number): void => {
+      const p = along(u, v);
+      p.y = y;
+      relief.push({ m: new Matrix4().compose(p, q, new Vector3(sx, sy, sz)), c });
+    };
+    const habit = r();
+    const rate = habit < 0.3 ? 0 : 0.35 + 0.6 * habit;
+    const bays = Math.max(1, Math.floor(L / 3.4));
+    for (let k = 1; k < plan.storeys; k++) {
+      const y = k * 3.1;
+      box(0, W / 2 + 0.2, y, L + 0.8, 0.16, 0.45);
+      box(0, -(W / 2 + 0.2), y, L + 0.8, 0.16, 0.45);
+      box(L / 2 + 0.2, 0, y, 0.45, 0.16, W + 0.8);
+      box(-(L / 2 + 0.2), 0, y, 0.45, 0.16, W + 0.8);
+      for (const side of [1, -1]) {
+        for (let j = 0; j < bays; j++) {
+          if (r() >= rate) continue;
+          const u = -L / 2 + ((j + 0.5) * L) / bays;
+          const bw = Math.min(2.8, L / bays - 0.4);
+          box(u, side * (W / 2 + 0.55), y + 0.06, bw, 0.14, 1.1);
+          box(u, side * (W / 2 + 1.06), y + 0.56, bw, 1.0, 0.1);
+        }
+      }
+    }
+  }
 
   footprints.forEach((nb, i) => {
     const area = Math.abs(polygonArea(nb));
@@ -298,7 +366,7 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[], plans
     }
 
     const h = plan.storeys * 3.1;
-    put(wallMat, wallGeometry(nb, 0, h, 3.1));
+    put(wallMat, wallGeometry(nb, 0, h, 3.1, 0, false, city ? r() * 60 : 0));
     put(slabMat, capGeometry(nb, h));
     // Parapet: both faces and its top.
     put(parapetMat, wallGeometry(nb, h, h + 0.9, 3.1));
@@ -311,6 +379,9 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[], plans
         0,
         -(rect.cy + Math.sin(ang) * u + Math.cos(ang) * v),
       );
+    if (city && plan.storeys >= 3 && gableFits(nb) && Math.hypot(rect.cx, rect.cy) <= city.detailRadius) {
+      addRelief(rect, plan, along, q, r);
+    }
     if (plan.stairHead) {
       const p = along(rect.length * (r() - 0.5) * 0.5, rect.width * (r() - 0.5) * 0.4);
       p.y = h + 1.3;
@@ -357,6 +428,17 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[], plans
     group.add(m);
   };
   addInstanced(tankGeo, tankMat, tanks);
+  if (relief.length > 0) {
+    const reliefMat = keep(new MeshStandardMaterial({ roughness: 0.92 }));
+    const m = new InstancedMesh(unit, reliefMat, relief.length);
+    relief.forEach((x, k) => {
+      m.setMatrixAt(k, x.m);
+      m.setColorAt(k, x.c);
+    });
+    m.castShadow = m.receiveShadow = true;
+    m.computeBoundingSphere();
+    group.add(m);
+  }
   addInstanced(unit, parapetMat, heads);
   addInstanced(unit, stubMat, stubs);
   return {
