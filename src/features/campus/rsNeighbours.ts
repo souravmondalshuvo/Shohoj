@@ -34,7 +34,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import { polygonArea, type Point, type RsRect } from '../../core/campusBracuRs.ts';
 import { capGeometry, gableGeometry, grimed, rectCorners, wallGeometry, weathered } from './rsBuildings.ts';
-import { brick, concrete, corrugated, facadeSet, rng, type SurfaceTextures } from './rsTextures.ts';
+import { CITY_WINDOW, VILLAGE_WINDOW, brick, concrete, corrugated, facadeSet, rng, type SurfaceTextures } from './rsTextures.ts';
 
 /** Colour washes seen on Savar's houses: off-white, cream, yellow, sky, mint, salmon. */
 const WASHES: ReadonlyArray<readonly [number, number, number]> = [
@@ -46,6 +46,12 @@ const WASHES: ReadonlyArray<readonly [number, number, number]> = [
   [216, 172, 152],
   [170, 168, 160], // bare cement render
 ];
+
+/**
+ * Dhaka's blocks of flats are mostly off-white, cream or bare cement render;
+ * the odd one yellow or salmon. Indices into WASHES, repeated for weight.
+ */
+const DHAKA_WASHES = [0, 0, 0, 0, 1, 1, 1, 6, 6, 6, 2, 5];
 
 export type NeighbourKind = 'hut' | 'house' | 'shed';
 
@@ -110,6 +116,30 @@ export function planNeighbour(area: number, seed: number): NeighbourPlan {
   };
 }
 
+/**
+ * What stands on a Dhaka plot (Bashundhara, Merul Badda): `storeys` decided by
+ * the caller (OSM's count, or a likely one for the plot's size). A one-storey
+ * scrap of a plot is a shop or a shack under tin; anything taller is a
+ * concrete block, colour-washed or bare brick, with tanks and a stair head on
+ * its flat roof. Seeded by the footprint's index.
+ */
+export function urbanPlan(area: number, storeys: number, seed: number): NeighbourPlan {
+  const r = rng(7900 + seed);
+  if (storeys <= 1 && area < 60) {
+    return { kind: 'hut', storeys: 1, walls: r() < 0.5 ? 'tin' : 'brick', roof: r() < 0.6 ? 'tin-silver' : 'tin-rust', tank: false, stairHead: false, stubs: false };
+  }
+  const w = r();
+  return {
+    kind: 'house',
+    storeys: Math.max(1, Math.round(storeys)),
+    walls: w < 0.12 ? 'brick' : (DHAKA_WASHES[Math.floor(r() * DHAKA_WASHES.length)] ?? 0),
+    roof: 'flat',
+    tank: r() < 0.8,
+    stairHead: storeys >= 2 && r() < 0.85,
+    stubs: storeys >= 2 && storeys <= 5 && r() < 0.12,
+  };
+}
+
 /** The smallest rectangle round a footprint, its long side first. */
 export function fitRect(outline: readonly Point[]): RsRect {
   let best: RsRect = { cx: 0, cy: 0, length: 0, width: 0, angle: 0 };
@@ -167,7 +197,12 @@ export interface Neighbours {
   dispose(): void;
 }
 
-export function buildNeighbours(footprints: readonly (readonly Point[])[]): Neighbours {
+/**
+ * Every footprint raised as `plans` say (by index), or by Savar's mix
+ * (planNeighbour) where no plan is given. `city` gives the walls a Dhaka
+ * flat's wide, grilled windows in place of a village house's.
+ */
+export function buildNeighbours(footprints: readonly (readonly Point[])[], plans?: readonly NeighbourPlan[], city = false): Neighbours {
   const disposables: Array<{ dispose(): void }> = [];
   const keep = <T extends { dispose(): void }>(x: T): T => {
     disposables.push(x);
@@ -177,7 +212,7 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[]): Neig
 
   // ── Materials ─────────────────────────────────────────────────────────
   const brickTex = brick(711);
-  const set = facadeSet(WASHES, 712, brickTex.map);
+  const set = facadeSet(WASHES, 712, brickTex.map, city ? CITY_WINDOW : VILLAGE_WINDOW);
   keep(brickTex.map);
   if (brickTex.normalMap) keep(brickTex.normalMap);
   if (set.normalMap) keep(set.normalMap);
@@ -238,7 +273,7 @@ export function buildNeighbours(footprints: readonly (readonly Point[])[]): Neig
   footprints.forEach((nb, i) => {
     const area = Math.abs(polygonArea(nb));
     if (area < 8) return;
-    const plan = planNeighbour(area, i);
+    const plan = plans?.[i] ?? planNeighbour(area, i);
     const r = rng(7800 + i);
     const rect = fitRect(nb);
     const wallMat = plan.walls === 'tin' ? tinWall : plan.walls === 'brick' ? brickMat : (washMats[plan.walls] ?? parapetMat);
