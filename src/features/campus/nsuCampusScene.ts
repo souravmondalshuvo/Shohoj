@@ -249,7 +249,7 @@ export function createNsuCampusScene(
   // --- Site ----------------------------------------------------------------
   // Replaced by the model's own grounds once it loads.
   const drawnSite = [
-    slab(NSU_SITE, -0.35, 0.5, flat('#dcdad0')),
+    slab(NSU_SITE, -0.35, 0.5, flat('#c4c0b4')),
     slab(NSU_COURTYARD, -0.05, 0.12, flat('#b9b3a4')),
     slab(NSU_PLAYGROUND, -0.05, 0.12, flat('#6f9d62')),
   ];
@@ -545,9 +545,13 @@ export function createNsuCampusScene(
     const focused = model.buildings.find((b) => b.building.id === focusBuilding) ?? null;
     // The basements are under the ground: opening them takes the ground away.
     const underground = focused?.building.below ?? false;
-    for (const mesh of drawnSite) mesh.visible = !campusModel && !underground;
+    // The site's base slab stays under the model too: the city's ground is
+    // cut away over the site, and the model's grounds do not reach every
+    // corner of it.
+    drawnSite.forEach((mesh, i) => {
+      mesh.visible = !underground && (i === 0 || !campusModel);
+    });
     for (const node of campusModel?.ground ?? []) node.visible = !underground;
-    for (const node of city?.ground ?? []) node.visible = !underground;
     shadowsStale = true;
     for (const storey of storeys) {
       const own = storey.building === focusBuilding;
