@@ -18,6 +18,7 @@ import {
     MODEL_GROUND_Y,
 } from '../src/features/campus/campusModel.ts';
 import {
+    CITY_LIGHTING,
     framingDistanceScale,
     MODEL_LIGHTING,
     skyMoodForHour,
@@ -111,4 +112,13 @@ test('MODEL_LIGHTING is neutral white, unlike the time-of-day mood (#755)', () =
     // The golden-hour mood the owner saw at 19:46 is exactly what it replaces.
     assert.notEqual(skyMoodForHour(19).sunColor, MODEL_LIGHTING.sunColor);
     assert.ok(MODEL_LIGHTING.sun > 0 && MODEL_LIGHTING.ambient > 0);
+});
+
+test('with the city round it, the light shifts from fill to sun but stays white (#1007)', () => {
+    // CITY_LIGHTING sets intensities only: the colours stay MODEL_LIGHTING's white.
+    assert.deepEqual(Object.keys(CITY_LIGHTING).sort(), ['ambient', 'hemisphere', 'sun']);
+    assert.ok(CITY_LIGHTING.sun > MODEL_LIGHTING.sun, 'a stronger sun');
+    assert.ok(CITY_LIGHTING.ambient + CITY_LIGHTING.hemisphere < MODEL_LIGHTING.ambient + MODEL_LIGHTING.hemisphere, 'less fill');
+    // Shadows read only where the sun outweighs the fill.
+    assert.ok(CITY_LIGHTING.sun > CITY_LIGHTING.ambient + CITY_LIGHTING.hemisphere);
 });
