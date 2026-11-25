@@ -30,6 +30,7 @@ import {
   BoxGeometry,
   BufferGeometry,
   CanvasTexture,
+  CircleGeometry,
   Color,
   CylinderGeometry,
   DirectionalLight,
@@ -40,6 +41,7 @@ import {
   type Material,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   type Object3D,
   PCFShadowMap,
@@ -264,10 +266,23 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
       const disc = envSky.material.uniforms['showSunDisc'];
       if (disc) disc.value = 0;
       envScene.add(envSky);
+      // Below the horizon, sunlit dry ground rather than the sky model's dark
+      // continuation: what lights a shaded wall in the tropics is as much
+      // the warm bounce off the ground in front of it as the blue sky above.
+      const bounceGeo = new CircleGeometry(5000, 24);
+      const bounceMat = new MeshBasicMaterial({ color: new Color(0.5, 0.41, 0.3) });
+      const bounce = new Mesh(bounceGeo, bounceMat);
+      bounce.rotation.x = -Math.PI / 2;
+      bounce.position.y = -5;
+      envScene.add(bounce);
       const env = pmrem.fromScene(envScene, 0, 1, 20000);
+      bounceGeo.dispose();
+      bounceMat.dispose();
       const texture = track(env.texture);
       scene.environment = texture;
-      scene.environmentIntensity = 0.15;
+      // Low: the sky model is a clear one, bluer than the haze over Savar; a
+      // neutral fill (below) carries most of the light in the shade.
+      scene.environmentIntensity = 0.08;
       envSky.geometry.dispose();
       envSky.material.dispose();
       pmrem.dispose();
@@ -276,7 +291,9 @@ export function createRsCampusScene(container: HTMLElement, options: RsSceneOpti
     const FOG_DENSITY = 0.001;
     const fog = new FogExp2(HAZE, FOG_DENSITY);
     scene.fog = fog;
-    scene.add(new HemisphereLight(new Color('#dfe8f0'), new Color('#8a7a5c'), 0.12));
+    // A dry-season sky is hazy, and haze scatters white: shade under it is a
+    // soft grey, not the deep blue a clear sky alone would light it.
+    scene.add(new HemisphereLight(new Color('#e8e6e0'), new Color('#8a7a5c'), 0.8));
     const sun = new DirectionalLight(new Color('#fff0d8'), 3.6);
     sun.position.copy(SUN_DIRECTION.clone().multiplyScalar(420));
     sun.castShadow = true;
