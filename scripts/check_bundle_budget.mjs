@@ -225,8 +225,18 @@ export const TARGETS = [
     // this tightens again, a custom Phaser build is the place to look: the game
     // uses tilemaps, sprites, tweens and input, and ships physics, particles,
     // sound and more that it never calls.
+    //
+    // Raised from 4100 for the city round BRACU's campus map (#1007). Both new
+    // chunks are fetched only on /campus, alongside the building model:
+    //   surroundingsBracu  199 kB   OpenStreetMap's Merul Badda within 520 m
+    //                               (2,508 footprints, rounded to the metre).
+    //   citySurroundings    48 kB   sky, ground, blocks, trees, far city.
+    // plus ~11 kB in the campus chunk to load them. A local build measured
+    // 4290.6. `shell entry` did not move (425.6 kB raw / 135.8 gzip). If this
+    // tightens again, the surroundings data is the place to look: it could be
+    // a fetched JSON asset rather than a JS chunk.
     measured: { raw: 2123 },
-    budget: { raw: 4100 },
+    budget: { raw: 4380 },
   },
 ];
 
