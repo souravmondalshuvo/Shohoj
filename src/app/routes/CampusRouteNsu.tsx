@@ -710,9 +710,9 @@ export function NsuCampus({ siteRoot = '../' }: NsuCampusProps = {}) {
               <strong>Round the campus:</strong> the outlines of the buildings round it, and the
               roads, water and green land within about 500 m, are from OpenStreetMap. How tall each
               building stands is OpenStreetMap&apos;s storey count where it has one (only a handful
-              do) and otherwise a likely height for a plot that size. Their finishes, the street
-              trees, and the city past 500 m out to the horizon are illustrative, not where anything
-              really is.
+              do) and otherwise a likely height for a plot that size. Their finishes and balconies,
+              the street trees, the traffic, the poles and cables, and the city past 500 m out to
+              the horizon are illustrative, not where anything really is.
             </p>
             <p>
               <strong>Timetable:</strong> NSU&apos;s section list for term {SNAPSHOT.term}, as
