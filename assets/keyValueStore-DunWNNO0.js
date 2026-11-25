@@ -1,0 +1,1 @@
+var e=class{map=new Map;getItem(e){return this.map.has(e)?this.map.get(e):null}setItem(e,t){this.map.set(e,t)}removeItem(e){this.map.delete(e)}};export{e as t};
