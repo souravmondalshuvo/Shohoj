@@ -693,6 +693,12 @@ export function Component({
               the map does.
             </p>
           )}
+          {/* The surroundings are drawn only round the loaded model. */}
+          {webglOk && modelState === 'loaded' && (
+            <p className="shell-muted" data-testid="campus-attribution">
+              Map data © OpenStreetMap contributors · satellite reading: Esri World Imagery
+            </p>
+          )}
 
           {refreshing && (
             <p className="campus-room-sr" data-testid="campus-refreshing" role="status">
@@ -741,6 +747,16 @@ export function Component({
               room footprints, doors, lift and escalator positions, and internal circulation remain
               schematic and drawing-pending until approved BRACU plans are available. This model is
               not suitable for emergency navigation.
+            </p>
+            <p>
+              Round the campus, the buildings&apos; outlines, the roads, water and green land within
+              about 500 m are from OpenStreetMap, and so is the university&apos;s plot.
+              OpenStreetMap does not map the tower itself: where it stands in the plot is read from
+              a satellite image, to within about 10 m, and the model is smaller in plan than the
+              real building, so it leaves more of the plot open than there is. Each neighbour is as
+              tall as OpenStreetMap says where it has a storey count (few do) and otherwise a likely
+              height for its plot. Their finishes, the street trees and the city past 500 m out to
+              the horizon are illustrative.
             </p>
             <div className="campus-evidence-links">
               <a href="https://www.bracu.ac.bd/campus-360" target="_blank" rel="noreferrer">
