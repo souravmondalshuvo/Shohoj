@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 
 import { NSU_SITE } from '../src/core/campusNsu.ts';
 import { farCity, insidePolygon, outlineArea, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
+import { BRACU_SURROUNDINGS } from '../src/core/surroundingsBracu.generated.ts';
 import { NSU_SURROUNDINGS } from '../src/core/surroundingsNsu.generated.ts';
 import { urbanPlan } from '../src/features/campus/rsNeighbours.ts';
 
@@ -37,6 +38,26 @@ test("NSU's extract leaves the campus to the campus and stays within its radius"
         assert.ok(b.levels === null || (b.levels >= 1 && b.levels <= 60), String(b.levels));
     }
     for (const r of roads) assert.ok(r.width > 0 && r.path.length >= 2, r.kind);
+});
+
+test("BRACU's extract keeps its plot clear and the tower's foot inside it", () => {
+    const { buildings, plot } = BRACU_SURROUNDINGS;
+    assert.ok(plot && plot.length >= 4, 'the plot is written out');
+    assert.ok(buildings.length > 1500, `buildings: ${buildings.length}`);
+    // The frame's origin is the tower's foot: inside the university's plot.
+    assert.ok(insidePolygon([0, 0], plot), 'the origin is in the plot');
+    // The model's own site (x north −45..45, y west −35..38) lies in the plot.
+    for (const corner of [[-40, -30], [40, -30], [40, 30], [-40, 30]]) {
+        assert.ok(insidePolygon(corner, plot), `the model's site corner ${corner} is in the plot`);
+    }
+    const xs = plot.map((p) => p[0]);
+    const ys = plot.map((p) => p[1]);
+    const site = { x1: Math.min(...xs) - 2, x2: Math.max(...xs) + 2, y1: Math.min(...ys) - 2, y2: Math.max(...ys) + 2 };
+    for (const b of buildings) {
+        const c = centroid(b.outline);
+        assert.ok(!inSite(c, site), `a building in the plot at ${c}`);
+        assert.ok(Math.hypot(c[0], c[1]) <= 520);
+    }
 });
 
 test('a building is as tall as OSM says, or a likely height for its plot', () => {
