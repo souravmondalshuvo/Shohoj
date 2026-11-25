@@ -89,6 +89,7 @@ import {
     MODEL_GROUND_Y,
     type ExteriorModelState,
 } from './campusModel.ts';
+import type { City, Daylight } from './citySurroundings.ts';
 
 export type RoomStatus = 'free' | 'busy';
 
@@ -205,6 +206,17 @@ export function framingDistanceScale(aspect: number): number {
     if (!Number.isFinite(aspect) || aspect <= 0) return 1;
     return Math.min(Math.max(FRAMING_REFERENCE_ASPECT / aspect, 1), FRAMING_MAX_SCALE);
 }
+
+/**
+ * The same white light as MODEL_LIGHTING, rebalanced once the city stands
+ * round the model: a weaker fill and a stronger sun, so shadows read. The
+ * colours stay white; only the contrast changes. Exported for unit tests.
+ */
+export const CITY_LIGHTING = {
+    ambient: 0.4,
+    hemisphere: 0.75,
+    sun: 2.9,
+} as const;
 
 /**
  * Lighting for the real BRACU model (#755): neutral white light, independent
@@ -1116,6 +1128,79 @@ export function createCampusScene(
         return ready;
     }
 
+    // --- The city round the campus -------------------------------------------
+    // Merul Badda from OpenStreetMap (see citySurroundings.ts), only with the
+    // model: the drawn building's clock-driven mood has night in it, and the
+    // city is daylight. Its code and data load alongside the model; the sky
+    // and haze go up before the model's shaders are compiled, since fog and
+    // the sky light are part of every program's key.
+    let daylight: Daylight | null = null;
+    let city: City | null = null;
+    const small = Math.min(window.innerWidth, window.innerHeight) < 600;
+    type CityModule = typeof import('./citySurroundings.ts');
+    type CityData = typeof import('../../core/surroundingsBracu.generated.ts');
+    let cityParts: Promise<[CityModule, CityData] | null> = Promise.resolve(null);
+
+    /** A dry-season morning sun, low in the south-east (the model's +x is north, +z east). */
+    const SUN_SOUTH_EAST = new Vector3(-0.5, 0.66, 0.56).normalize();
+
+    function addSky(module: CityModule): void {
+        if (disposed || daylight) return;
+        daylight = module.addDaylight(scene, renderer, {
+            sunDirection: SUN_SOUTH_EAST,
+            hazeFrom: 260,
+            hazeTo: 1700,
+            skyScale: 5000,
+        });
+    }
+
+    async function addCity(module: CityModule, data: CityData): Promise<void> {
+        const plot = data.BRACU_SURROUNDINGS.plot ?? [];
+        const xs = plot.map((p) => p[0]);
+        const ys = plot.map((p) => p[1]);
+        const built = await module.buildCity({
+            data: data.BRACU_SURROUNDINGS,
+            // The whole plot is the campus's; only the model's own site, which
+            // the section cut can open, is cut out of the city's ground.
+            site: { x1: Math.min(...xs) - 2, x2: Math.max(...xs) + 2, y1: Math.min(...ys) - 2, y2: Math.max(...ys) + 2 },
+            cut: { x1: -45, x2: 45, y1: -35, y2: 38 },
+            extent: 560,
+            mappedRadius: 520,
+            farOuter: 1500,
+            groundY: MODEL_GROUND_Y - 0.12,
+            light: small,
+        });
+        if (disposed) {
+            built.dispose();
+            return;
+        }
+        city = built;
+        scene.add(city.group);
+        // The sun moves to where Dhaka's is, and its shadows reach over the
+        // plot and the blocks round it at much the same sharpness as before.
+        sun.position.copy(SUN_SOUTH_EAST).multiplyScalar(320);
+        const size = small ? SHADOW_MAP_SIZE : SHADOW_MAP_SIZE * 2;
+        sun.shadow.mapSize.set(size, size);
+        sun.shadow.map?.dispose();
+        sun.shadow.map = null;
+        const sc = sun.shadow.camera;
+        sc.left = -115;
+        sc.right = 115;
+        sc.top = 115;
+        sc.bottom = -115;
+        sc.near = 120;
+        sc.far = 560;
+        sc.updateProjectionMatrix();
+        sun.shadow.normalBias = 0.2;
+        // Still white light, so the model keeps its colours; but less of it
+        // from everywhere and more from the sun, so the campus and the city
+        // stand in daylight with shadows rather than in a light box.
+        ambient.intensity = CITY_LIGHTING.ambient;
+        hemi.intensity = CITY_LIGHTING.hemisphere;
+        sun.intensity = CITY_LIGHTING.sun;
+        invalidate();
+    }
+
     function loadExteriorModel(url: string): void {
         const report = (state: ExteriorModelState) => options.onModelState?.(state);
         if (!canDecompressGzip()) {
@@ -1123,6 +1208,14 @@ export function createCampusScene(
             return;
         }
         report('loading');
+        // The city's code and data, fetched while the model is; a failure
+        // leaves the campus as it was.
+        cityParts = Promise.all([import('./citySurroundings.ts'), import('../../core/surroundingsBracu.generated.ts')]).catch(
+            (error: unknown) => {
+                console.warn('Campus map: surroundings unavailable; keeping the campus alone.', error);
+                return null;
+            },
+        );
         fetchExteriorGlb(url, modelAbort.signal)
             .then((glb) => new GLTFLoader().parseAsync(glb, ''))
             .then((gltf) => {
@@ -1131,7 +1224,16 @@ export function createCampusScene(
                 clipModel(gltf.scene);
                 return gltf;
             })
-            .then((gltf) => (disposed ? gltf : precompileModel(gltf.scene).then(() => gltf)))
+            .then((gltf) =>
+                disposed
+                    ? gltf
+                    : cityParts
+                          .then((parts) => {
+                              if (parts) addSky(parts[0]);
+                          })
+                          .then(() => precompileModel(gltf.scene))
+                          .then(() => gltf),
+            )
             .then((gltf) => {
                 if (disposed) {
                     disposeObjectTree(gltf.scene);
@@ -1140,6 +1242,10 @@ export function createCampusScene(
                 adoptExteriorModel(gltf.scene);
                 invalidate();
                 report('loaded');
+                void cityParts.then((parts) => (parts ? addCity(parts[0], parts[1]) : undefined)).catch((error: unknown) => {
+                    if (disposed) return;
+                    console.warn('Campus map: surroundings unavailable; keeping the campus alone.', error);
+                });
             })
             .catch((error: unknown) => {
                 if (disposed) return;
@@ -1383,7 +1489,10 @@ export function createCampusScene(
         }
     }
 
-    const camera = new PerspectiveCamera(45, 1, 0.1, 500);
+    // Far enough for the sky and the city to the horizon; near enough for the
+    // closest the controls allow (18 m), and no nearer, for depth precision
+    // out at the city's edge.
+    const camera = new PerspectiveCamera(45, 1, 0.5, 6000);
     camera.position.set(68, 54, 68);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -1702,6 +1811,8 @@ export function createCampusScene(
         dispose() {
             disposed = true;
             modelAbort.abort();
+            city?.dispose();
+            daylight?.dispose();
             renderer.setAnimationLoop(null);
             resizeObserver?.disconnect();
             renderer.domElement.removeEventListener('pointerdown', onPointerDown);
