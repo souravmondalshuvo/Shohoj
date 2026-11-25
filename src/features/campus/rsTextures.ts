@@ -268,7 +268,9 @@ export function concrete(seed: number, base = 172): SurfaceTextures {
       const v = y / size;
       const n = fbm(u, v, 6, 5, seed);
       const stain = Math.max(0, fbm(u, v, 3, 4, seed + 2) - 0.5) * 1.8;
-      const crack = Math.abs(fbm(u, v, 12, 3, seed + 7) - 0.5) < 0.006 ? 0.25 : 0;
+      // Cracks follow a contour of the noise, which closes into rings; only
+      // stretches of it are cracked, so they run and stop as real ones do.
+      const crack = Math.abs(fbm(u, v, 12, 3, seed + 7) - 0.5) < 0.006 && fbm(u, v, 4, 2, seed + 8) > 0.58 ? 0.25 : 0;
       const shade = base * (0.9 + 0.2 * n) - stain * 55 - crack * 80;
       const i = y * size + x;
       px.set(i, clamp(shade), clamp(shade - 3), clamp(shade - 8 - stain * 6));
