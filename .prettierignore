@@ -16,6 +16,7 @@ shohoj.html
 admin.html
 profile.html
 worker/catalog.generated.js
+src/core/surroundings*.generated.ts
 js/config/runtime-config.js
 **/version.json
 
