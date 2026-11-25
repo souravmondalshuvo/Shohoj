@@ -68,7 +68,12 @@ import {
   type NsuRect,
 } from '../../core/campusNsu.ts';
 import type { City } from './citySurroundings.ts';
-import { canDecompressGzip, fetchExteriorGlb, type ExteriorModelState } from './campusModel.ts';
+import {
+  canDecompressGzip,
+  fetchExteriorGlb,
+  isSoftwareRenderer,
+  type ExteriorModelState,
+} from './campusModel.ts';
 import type { RoomStatus, RoomTooltip } from './campusScene.ts';
 
 export interface NsuSceneColors {
@@ -773,7 +778,8 @@ export function createNsuCampusScene(
 
   applyFocus();
   if (options.modelUrl) loadModel(options.modelUrl);
-  loadCity();
+  // Not on a software renderer: it can draw the campus, not the city round it.
+  if (!isSoftwareRenderer(renderer.getContext())) loadCity();
 
   /**
    * The sky, haze and the neighbourhood round the campus, from OpenStreetMap
