@@ -85,6 +85,7 @@ import { BASEMENT_LEVEL, GROUND_LEVEL, UPPER_ROOF_LEVEL } from '../../core/campu
 import {
     canDecompressGzip,
     fetchExteriorGlb,
+    isSoftwareRenderer,
     MODEL_FLOOR_PLATE,
     MODEL_GROUND_Y,
     type ExteriorModelState,
@@ -1209,8 +1210,9 @@ export function createCampusScene(
         }
         report('loading');
         // The city's code and data, fetched while the model is; a failure
-        // leaves the campus as it was.
-        cityParts = Promise.all([import('./citySurroundings.ts'), import('../../core/surroundingsBracu.generated.ts')]).catch(
+        // leaves the campus as it was. Not on a software renderer, which
+        // cannot draw it at a usable rate.
+        if (!isSoftwareRenderer(renderer.getContext())) cityParts = Promise.all([import('./citySurroundings.ts'), import('../../core/surroundingsBracu.generated.ts')]).catch(
             (error: unknown) => {
                 console.warn('Campus map: surroundings unavailable; keeping the campus alone.', error);
                 return null;
