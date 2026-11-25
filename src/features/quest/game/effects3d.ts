@@ -25,15 +25,41 @@
 //
 // No textures are fetched and nothing is compiled outside the graphics card,
 // so the page's Content-Security-Policy needs nothing new.
+//
+// Compiling ahead (Finish.compile). A shader three.js has not built when a
+// frame first needs it is built then, and the page stops until it is: on a
+// first visit, with no shader cached, about 2 s on a laptop on "high". So the
+// zone compiles everything before its first frame, keyed exactly as the frame
+// will ask for it. On "high" that is not what compileAsync(scene) gives:
+// the scene is drawn into the composer's buffer, not the screen (no tone
+// mapping, linear colour: different shaders); GTAO draws it again in its own
+// normal material, which compile() never sees (it ignores overrideMaterial);
+// and each pass has full-screen shaders of its own.
 
 import {
+  ACESFilmicToneMapping,
+  AgXToneMapping,
+  CineonToneMapping,
+  ColorManagement,
+  CustomToneMapping,
+  Group,
   HalfFloatType,
+  LinearToneMapping,
+  Mesh,
+  NeutralToneMapping,
+  PlaneGeometry,
+  ReinhardToneMapping,
+  ShaderMaterial,
+  SRGBTransfer,
   PMREMGenerator,
   Scene,
   Vector2,
   Vector3,
   WebGLRenderTarget,
   type Camera,
+  type Material,
+  type Object3D,
+  type ToneMapping,
   type WebGLRenderer,
 } from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -126,9 +152,44 @@ const GradeShader = {
   `,
 };
 
+/** The defines OutputPass gives its shader for this renderer (as in its render()). */
+function outputDefines(renderer: WebGLRenderer): Record<string, string> {
+  const defines: Record<string, string> = {};
+  if (ColorManagement.getTransfer(renderer.outputColorSpace) === SRGBTransfer) {
+    defines['SRGB_TRANSFER'] = '';
+  }
+  const tone = TONE_MAPPING_DEFINES.get(renderer.toneMapping);
+  if (tone) defines[tone] = '';
+  return defines;
+}
+
+const TONE_MAPPING_DEFINES = new Map<ToneMapping, string>([
+  [LinearToneMapping, 'LINEAR_TONE_MAPPING'],
+  [ReinhardToneMapping, 'REINHARD_TONE_MAPPING'],
+  [CineonToneMapping, 'CINEON_TONE_MAPPING'],
+  [ACESFilmicToneMapping, 'ACES_FILMIC_TONE_MAPPING'],
+  [AgXToneMapping, 'AGX_TONE_MAPPING'],
+  [NeutralToneMapping, 'NEUTRAL_TONE_MAPPING'],
+  [CustomToneMapping, 'CUSTOM_TONE_MAPPING'],
+]);
+
+/** The full-screen shaders a pass holds: its own fields, and lists of them. */
+function shaderMaterials(pass: object): ShaderMaterial[] {
+  const found = new Set<ShaderMaterial>();
+  for (const value of Object.values(pass)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item instanceof ShaderMaterial) found.add(item);
+    }
+  }
+  return [...found];
+}
+
 /** Draws a frame, with or without the finishing passes. */
 export class Finish {
   private composer: EffectComposer | null = null;
+  private gtao: GTAOPass | null = null;
+  /** The passes' own shaders are compiled once; the scene's, per call. */
+  private passesCompiled = false;
   private tiltH: ShaderPass | null = null;
   private tiltV: ShaderPass | null = null;
   /** Seconds spent on slow frames lately, less a little for each quick one. */
@@ -164,6 +225,7 @@ export class Finish {
       samples: 12,
     });
     composer.addPass(gtao);
+    this.gtao = gtao;
     composer.addPass(new UnrealBloomPass(new Vector2(width, height), 0.18, 0.4, 1.6));
     this.tiltH = new ShaderPass(HorizontalTiltShiftShader);
     this.tiltV = new ShaderPass(VerticalTiltShiftShader);
@@ -190,6 +252,84 @@ export class Finish {
       this.tiltV.uniforms['v']!.value = blur / height;
       this.tiltV.uniforms['r']!.value = 0.52;
     }
+  }
+
+  /**
+   * Compile the shaders drawing `root` will need, as the next frame will ask
+   * for them (see "Compiling ahead" above). `root` is the scene, or a group
+   * about to join it (its lights and fog are the scene's). Where the browser
+   * compiles in the background (KHR_parallel_shader_compile), the page stays
+   * responsive until this settles.
+   */
+  async compile(root: Object3D): Promise<void> {
+    const { renderer, camera, scene, composer } = this;
+    if (!composer) {
+      await renderer.compileAsync(root, camera, scene);
+      return;
+    }
+    // three keys a shader by the render target bound when it is compiled.
+    const previous = renderer.getRenderTarget();
+    const jobs: Promise<unknown>[] = [];
+    try {
+      renderer.setRenderTarget(composer.readBuffer);
+      // As RenderPass draws it.
+      jobs.push(renderer.compileAsync(root, camera, scene));
+      // As GTAO draws it: every mesh in the normal material.
+      if (this.gtao) jobs.push(this.compileIn(root, this.gtao.normalMaterial));
+      if (!this.passesCompiled) {
+        this.passesCompiled = true;
+        jobs.push(this.compilePasses(composer, previous));
+      }
+    } finally {
+      renderer.setRenderTarget(previous);
+    }
+    await Promise.all(jobs);
+  }
+
+  /** compileAsync(root), with every mesh in `material` for the call. */
+  private compileIn(root: Object3D, material: Material): Promise<unknown> {
+    const own: [Mesh, Mesh['material']][] = [];
+    root.traverse((object) => {
+      if (object instanceof Mesh) {
+        own.push([object, object.material]);
+        object.material = material;
+      }
+    });
+    // compile() runs within the call; only the wait for the GPU is later.
+    try {
+      return this.renderer.compileAsync(root, this.camera, this.scene);
+    } finally {
+      for (const [mesh, material] of own) mesh.material = material;
+    }
+  }
+
+  /**
+   * Every pass's full-screen shaders: the last pass's as drawn to the screen
+   * (`screen`, the target bound outside the composer), the rest into a buffer.
+   */
+  private compilePasses(
+    composer: EffectComposer,
+    screen: WebGLRenderTarget | null,
+  ): Promise<unknown> {
+    const { renderer, camera } = this;
+    const quad = new PlaneGeometry(2, 2);
+    const offscreen = new Group();
+    const onscreen = new Group();
+    const passes = composer.passes.filter((pass) => pass.enabled);
+    passes.forEach((pass, index) => {
+      // OutputPass sets its defines inside its first render(), from the
+      // renderer. The same defines now let that frame reuse this shader.
+      if (pass instanceof OutputPass) pass.material.defines = outputDefines(renderer);
+      const into = index === passes.length - 1 ? onscreen : offscreen;
+      for (const material of shaderMaterials(pass)) into.add(new Mesh(quad, material));
+    });
+    const empty = new Scene();
+    const jobs: Promise<unknown>[] = [];
+    renderer.setRenderTarget(composer.readBuffer);
+    jobs.push(renderer.compileAsync(offscreen, camera, empty));
+    renderer.setRenderTarget(screen);
+    jobs.push(renderer.compileAsync(onscreen, camera, empty));
+    return Promise.all(jobs).finally(() => quad.dispose());
   }
 
   /** Draw a frame. `dt` is the last frame's length, for noticing a slow device. */
@@ -226,6 +366,8 @@ export class Finish {
     for (const pass of composer.passes) pass.dispose();
     composer.dispose();
     this.composer = null;
+    this.gtao = null;
+    this.passesCompiled = false;
     this.tiltH = null;
     this.tiltV = null;
   }
