@@ -37,6 +37,8 @@ export interface Surroundings {
   water: readonly (readonly SPoint[])[];
   green: readonly { kind: string; outline: readonly SPoint[] }[];
   trees: readonly SPoint[];
+  /** The campus's own plot, where OSM maps it (BRACU's: not the tower itself). */
+  plot?: readonly SPoint[];
 }
 
 export interface SiteRect {
