@@ -268,10 +268,11 @@ export function weathered(mat: MeshStandardMaterial): MeshStandardMaterial {
       '#include <map_fragment>',
       `#include <map_fragment>
   vec3 slabMean = texture2D( map, vMapUv, 12.0 ).rgb + 0.001;
-  // From a blurred level: magnified, the tile's hairline cracks would turn
-  // into dark rivers across the roof; blurred, only the stains survive.
-  vec3 broad = texture2D( map, vMapUv * 0.19 + 0.21, 3.5 ).rgb / slabMean;
-  vec3 broader = texture2D( map, vMapUv * 0.067 + 0.53, 4.0 ).rgb / slabMean;
+  // From a well-blurred level: magnified, the tile's hairline cracks would
+  // turn into dark rivers and rings across the roof; blurred, only the
+  // stains survive.
+  vec3 broad = texture2D( map, vMapUv * 0.19 + 0.21, 5.0 ).rgb / slabMean;
+  vec3 broader = texture2D( map, vMapUv * 0.067 + 0.53, 5.5 ).rgb / slabMean;
   float damp = clamp( dot( broad * broader, vec3( 0.333 ) ), 0.4, 1.6 );
   diffuseColor.rgb *= mix( 1.0, damp, 1.3 );
   float mould = 1.0 - smoothstep( 0.7, 0.88, damp );
@@ -279,6 +280,83 @@ export function weathered(mat: MeshStandardMaterial): MeshStandardMaterial {
     );
   };
   mat.customProgramCacheKey = () => 'rs-weathered-slab';
+  return mat;
+}
+
+/** Value noise for the weathering shaders: one and two dimensions, in [0, 1]. */
+const NOISE_GLSL = `
+float rsHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
+float rsNoise( float x ) {
+  float i = floor( x );
+  float f = fract( x );
+  return mix( rsHash( vec2( i, 0.0 ) ), rsHash( vec2( i + 1.0, 0.0 ) ), f * f * ( 3.0 - 2.0 * f ) );
+}
+float rsNoise( vec2 p ) {
+  vec2 i = floor( p );
+  vec2 f = fract( p );
+  f = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( rsHash( i ), rsHash( i + vec2( 1.0, 0.0 ) ), f.x ), mix( rsHash( i + vec2( 0.0, 1.0 ) ), rsHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
+}`;
+
+/**
+ * A rendered wall weathers as a whole, not storey by storey: rain runs off
+ * the roof and the slab edges in long dark streaks that span several floors,
+ * one stretch of wall is cleaner than the next, and the foot of the wall is
+ * damp and green-grey where rain splashes up. The plaster's own tile repeats
+ * every storey; this varies it along the wall (in metres: `metresPerU` of
+ * them to one unit of the map's u) and up it (in metres above the ground).
+ */
+export function grimed(mat: MeshStandardMaterial, metresPerU: number): MeshStandardMaterial {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms['metresPerU'] = { value: metresPerU };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vWallHeight;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWallHeight = ( modelMatrix * vec4( transformed, 1.0 ) ).y;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying float vWallHeight;\nuniform float metresPerU;\n${NOISE_GLSL}`)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+  float along = vMapUv.x * metresPerU;
+  // Streaks: narrow, a few metres apart, each fading in and out over several
+  // storeys; gathered in some stretches of wall more than others.
+  float streak = pow( rsNoise( along * 1.7 ), 5.0 ) * smoothstep( 0.25, 0.7, rsNoise( along * 0.21 + 3.1 ) );
+  streak *= 0.35 + 0.65 * rsNoise( vec2( along * 0.9, vWallHeight * 0.09 ) );
+  // Broad stretches cleaner or dirtier, a few repaints apart.
+  float wash = 0.93 + 0.1 * rsNoise( along * 0.06 + 7.3 );
+  // Damp at the foot, with a ragged top edge.
+  float damp = 1.0 - smoothstep( 0.5, 1.4 + 0.6 * rsNoise( along * 1.3 ), vWallHeight );
+  diffuseColor.rgb *= wash * ( 1.0 - 0.42 * streak );
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( 0.62, 0.66, 0.6 ), damp * 0.8 );`,
+      );
+  };
+  mat.customProgramCacheKey = () => 'rs-grimed-wall';
+  return mat;
+}
+
+/**
+ * Clay tiles a decade old are not one red: black lichen runs down the slope
+ * in streaks under the ridge and the valleys, some patches have faded toward
+ * brown and others stayed darker, and the whole is duller than new tile.
+ * The tile map's u runs level along the roof and v up the slope.
+ */
+export function agedTiles(mat: MeshStandardMaterial): MeshStandardMaterial {
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${NOISE_GLSL}`)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+  vec2 at = vMapUv;
+  float lum = dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, vec3( lum ), 0.3 ) * vec3( 0.96, 0.9, 0.86 );
+  float fade = rsNoise( at * 0.35 + 1.7 ) * 0.6 + rsNoise( at * 1.1 + 4.2 ) * 0.4;
+  diffuseColor.rgb *= mix( vec3( 0.78, 0.8, 0.84 ), vec3( 1.12, 1.06, 0.98 ), fade );
+  float lichen = smoothstep( 0.55, 0.92, rsNoise( at.x * 2.3 ) ) * ( 0.4 + 0.6 * rsNoise( vec2( at.x * 2.3, at.y * 0.45 ) ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.03, 0.03, 0.025 ), lichen * 0.55 );`,
+      );
+  };
+  mat.customProgramCacheKey = () => 'rs-aged-tiles';
   return mat;
 }
 
@@ -448,7 +526,7 @@ export function buildBuildings(
 
     // Walls: this building's own copy of the plaster, so selection can tint it.
     const surface = b.facade === 'shed' ? P.plasterWarm : b.kind === 'hall' ? P.plasterWarm : P.plaster;
-    const wallMat = keep(texturedMaterial(surface, { roughness: 0.92 }));
+    const wallMat = keep(grimed(texturedMaterial(surface, { roughness: 0.92 }), 4));
     tintable.push(wallMat);
     add(wallGeometry(b.footprint, 0, top, storey), wallMat);
     add(wallGeometry(b.footprint, 0, 0.6, 0.6, 0.06), P.plinth, false);
@@ -597,7 +675,7 @@ export function buildBuildings(
       add(capGeometry(b.footprint, top), P.trim, false);
       const roofMat = keep(
         b.roof === 'hip'
-          ? tileMat.clone()
+          ? agedTiles(tileMat.clone())
           : b.kind === 'hall'
             ? hallSheetMat.clone()
             : shedSheetMat.clone(),
