@@ -134,8 +134,16 @@ export function addDaylight(
 
 export interface CitySetup {
   data: Surroundings;
-  /** The campus's own site (campus metres): the city leaves it to the campus. */
+  /** The campus's own site (campus metres): no mapped building or street tree stands in it. */
   site: SiteRect;
+  /**
+   * Where the city's ground is cut away for the campus's own (campus metres;
+   * defaults to `site`). The campus can take its ground away there, to open
+   * its basements, without the city's going too. BRACU's plot is far larger
+   * than its model's site: the plot is painted as campus ground and only the
+   * model's site is cut.
+   */
+  cut?: SiteRect;
   /** Half the side of the painted, mapped ground, metres. */
   extent: number;
   /** How far from the campus origin OSM's buildings were taken, metres. */
@@ -219,6 +227,12 @@ function paintNearGround(data: Surroundings, extent: number, size: number): HTML
     trace(b.outline);
     g.fill();
     g.stroke();
+  }
+  // The campus's plot, where it is mapped: its own paved grounds.
+  if (data.plot) {
+    trace(data.plot);
+    g.fillStyle = '#aca698';
+    g.fill();
   }
   for (const gr of data.green) {
     trace(gr.outline);
@@ -403,7 +417,8 @@ export async function buildCity(setup: CitySetup): Promise<City> {
   // The campus's site is cut out (groundMaterial insets a hole by 3 m, so
   // grow it by as much): the campus lays its own ground there, and can take
   // it away to open its basements without the city's going too.
-  const siteHole = { x1: site.x1 - 3, x2: site.x2 + 3, y1: site.y1 - 3, y2: site.y2 + 3 };
+  const c = setup.cut ?? site;
+  const siteHole = { x1: c.x1 - 3, x2: c.x2 + 3, y1: c.y1 - 3, y2: c.y2 + 3 };
   const near = new Mesh(keep(new PlaneGeometry(2 * extent, 2 * extent)), keep(groundMaterial(nearMap, detail, 2 * extent, siteHole)));
   near.rotation.x = -Math.PI / 2;
   near.position.y = groundY;
