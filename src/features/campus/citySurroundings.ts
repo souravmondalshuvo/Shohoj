@@ -150,7 +150,7 @@ export interface CitySetup {
 
 export interface City {
   group: Group;
-  /** What lies on the ground (hidden when a campus opens its basements). */
+  /** What lies on the ground. It never covers the campus's own site. */
   ground: Object3D[];
   /** How many mapped buildings and trees stand, and how many far blocks. */
   counts: { buildings: number; trees: number; far: number };
@@ -161,7 +161,7 @@ export interface City {
 const WASH_FAR = ['#d6d0c2', '#ded0b0', '#cfc7b8', '#bfc4c2', '#d8c4ae', '#c9c4b8', '#b7b2a6', '#e0dbd0'];
 
 /** Paint the mapped ground: dust and paving, plots, green, water, roads, and contact shade under buildings. */
-function paintNearGround(data: Surroundings, site: SiteRect, extent: number, size: number): HTMLCanvasElement {
+function paintNearGround(data: Surroundings, extent: number, size: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const g = canvas.getContext('2d');
@@ -280,11 +280,6 @@ function paintNearGround(data: Surroundings, site: SiteRect, extent: number, siz
     g.drawImage(shade, 0, 0);
     g.restore();
   }
-  // The campus paints itself: leave its site the plain dust colour.
-  const [sx1, sy1] = px([site.x1, site.y2]);
-  const [sx2, sy2] = px([site.x2, site.y1]);
-  g.fillStyle = '#9d978a';
-  g.fillRect(sx1, sy1, sx2 - sx1, sy2 - sy1);
   return canvas;
 }
 
@@ -403,9 +398,13 @@ export async function buildCity(setup: CitySetup): Promise<City> {
 
   // ── Ground: the mapped square, the far city's ground under and round it ──
   const detail = keep(groundDetail(613));
-  const nearCanvas = paintNearGround(data, site, extent, setup.light ? 1536 : 2048);
+  const nearCanvas = paintNearGround(data, extent, setup.light ? 1536 : 2048);
   const nearMap = keep(canvasTexture(nearCanvas));
-  const near = new Mesh(keep(new PlaneGeometry(2 * extent, 2 * extent)), keep(groundMaterial(nearMap, detail, 2 * extent)));
+  // The campus's site is cut out (groundMaterial insets a hole by 3 m, so
+  // grow it by as much): the campus lays its own ground there, and can take
+  // it away to open its basements without the city's going too.
+  const siteHole = { x1: site.x1 - 3, x2: site.x2 + 3, y1: site.y1 - 3, y2: site.y2 + 3 };
+  const near = new Mesh(keep(new PlaneGeometry(2 * extent, 2 * extent)), keep(groundMaterial(nearMap, detail, 2 * extent, siteHole)));
   near.rotation.x = -Math.PI / 2;
   near.position.y = groundY;
   near.receiveShadow = true;
