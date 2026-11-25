@@ -254,6 +254,15 @@ Each step is marked on the page's performance timeline as `quest3d:<step>`
 On an iPhone 14 Plus before this ordering, the zone appeared after about 5 s,
 the people 4 s later, and their first frame froze the page for 2.8 s.
 
+A shader compiled ahead only helps if it is the one the frame asks for, and
+three.js keys shaders by more than the material (`Finish.compile` in
+`game/effects3d.ts` lists what). Measure a change on a first visit, never a
+second: browsers keep compiled shaders between visits, on macOS even across
+fresh profiles, so a repeat run hides the problem. On the main site, a first
+visit on a laptop froze for 2.1 s on "high" and 1.0 s on "low" while the shadow
+type and the composer's buffer were keyed wrong. Once compiled as drawn, both
+first frames take about 0.1 s.
+
 The people are rigged, animated models (`game/people3d.ts`): Quaternius's
 CC0 Universal Base Characters, moved by his CC0 Universal Animation Library,
 built into `assets/people/{man,woman}.glb.gz` by
