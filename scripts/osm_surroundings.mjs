@@ -20,7 +20,8 @@
  *   way["leisure"](bbox);node["natural"="tree"](bbox););out geom;
  *
  * The output is deterministic for a given input: ways sorted by id,
- * coordinates rounded to 0.1 m.
+ * coordinates rounded to the metre (context, not survey: it keeps the data
+ * small enough to ship), repeated corners dropped.
  */
 
 import { readFileSync } from 'node:fs';
@@ -37,6 +38,21 @@ const FRAMES = {
     site: { x1: -120, x2: 121, y1: -68, y2: 71 },
     radius: 520,
     name: 'NSU_SURROUNDINGS',
+  },
+  // BRACU, Merul Badda: src/features/campus/campusScene.ts. The model's +x
+  // points north and +z east (its road and planted wall face east, its field
+  // is south-west), so the frame is turned 90°: x north, y west. The origin is
+  // the tower's foot, read off Esri World Imagery and corrected for the
+  // image's lean (both the east and south façades show): within ~10 m. OSM
+  // maps the university's plot (way 1239676644) but not the tower; the plot
+  // is the campus's, kept clear and written out as `plot`.
+  bracu: {
+    lat: 23.773141,
+    lon: 90.424344,
+    turnDeg: 90,
+    campusWay: 1239676644,
+    radius: 520,
+    name: 'BRACU_SURROUNDINGS',
   },
 };
 
@@ -91,12 +107,18 @@ const s = Math.sin(turn);
 function project(lat, lon) {
   const e = ((lon - frame.lon) * Math.PI * R * cosLat) / 180;
   const n = ((lat - frame.lat) * Math.PI * R) / 180;
-  return [Math.round((e * c + n * s) * 10) / 10, Math.round((-e * s + n * c) * 10) / 10];
+  return [Math.round(e * c + n * s), Math.round(-e * s + n * c)];
 }
 
-const inSite = ([x, y]) =>
-  x > frame.site.x1 && x < frame.site.x2 && y > frame.site.y1 && y < frame.site.y2;
+// `site` is set once the extract is read (below): the frame's own rectangle,
+// or the campus's plot grown by 2 m.
+const inSite = ([x, y]) => x > site.x1 && x < site.x2 && y > site.y1 && y < site.y2;
 const near = ([x, y]) => Math.hypot(x, y) <= frame.radius;
+
+/** Drop a corner that rounding has made the same as the one before it. */
+function dedupe(points) {
+  return points.filter((p, i) => i === 0 || p[0] !== points[i - 1][0] || p[1] !== points[i - 1][1]);
+}
 
 function closed(points) {
   const a = points[0];
@@ -120,6 +142,21 @@ function levelsOf(tags) {
 const data = JSON.parse(readFileSync(inputPath, 'utf8'));
 const elements = [...data.elements].sort((a, b) => a.id - b.id);
 
+const campusEl = frame.campusWay ? elements.find((e) => e.id === frame.campusWay) : undefined;
+if (frame.campusWay && !campusEl) {
+  console.error(`campus way ${frame.campusWay} is not in the extract`);
+  process.exit(1);
+}
+const plot = campusEl ? closed(dedupe(campusEl.geometry.map((g) => project(g.lat, g.lon)))) : null;
+const site = plot
+  ? {
+      x1: Math.min(...plot.map((p) => p[0])) - 2,
+      x2: Math.max(...plot.map((p) => p[0])) + 2,
+      y1: Math.min(...plot.map((p) => p[1])) - 2,
+      y2: Math.max(...plot.map((p) => p[1])) + 2,
+    }
+  : frame.site;
+
 const buildings = [];
 const roads = [];
 const water = [];
@@ -136,7 +173,7 @@ for (const el of elements) {
     continue;
   }
   if (!el.geometry || el.geometry.length < 2) continue;
-  const pts = el.geometry.map((g) => project(g.lat, g.lon));
+  const pts = dedupe(el.geometry.map((g) => project(g.lat, g.lon)));
   if (tags.building && tags.building !== 'no' && tags.building !== 'roof') {
     const outline = closed(pts);
     const mid = centroid(outline);
@@ -200,6 +237,7 @@ out.push(`  green: [`);
 for (const g of green) out.push(`    { kind: '${g.kind}', outline: ${pts(g.outline)} },`);
 out.push(`  ],`);
 out.push(`  trees: ${pts(trees)},`);
+if (plot) out.push(`  plot: ${pts(plot)},`);
 out.push(`};`);
 process.stdout.write(`${out.join('\n')}\n`);
 console.error(
