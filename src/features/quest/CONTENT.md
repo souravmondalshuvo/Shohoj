@@ -243,6 +243,17 @@ on "high" for about three seconds is moved to "low", with less grass and a
 smaller shadow map. `&quest3dq=high` or
 `&quest3dq=low` in the address forces one, to compare.
 
+Loading is ordered for a phone. The people's models are requested as the
+zone starts to be built; the scene's shaders, and then the people's, are
+compiled in the background (`compileAsync`) before they are first drawn, so
+neither the first frame nor the people stepping in holds the page still.
+Each step is marked on the page's performance timeline as `quest3d:<step>`
+(`start`, `built`, `compiled`, `ready`, `first-frame`, `people-arrived`,
+`people-swapped`, `people-frame`, …): read them with
+`performance.getEntriesByType('mark')` to see where a device spends its time.
+On an iPhone 14 Plus before this ordering, the zone appeared after about 5 s,
+the people 4 s later, and their first frame froze the page for 2.8 s.
+
 The people are rigged, animated models (`game/people3d.ts`): Quaternius's
 CC0 Universal Base Characters, moved by his CC0 Universal Animation Library,
 built into `assets/people/{man,woman}.glb.gz` by
