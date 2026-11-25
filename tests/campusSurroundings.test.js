@@ -11,7 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { NSU_SITE } from '../src/core/campusNsu.ts';
-import { farCity, insidePolygon, outlineArea, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
+import { farCity, insidePolygon, outlineArea, roadTraffic, streetPoles, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
 import { BRACU_SURROUNDINGS } from '../src/core/surroundingsBracu.generated.ts';
 import { NSU_SURROUNDINGS } from '../src/core/surroundingsNsu.generated.ts';
 import { urbanPlan } from '../src/features/campus/rsNeighbours.ts';
@@ -128,4 +128,46 @@ test('the shoelace area is signed by winding', () => {
     const square = [[0, 0], [10, 0], [10, 10], [0, 10]];
     assert.equal(outlineArea(square), 100);
     assert.equal(outlineArea([...square].reverse()), -100);
+});
+
+test('traffic stays on the roads, off the campus, buses on the main roads only', () => {
+    const traffic = roadTraffic(NSU_SURROUNDINGS, NSU_SITE);
+    assert.deepEqual(roadTraffic(NSU_SURROUNDINGS, NSU_SITE), traffic);
+    assert.ok(traffic.length > 300, `vehicles: ${traffic.length}`);
+    const kinds = new Set(traffic.map((v) => v.kind));
+    for (const k of ['car', 'cng', 'rickshaw']) assert.ok(kinds.has(k), k);
+    const roads = NSU_SURROUNDINGS.roads.filter((r) => !r.kind.startsWith('water-'));
+    for (const v of traffic) {
+        assert.ok(!inSite([v.x, v.y], NSU_SITE), `on the campus at ${v.x}, ${v.y}`);
+        // On a road: within half its width of its line (a little slack for the kerb).
+        let best = Infinity;
+        let width = 0;
+        for (const r of roads) {
+            for (let i = 1; i < r.path.length; i++) {
+                const d = segmentDistance([v.x, v.y], r.path[i - 1], r.path[i]);
+                if (d < best) {
+                    best = d;
+                    width = r.width;
+                }
+            }
+        }
+        assert.ok(best <= width / 2 + 0.01, `${best.toFixed(2)} m off a ${width} m road`);
+        if (v.kind === 'bus') assert.ok(width >= 10, `a bus on a ${width} m road`);
+    }
+    const half = roadTraffic(NSU_SURROUNDINGS, NSU_SITE, 2).length;
+    assert.ok(half < traffic.length * 0.7, `${half} of ${traffic.length}`);
+});
+
+test('poles stand off the campus and out of buildings, with cables only between neighbours', () => {
+    const { poles, spans } = streetPoles(NSU_SURROUNDINGS, NSU_SITE);
+    assert.deepEqual(streetPoles(NSU_SURROUNDINGS, NSU_SITE), { poles, spans });
+    assert.ok(poles.length > 100 && spans.length > 50, `${poles.length} poles, ${spans.length} spans`);
+    for (const p of poles) {
+        assert.ok(!inSite([p.x, p.y], NSU_SITE), `on the campus at ${p.x}, ${p.y}`);
+        for (const b of NSU_SURROUNDINGS.buildings) assert.ok(!insidePolygon([p.x, p.y], b.outline), `in a building at ${p.x}, ${p.y}`);
+    }
+    for (const [a, b] of spans) {
+        const d = Math.hypot(poles[a].x - poles[b].x, poles[a].y - poles[b].y);
+        assert.ok(d > 5 && d < 45, `a ${d.toFixed(1)} m span`);
+    }
 });
