@@ -454,13 +454,23 @@ export function groundMaterial(
   // shimmer); broader patches of lighter and darker, greener and drier
   // ground at the two coarser scales, which also hide the tile's repeat.
   float detailNear = 1.0 - smoothstep( 15.0, 260.0, length( vViewPosition ) );
+  // Blades only where the map is grass or earth: paving is a grey of low
+  // saturation (measured near enough to sRGB through a square root), and
+  // streaked with blades it read as rippled water in the shade.
+  vec3 srgbish = sqrt( max( diffuseColor.rgb, vec3( 0.0 ) ) );
+  float hi = max( srgbish.r, max( srgbish.g, srgbish.b ) );
+  float sat = ( hi - min( srgbish.r, min( srgbish.g, srgbish.b ) ) ) / ( hi + 0.001 );
+  float soil = smoothstep( 0.17, 0.3, sat );
   vec3 blades = texture2D( detailMap, vMapUv * detailRepeat ).rgb * 2.0;
-  diffuseColor.rgb *= mix( vec3( 1.0 ), blades, 0.55 + 0.75 * detailNear );
+  // Paving: the same texture blurred and greyed, a mottle of wear and grit.
+  float grit = dot( texture2D( detailMap, vMapUv * detailRepeat * 0.6 + 0.13, 1.5 ).rgb, vec3( 0.333 ) ) * 2.0;
+  vec3 fine = mix( vec3( mix( 1.0, grit, 0.45 ) ), blades, soil );
+  diffuseColor.rgb *= mix( vec3( 1.0 ), fine, 0.55 + 0.75 * detailNear );
   diffuseColor.rgb *= mix( 1.0, texture2D( detailMap, vMapUv * detailRepeat / 9.0 + 0.37 ).r * 2.0, 0.8 );
   float patchy = texture2D( detailMap, vMapUv * detailRepeat / 31.0 + 0.71 ).r * 2.0 - 1.0;
   diffuseColor.rgb *= vec3( 1.0 + 0.10 * patchy, 1.0 + 0.02 * patchy, 1.0 - 0.10 * patchy );`,
       );
   };
-  mat.customProgramCacheKey = () => (hole ? 'rs-ground-detail-2-holed' : 'rs-ground-detail-2');
+  mat.customProgramCacheKey = () => (hole ? 'rs-ground-detail-3-holed' : 'rs-ground-detail-3');
   return mat;
 }
