@@ -74,12 +74,14 @@ export function wallGeometry(
   storey: number,
   outset = 0,
   inward = false,
+  /** Metres into the texture to start at: buildings sharing a texture differ. */
+  uStart = 0,
 ): BufferGeometry {
   const pts = ccw(outline);
   const pos: number[] = [];
   const uv: number[] = [];
   const idx: number[] = [];
-  let run = 0;
+  let run = uStart;
   for (let i = 0; i < pts.length; i++) {
     const a = corner(pts, i);
     const b = corner(pts, i + 1);
