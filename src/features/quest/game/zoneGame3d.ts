@@ -701,6 +701,10 @@ class Zone3d implements ZoneGame {
   private readonly people: Person[] = [];
   private peopleKit: People | null = null;
   private readonly peopleAbort = new AbortController();
+  /** The people's models, requested as soon as the zone starts to be built. */
+  private readonly peopleLoad: Promise<People>;
+  /** The scene's shaders are compiled and the zone is drawing. */
+  private prepared = false;
   /** Squares of the jetty, "x,y": people there stand on its planks. */
   private jettyCells = new Set<string>();
   /** Which way the hero faces; the model turns towards it. */
@@ -734,11 +738,20 @@ class Zone3d implements ZoneGame {
   private destroyed = false;
   private tapT = 1;
   private framed = false;
+  /** The next frame is a milestone: its start and end are marked (mark). */
+  private timing: string | null = 'first-frame';
   private readonly cameraTarget = new Vector3();
   private readonly resize: ResizeObserver;
   private readonly cleanups: (() => void)[] = [];
 
   constructor(options: ZoneGameOptions) {
+    mark('start');
+    // The models download while the place is built, not after it is drawn.
+    mark('people-requested');
+    this.peopleLoad = loadPeople(this.peopleAbort.signal);
+    // Settled here so a failure before setup finishes is never "unhandled";
+    // dressPeople reads the outcome.
+    this.peopleLoad.catch(() => undefined);
     this.options = options;
     this.state = options.state;
     this.grid = walkGrid(options.map, options.state.completed);
@@ -774,6 +787,7 @@ class Zone3d implements ZoneGame {
       this.scene.fog = new Fog(haze, 20, 52);
 
       const quality = pickQuality(this.renderer, this.coarse);
+      mark('renderer');
 
       // Late afternoon: the sky's own light on everything (effects3d.ts), a
       // low warm sun in the west for shadows, a little green bounce from below.
@@ -782,6 +796,7 @@ class Zone3d implements ZoneGame {
       undo.push(() => sky.dispose());
       this.scene.environment = sky.texture;
       this.scene.environmentIntensity = 0.14;
+      mark('sky');
       this.scene.add(new HemisphereLight('#dfe9ff', '#5a7a3a', 0.55));
       this.sun = new DirectionalLight('#ffd49a', 2.7);
       this.sun.castShadow = true;
@@ -809,6 +824,7 @@ class Zone3d implements ZoneGame {
       this.ground = ground;
       undo.push(() => ground.dispose());
       this.scene.add(...this.ground.objects);
+      mark('ground');
       this.scene.add(buildSurroundings(this.kit, this.description, banks));
       const { water, material } = buildWater(this.kit, this.description, banks);
       this.waterMaterial = material;
@@ -822,6 +838,7 @@ class Zone3d implements ZoneGame {
 
       this.hero = person(this.kit, 'hero');
       this.people.unshift(this.hero);
+      mark('built');
       const heroAt = this.standing(this.cell);
       this.hero.group.position.copy(heroAt);
       this.scene.add(this.hero.group);
@@ -894,49 +911,93 @@ class Zone3d implements ZoneGame {
       resize.observe(options.parent);
       this.fit();
     } catch (error) {
+      this.peopleAbort.abort();
       for (const step of undo.reverse()) step();
       for (const cleanup of this.cleanups) cleanup();
       for (const thing of this.kit.disposables) thing.dispose();
       this.renderer.dispose();
       throw error;
     }
-    this.renderer.setAnimationLoop(() => this.frame());
-    this.options.onEvent({ kind: 'ready' });
-    this.loadPeople();
+    this.renderer.domElement.dataset['questPeople'] = 'loading';
+    void this.prepare();
+    void this.dressPeople();
   }
 
-  /** Swap the shapes for rigged models, if they load. If not, keep the shapes. */
-  private loadPeople(): void {
+  /**
+   * Compile the scene's shaders before its first frame, then start drawing.
+   * Compiled on the first frame instead, they hold the page still for a
+   * second on a laptop and several on a phone. Where the browser compiles in
+   * the background (KHR_parallel_shader_compile: Safari, Chrome), the page
+   * stays responsive meanwhile, the "Loading…" note showing, and the people's
+   * models are read in the same time.
+   */
+  private async prepare(): Promise<void> {
+    try {
+      await this.renderer.compileAsync(this.scene, this.camera);
+    } catch {
+      // They are compiled on the first frame instead.
+    }
+    if (this.destroyed) return;
+    mark('compiled');
+    this.prepared = true;
+    if (!this.paused) this.renderer.setAnimationLoop(() => this.frame());
+    else this.finish.render();
+    mark('ready');
+    this.options.onEvent({ kind: 'ready' });
+  }
+
+  /**
+   * Swap the shapes for rigged models, if they load. If not, keep the shapes.
+   * Their shaders are compiled before the swap, so they step in without the
+   * zone stopping for it.
+   */
+  private async dressPeople(): Promise<void> {
     const canvas = this.renderer.domElement;
-    canvas.dataset['questPeople'] = 'loading';
-    loadPeople(this.peopleAbort.signal)
-      .then((kit) => {
-        if (this.destroyed) {
-          kit.dispose();
-          return;
-        }
-        this.peopleKit = kit;
-        for (const someone of this.people) {
-          const outfit = OUTFITS[someone.look];
-          if (!outfit) continue;
-          const figure = kit.figure(outfit);
-          // The shapes' geometry stays with the kit, freed with the zone.
-          someone.group.clear();
-          someone.group.add(figure.root);
-          someone.figure = figure;
-        }
-        // The shapes stood a little high for their bob; models stand on the ground.
-        for (const idler of this.idlers) idler.person.group.position.y = idler.base;
-        canvas.dataset['questPeople'] = 'models';
-        if (this.paused) this.finish.render();
-      })
-      .catch((error: unknown) => {
-        if (this.destroyed) return;
-        canvas.dataset['questPeople'] = 'shapes';
-        // The shapes are a fine fallback for a student, but a broken asset
-        // deployment should not look like one in the console.
-        console.warn('Shohoj Quest: the people models did not load; drawing shapes.', error);
-      });
+    let kit: People;
+    try {
+      kit = await this.peopleLoad;
+    } catch (error) {
+      if (this.destroyed) return;
+      canvas.dataset['questPeople'] = 'shapes';
+      // The shapes are a fine fallback for a student, but a broken asset
+      // deployment should not look like one in the console.
+      console.warn('Shohoj Quest: the people models did not load; drawing shapes.', error);
+      return;
+    }
+    mark('people-arrived');
+    if (this.destroyed) {
+      kit.dispose();
+      return;
+    }
+    this.peopleKit = kit;
+    const dressed: { someone: Person; figure: Figure }[] = [];
+    const waiting = new Group();
+    for (const someone of this.people) {
+      const outfit = OUTFITS[someone.look];
+      if (!outfit) continue;
+      const figure = kit.figure(outfit);
+      waiting.add(figure.root);
+      dressed.push({ someone, figure });
+    }
+    try {
+      await this.renderer.compileAsync(waiting, this.camera, this.scene);
+    } catch {
+      // Compiled when they are first drawn instead.
+    }
+    if (this.destroyed) return;
+    mark('people-compiled');
+    for (const { someone, figure } of dressed) {
+      // The shapes' geometry stays with the kit, freed with the zone.
+      someone.group.clear();
+      someone.group.add(figure.root);
+      someone.figure = figure;
+    }
+    // The shapes stood a little high for their bob; models stand on the ground.
+    for (const idler of this.idlers) idler.person.group.position.y = idler.base;
+    canvas.dataset['questPeople'] = 'models';
+    mark('people-swapped');
+    this.timing = 'people-frame';
+    if (this.paused && this.prepared) this.finish.render();
   }
 
   // ── Called by the page ────────────────────────────────────────────────────
@@ -955,6 +1016,8 @@ class Zone3d implements ZoneGame {
     this.presses = [];
     this.held.clear();
     this.hover.visible = false;
+    // Until its shaders are compiled the zone is not drawn (prepare).
+    if (!this.prepared) return;
     // Nothing moves behind a panel: stop drawing, for a phone's battery.
     if (paused) {
       this.renderer.setAnimationLoop(null);
@@ -1598,7 +1661,13 @@ class Zone3d implements ZoneGame {
     const wanted = this.clampTarget(hero.group.position);
     this.cameraTarget.lerp(wanted, 1 - Math.exp(-dt * 5));
     this.placeCamera();
+    const timing = this.timing;
+    if (timing) mark(`${timing}-start`);
     this.finish.render(dt);
+    if (timing) {
+      mark(timing);
+      this.timing = null;
+    }
   }
 
   /**
@@ -1671,6 +1740,18 @@ class Zone3d implements ZoneGame {
   private standing(cell: Cell): Vector3 {
     const at = centre(cell);
     return at.setY(this.groundUnder(at.x, at.z));
+  }
+}
+
+/**
+ * Marks a step of setting the zone up on the page's performance timeline, as
+ * "quest3d:<name>", so a device's load can be measured step by step.
+ */
+function mark(name: string): void {
+  try {
+    performance.mark(`quest3d:${name}`);
+  } catch {
+    /* no timeline to mark */
   }
 }
 
