@@ -257,6 +257,79 @@ export function corrugated(base: readonly [number, number, number], seed: number
   return { map: toCanvasTexture(px, true), normalMap: normalMap(height, size, 3) };
 }
 
+/**
+ * A shop's rolling shutter, pale so a per-shop colour tints it: some thirty
+ * pressed slats over the full height of the map, grimier towards the foot.
+ * Mapped once over a whole shutter (a unit box's face), so the slats keep
+ * their pitch whatever its width.
+ */
+export function shutter(seed: number): Texture {
+  const size = 128;
+  const px = pixels(size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const slat = Math.sin((y / size) * 30 * Math.PI * 2);
+      const lit = 0.84 + 0.16 * slat - (slat < -0.85 ? 0.22 : 0);
+      // Canvas rows run downward: the foot is at the bottom of the map.
+      const foot = Math.max(0, y / size - 0.7) * 0.9;
+      const n = fbm(x / size, y / size, 5, 3, seed);
+      const v = 236 * lit * (0.9 + 0.14 * n) * (1 - foot);
+      px.set(y * size + x, clamp(v), clamp(v), clamp(v * 0.97));
+    }
+  }
+  return toCanvasTexture(px, true);
+}
+
+/**
+ * A shop's flex signboard, white so a per-shop colour tints it: a border and
+ * two lines of dark lettering, the big line in words joined along a headline
+ * as Bengali is written. Not any real text. Mapped once over a whole board
+ * about four times as wide as it is tall, so the letters are drawn narrow.
+ */
+export function signboard(seed: number): Texture {
+  const size = 256;
+  const px = pixels(size);
+  const r = rng(seed);
+  const ink = new Uint8Array(size * size);
+  const block = (x1: number, y1: number, x2: number, y2: number): void => {
+    for (let y = Math.max(0, Math.floor(y1)); y < Math.min(size, Math.ceil(y2)); y++) {
+      for (let x = Math.max(0, Math.floor(x1)); x < Math.min(size, Math.ceil(x2)); x++) ink[y * size + x] = 1;
+    }
+  };
+  // Border.
+  block(0, 0, size, 10);
+  block(0, size - 10, size, size);
+  // The big line: words of letters hung from a headline.
+  let x = 14 + r() * 10;
+  while (x < size - 30) {
+    const letters = 2 + Math.floor(r() * 4);
+    const start = x;
+    for (let k = 0; k < letters && x < size - 16; k++) {
+      const w = 7 + r() * 6;
+      const drop = 70 + r() * 40;
+      block(x, 40, x + w * 0.35, 40 + drop);
+      if (r() < 0.6) block(x + w * 0.35, 40 + drop - 14, x + w, 40 + drop);
+      if (r() < 0.5) block(x + w * 0.65, 50, x + w, 40 + drop * 0.6);
+      x += w + 2;
+    }
+    block(start - 2, 34, x, 44);
+    x += 10 + r() * 8;
+  }
+  // The small line: an address or a phone number.
+  x = 30 + r() * 30;
+  while (x < size - 40) {
+    const w = 3 + r() * 3;
+    block(x, 176, x + w, 176 + 26 + r() * 8);
+    x += w + 2 + (r() < 0.2 ? 6 : 0);
+  }
+  for (let i = 0; i < size * size; i++) {
+    const n = fbm((i % size) / size, Math.floor(i / size) / size, 4, 2, seed + 1);
+    const v = ink[i] ? 34 : 240 * (0.93 + 0.07 * n);
+    px.set(i, clamp(v), clamp(v), clamp(ink[i] ? 40 : v));
+  }
+  return toCanvasTexture(px, true);
+}
+
 /** A stained concrete roof slab; the tile is 8 m square. */
 export function concrete(seed: number, base = 172): SurfaceTextures {
   const size = 512;
