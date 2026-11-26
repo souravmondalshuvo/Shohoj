@@ -444,3 +444,51 @@ export function streetPoles(
   }
   return { poles, spans };
 }
+
+/**
+ * Whether a point is on a street front: within `reach` metres of the kerb of
+ * a road that carries shops (the roads that carry street trees, not service
+ * lanes, footways or canals). The mapped roads are bucketed on a 20 m grid
+ * once, so asking for every side of every block stays cheap.
+ */
+export function streetFront(data: Surroundings): (p: SPoint, reach: number) => boolean {
+  const CELL = 20;
+  const grid = new Map<string, Array<{ a: SPoint; b: SPoint; half: number }>>();
+  for (const rd of data.roads) {
+    if (!TREE_ROADS.has(rd.kind)) continue;
+    const half = rd.width / 2;
+    for (let i = 1; i < rd.path.length; i++) {
+      const a = rd.path[i - 1];
+      const b = rd.path[i];
+      if (!a || !b) continue;
+      const seg = { a, b, half };
+      // Every cell the segment's box (grown by the road's half width) touches.
+      const x1 = Math.floor((Math.min(a[0], b[0]) - half) / CELL);
+      const x2 = Math.floor((Math.max(a[0], b[0]) + half) / CELL);
+      const y1 = Math.floor((Math.min(a[1], b[1]) - half) / CELL);
+      const y2 = Math.floor((Math.max(a[1], b[1]) + half) / CELL);
+      for (let gx = x1; gx <= x2; gx++) {
+        for (let gy = y1; gy <= y2; gy++) {
+          const key = `${gx},${gy}`;
+          const list = grid.get(key) ?? [];
+          list.push(seg);
+          grid.set(key, list);
+        }
+      }
+    }
+  }
+  return (p, reach) => {
+    const gx1 = Math.floor((p[0] - reach) / CELL);
+    const gx2 = Math.floor((p[0] + reach) / CELL);
+    const gy1 = Math.floor((p[1] - reach) / CELL);
+    const gy2 = Math.floor((p[1] + reach) / CELL);
+    for (let gx = gx1; gx <= gx2; gx++) {
+      for (let gy = gy1; gy <= gy2; gy++) {
+        for (const s of grid.get(`${gx},${gy}`) ?? []) {
+          if (segmentDistance(p, s.a, s.b) <= s.half + reach) return true;
+        }
+      }
+    }
+    return false;
+  };
+}
