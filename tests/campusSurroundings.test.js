@@ -3,7 +3,8 @@
  * The city round a Dhaka campus map: the OpenStreetMap extract for NSU stays
  * off the campus and within its radius; buildings are drawn as tall as OSM
  * says, or a likely height for the plot; street trees keep off roads,
- * buildings, water and the campus; the illustrative city stays in its ring.
+ * buildings, water and the campus; the illustrative city stays in its ring;
+ * shops face only the streets.
  * All of it is seeded, so it repeats exactly.
  */
 
@@ -11,7 +12,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { NSU_SITE } from '../src/core/campusNsu.ts';
-import { farCity, insidePolygon, outlineArea, roadTraffic, streetPoles, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
+import { farCity, insidePolygon, outlineArea, roadTraffic, streetFront, streetPoles, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
 import { BRACU_SURROUNDINGS } from '../src/core/surroundingsBracu.generated.ts';
 import { NSU_SURROUNDINGS } from '../src/core/surroundingsNsu.generated.ts';
 import { urbanPlan } from '../src/features/campus/rsNeighbours.ts';
@@ -170,4 +171,28 @@ test('poles stand off the campus and out of buildings, with cables only between 
         const d = Math.hypot(poles[a].x - poles[b].x, poles[a].y - poles[b].y);
         assert.ok(d > 5 && d < 45, `a ${d.toFixed(1)} m span`);
     }
+});
+
+test('a street front is the kerb of a road with shops on it, not a lane or the campus middle', () => {
+    const front = streetFront(NSU_SURROUNDINGS);
+    const shopping = new Set(['primary', 'secondary', 'tertiary', 'trunk', 'residential', 'unclassified', 'living_street']);
+    let checked = 0;
+    for (const r of NSU_SURROUNDINGS.roads) {
+        const [a, b] = r.path;
+        if (!a || !b) continue;
+        const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        if (shopping.has(r.kind)) {
+            // On the road, and just past its kerb.
+            assert.ok(front(mid, 0), `${r.kind} at ${mid}`);
+            const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+            const off = [mid[0] - ((b[1] - a[1]) / len) * (r.width / 2 + 3), mid[1] + ((b[0] - a[0]) / len) * (r.width / 2 + 3)];
+            assert.ok(front(off, 4), `3 m past a ${r.kind}'s kerb at ${off}`);
+            checked++;
+        }
+    }
+    assert.ok(checked > 50, `checked ${checked}`);
+    // The middle of the campus is nowhere near a street.
+    assert.equal(front([0, 0], 6), false);
+    // Nothing is a front without roads.
+    assert.equal(streetFront({ ...NSU_SURROUNDINGS, roads: [] })([0, 0], 1000), false);
 });
