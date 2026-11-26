@@ -29,6 +29,8 @@ import {
   Quaternion,
   type Texture,
   Color,
+  Float32BufferAttribute,
+  IcosahedronGeometry,
   SRGBColorSpace,
   Vector3,
 } from 'three';
@@ -36,7 +38,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import { polygonArea, type Point, type RsRect } from '../../core/campusBracuRs.ts';
 import { capGeometry, gableGeometry, grimed, rectCorners, wallGeometry, weathered } from './rsBuildings.ts';
-import { CITY_WINDOW, VILLAGE_WINDOW, brick, concrete, corrugated, facadeSet, rng, type SurfaceTextures } from './rsTextures.ts';
+import { CITY_WINDOW, VILLAGE_WINDOW, brick, concrete, corrugated, facadeSet, rng, shutter, signboard, type SurfaceTextures } from './rsTextures.ts';
 
 /** Colour washes seen on Savar's houses: off-white, cream, yellow, sky, mint, salmon. */
 const WASHES: ReadonlyArray<readonly [number, number, number]> = [
@@ -207,7 +209,31 @@ export interface CityStyle {
    * would hide them and they would only cost frames.
    */
   detailRadius: number;
+  /**
+   * Whether a point (campus metres, x east and y north) is within `reach` of
+   * a street's kerb. A block's sides that face one get shops on the ground
+   * floor, under their signboards; without it, no side does.
+   */
+  street?: (p: readonly [number, number], reach: number) => boolean;
 }
+
+/** Roof slabs in a Dhaka neighbourhood: mostly bare concrete, some washed pale, some stained, a few painted red oxide or green against the rain. */
+const ROOF_TINTS: ReadonlyArray<readonly [number, number, number]> = [
+  [1, 1, 1],
+  [1, 1, 1],
+  [1.12, 1.1, 1.06],
+  [1.12, 1.1, 1.06],
+  [0.78, 0.76, 0.72],
+  [0.86, 0.85, 0.82],
+  [1.05, 0.7, 0.58],
+  [0.86, 0.98, 0.88],
+];
+/** Water tanks on Dhaka roofs: black plastic mostly, then blue, then cream. */
+const TANK_COLOURS = ['#1b1d1f', '#1b1d1f', '#1b1d1f', '#24476b', '#2f5f8f', '#d9d6cb'];
+/** Shutters as they are painted: plain galvanised grey most, then blue, green, red. */
+const SHUTTER_COLOURS = ['#9a9d9e', '#8c9092', '#a7a59d', '#4d6f8f', '#4f7a5a', '#8f3b31'];
+/** Flex signboards, loud. */
+const SIGN_COLOURS = ['#d23a2e', '#1f8a4c', '#1f5fa8', '#f0c02a', '#f4f2ea', '#e2712b', '#b0306a', '#2a9bb0'];
 
 /**
  * Every footprint raised as `plans` say (by index), or by Savar's mix
@@ -273,8 +299,11 @@ export function buildNeighbours(
   const slabMat = keep(weathered(new MeshStandardMaterial({ map: slab.map, roughness: 0.95 })));
   if (slab.normalMap) slabMat.normalMap = slab.normalMap;
   const parapetMat = keep(new MeshStandardMaterial({ color: '#a9a69c', roughness: 0.95 }));
-  const tankMat = keep(new MeshStandardMaterial({ color: '#1b1d1f', roughness: 0.5 }));
+  // White: each tank's own colour is its instance colour.
+  const tankMat = keep(new MeshStandardMaterial({ color: '#ffffff', roughness: 0.5 }));
   const stubMat = keep(new MeshStandardMaterial({ color: '#8d8a82', roughness: 0.9 }));
+  // Each roof's tint rides on its vertices (white, so unchanged, off the city).
+  slabMat.vertexColors = true;
 
   const buckets = new Map<Material, BufferGeometry[]>();
   const put = (mat: Material, geo: BufferGeometry): void => {
@@ -283,7 +312,14 @@ export function buildNeighbours(
     if (geo.index) geo.dispose();
     buckets.set(mat, list);
   };
-  const tanks: Matrix4[] = [];
+  const tanks: Array<{ m: Matrix4; c: Color }> = [];
+  const tankBlack = new Color('#1b1d1f');
+  // Street-front shops: shutters (rolled down), open fronts, and signboards.
+  const shutters: Array<{ m: Matrix4; c: Color }> = [];
+  const openings: Matrix4[] = [];
+  const signs: Array<Array<{ m: Matrix4; c: Color }>> = [[], [], []];
+  // Potted plants along a roof's parapet.
+  const pots: Array<{ m: Matrix4; c: Color }> = [];
   const heads: Matrix4[] = [];
   const stubs: Matrix4[] = [];
   // Floor ledges and balconies: unit boxes, tinted to their building's wash.
@@ -338,6 +374,70 @@ export function buildNeighbours(
     }
   }
 
+  /**
+   * Shops along every side of a block that faces a street: a row of bays
+   * between piers on the ground floor, each a shop open to the street or
+   * shuttered, with its signboard over it — some boards spanning two bays.
+   */
+  function addShops(
+    rect: RsRect,
+    along: (u: number, v: number) => Vector3,
+    q: Quaternion,
+    r: () => number,
+    street: (p: readonly [number, number], reach: number) => boolean,
+  ): void {
+    const L = rect.length;
+    const W = rect.width;
+    // Each side: its middle, the direction along it, its length, and whether it runs along u.
+    const sides = [
+      { u: 0, v: W / 2, len: L, long: true, out: 1 },
+      { u: 0, v: -W / 2, len: L, long: true, out: -1 },
+      { u: L / 2, v: 0, len: W, long: false, out: 1 },
+      { u: -L / 2, v: 0, len: W, long: false, out: -1 },
+    ];
+    for (const side of sides) {
+      if (side.len < 4) continue;
+      // Two metres out from the wall: a street within six of that is this side's.
+      const probe = side.long ? along(side.u, side.v + side.out * 2) : along(side.u + side.out * 2, side.v);
+      if (!street([probe.x, -probe.z], 6)) continue;
+      const bays = Math.max(1, Math.floor(side.len / 3.2));
+      const bay = side.len / bays;
+      const w = bay - 0.4;
+      let board = 0;
+      for (let j = 0; j < bays; j++) {
+        const t = -side.len / 2 + (j + 0.5) * bay;
+        // (u, v) of a point `d` out from this side, `t` along it.
+        const at = (d: number): Vector3 => (side.long ? along(t, side.v + side.out * d) : along(side.u + side.out * d, t));
+        const place = (d: number, y: number, sw: number, sh: number, sd: number): Matrix4 => {
+          const p = at(d);
+          p.y = y;
+          return new Matrix4().compose(p, q, side.long ? new Vector3(sw, sh, sd) : new Vector3(sd, sh, sw));
+        };
+        if (r() < 0.55) {
+          openings.push(place(0.03, 1.1, w, 2.2, 0.08));
+        } else {
+          const c = new Color(SHUTTER_COLOURS[Math.floor(r() * SHUTTER_COLOURS.length)] ?? '#9a9d9e');
+          shutters.push({ m: place(0.05, 1.1, w, 2.2, 0.08), c });
+        }
+        if (board > 0) {
+          board--;
+          continue;
+        }
+        if (r() < 0.12) continue;
+        const span = j + 1 < bays && r() < 0.3 ? 2 : 1;
+        board = span - 1;
+        const bw = span * bay - 0.3;
+        // A two-bay board centres between the bays; its top clears the first-floor ledge.
+        const shift = (span - 1) * bay * 0.5;
+        const p = side.long ? along(t + shift, side.v + side.out * 0.18) : along(side.u + side.out * 0.18, t + shift);
+        p.y = 2.55 + r() * 0.06;
+        const m = new Matrix4().compose(p, q, side.long ? new Vector3(bw, 0.78, 0.06) : new Vector3(0.06, 0.78, bw));
+        const c = new Color(SIGN_COLOURS[Math.floor(r() * SIGN_COLOURS.length)] ?? '#d23a2e');
+        signs[Math.floor(r() * signs.length)]?.push({ m, c });
+      }
+    }
+  }
+
   footprints.forEach((nb, i) => {
     const area = Math.abs(polygonArea(nb));
     if (area < 8) return;
@@ -367,7 +467,13 @@ export function buildNeighbours(
 
     const h = plan.storeys * 3.1;
     put(wallMat, wallGeometry(nb, 0, h, 3.1, 0, false, city ? r() * 60 : 0));
-    put(slabMat, capGeometry(nb, h));
+    const cap = capGeometry(nb, h);
+    const tint = city ? (ROOF_TINTS[Math.floor(rng(5100 + i)() * ROOF_TINTS.length)] ?? [1, 1, 1]) : [1, 1, 1];
+    const count = cap.getAttribute('position').count;
+    const tints = new Float32Array(count * 3);
+    for (let k = 0; k < count; k++) tints.set(tint, k * 3);
+    cap.setAttribute('color', new Float32BufferAttribute(tints, 3));
+    put(slabMat, cap);
     // Parapet: both faces and its top.
     put(parapetMat, wallGeometry(nb, h, h + 0.9, 3.1));
     put(parapetMat, wallGeometry(nb, h, h + 0.9, 3.1, -0.15, true));
@@ -379,9 +485,10 @@ export function buildNeighbours(
         0,
         -(rect.cy + Math.sin(ang) * u + Math.cos(ang) * v),
       );
-    if (city && plan.storeys >= 3 && gableFits(nb) && Math.hypot(rect.cx, rect.cy) <= city.detailRadius) {
-      addRelief(rect, plan, along, q, r);
-    }
+    const near = city !== null && gableFits(nb) && Math.hypot(rect.cx, rect.cy) <= city.detailRadius;
+    if (near && plan.storeys >= 3) addRelief(rect, plan, along, q, r);
+    // Their own generators, so the rest of the block (and Savar) draws as before.
+    if (near && city?.street && plan.storeys >= 2) addShops(rect, along, q, rng(6100 + i), city.street);
     if (plan.stairHead) {
       const p = along(rect.length * (r() - 0.5) * 0.5, rect.width * (r() - 0.5) * 0.4);
       p.y = h + 1.3;
@@ -390,7 +497,31 @@ export function buildNeighbours(
     if (plan.tank) {
       const p = along(rect.length * (r() - 0.5) * 0.6, rect.width * (r() - 0.5) * 0.5);
       p.y = h + (plan.stairHead ? 2.6 : 0) + 0.8;
-      tanks.push(new Matrix4().compose(p, q, new Vector3(1, 1, 1)));
+      tanks.push({ m: new Matrix4().compose(p, q, new Vector3(1, 1, 1)), c: tankBlack });
+    }
+    if (city) {
+      // A city roof carries more: a tank or two more on the slab, in black,
+      // blue or cream, and on some a row of potted plants along the parapet.
+      const rr = rng(5300 + i);
+      const extra = rect.length * rect.width > 120 ? Math.floor(rr() * 3) : 0;
+      for (let k = 0; k < extra; k++) {
+        const p = along(rect.length * (rr() - 0.5) * 0.7, rect.width * (rr() - 0.5) * 0.6);
+        p.y = h + 0.8;
+        const c = new Color(TANK_COLOURS[Math.floor(rr() * TANK_COLOURS.length)] ?? '#1b1d1f');
+        const s = 0.8 + rr() * 0.4;
+        tanks.push({ m: new Matrix4().compose(p, q, new Vector3(s, 1, s)), c });
+      }
+      if (plan.storeys >= 3 && gableFits(nb) && rr() < 0.3) {
+        const n = 3 + Math.floor(rr() * 6);
+        const side = rr() < 0.5 ? 1 : -1;
+        for (let k = 0; k < n; k++) {
+          const p = along(-rect.length / 2 + 1 + ((k + 0.5) * (rect.length - 2)) / n, side * (rect.width / 2 - 0.8));
+          const s = 0.5 + rr() * 0.5;
+          p.y = h + s * 0.5;
+          const c = new Color().setHSL(0.22 + rr() * 0.1, 0.45, 0.22 + rr() * 0.12, SRGBColorSpace);
+          pots.push({ m: new Matrix4().compose(p, q, new Vector3(s, s, s)), c });
+        }
+      }
     }
     if (plan.stubs) {
       for (const [u, v] of [
@@ -427,7 +558,34 @@ export function buildNeighbours(
     m.computeBoundingSphere();
     group.add(m);
   };
-  addInstanced(tankGeo, tankMat, tanks);
+  const addTinted = (geo: BufferGeometry, mat: Material, list: Array<{ m: Matrix4; c: Color }>, shadow = true): void => {
+    if (list.length === 0) return;
+    const m = new InstancedMesh(geo, mat, list.length);
+    list.forEach((x, k) => {
+      m.setMatrixAt(k, x.m);
+      m.setColorAt(k, x.c);
+    });
+    m.castShadow = shadow;
+    m.receiveShadow = true;
+    m.computeBoundingSphere();
+    group.add(m);
+  };
+  addTinted(tankGeo, tankMat, tanks);
+  if (shutters.length + openings.length > 0) {
+    const shutterMap = keep(shutter(731));
+    addTinted(unit, keep(new MeshStandardMaterial({ map: shutterMap, roughness: 0.5, metalness: 0.35 })), shutters, false);
+    // An open shop: its dim inside, seen past the street's glare.
+    addInstanced(unit, keep(new MeshStandardMaterial({ color: '#221e1a', roughness: 0.9 })), openings);
+  }
+  signs.forEach((list, k) => {
+    if (list.length === 0) return;
+    const map = keep(signboard(741 + k));
+    addTinted(unit, keep(new MeshStandardMaterial({ map, roughness: 0.55 })), list, false);
+  });
+  if (pots.length > 0) {
+    const bush = keep(new IcosahedronGeometry(0.55, 0));
+    addTinted(bush, keep(new MeshStandardMaterial({ roughness: 0.9, flatShading: true })), pots);
+  }
   if (relief.length > 0) {
     const reliefMat = keep(new MeshStandardMaterial({ roughness: 0.92 }));
     const m = new InstancedMesh(unit, reliefMat, relief.length);
