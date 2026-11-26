@@ -688,7 +688,8 @@ class Zone3d implements ZoneGame {
   private readonly sun: DirectionalLight;
   private readonly ground: Ground;
   private readonly finish: Finish;
-  private readonly skyTarget: { dispose(): void };
+  /** The sky's light, made by light(). */
+  private skyTarget: { dispose(): void } | null = null;
   private readonly clock = new Clock();
   private readonly calm: boolean;
   private readonly coarse: boolean;
@@ -703,6 +704,11 @@ class Zone3d implements ZoneGame {
   private readonly peopleAbort = new AbortController();
   /** The people's models, requested as soon as the zone starts to be built. */
   private readonly peopleLoad: Promise<People>;
+  /**
+   * The sky's light is made (or could not be). Every shader is compiled after
+   * it: three.js keys a lit material's shader by whether the scene has one.
+   */
+  private readonly lit: Promise<void>;
   /** The scene's shaders are compiled and the zone is drawing. */
   private prepared = false;
   /** Squares of the jetty, "x,y": people there stand on its planks. */
@@ -793,14 +799,9 @@ class Zone3d implements ZoneGame {
       const quality = pickQuality(this.renderer, this.coarse);
       mark('renderer');
 
-      // Late afternoon: the sky's own light on everything (effects3d.ts), a
-      // low warm sun in the west for shadows, a little green bounce from below.
-      const sky = skyLight(this.renderer, SUN);
-      this.skyTarget = sky;
-      undo.push(() => sky.dispose());
-      this.scene.environment = sky.texture;
-      this.scene.environmentIntensity = 0.14;
-      mark('sky');
+      // Late afternoon: the sky's own light on everything (effects3d.ts; made
+      // by light()), a low warm sun in the west for shadows, a little green
+      // bounce from below.
       this.scene.add(new HemisphereLight('#dfe9ff', '#5a7a3a', 0.55));
       this.sun = new DirectionalLight('#ffd49a', 2.7);
       this.sun.castShadow = true;
@@ -923,8 +924,31 @@ class Zone3d implements ZoneGame {
       throw error;
     }
     this.renderer.domElement.dataset['questPeople'] = 'loading';
+    this.lit = this.light();
     void this.prepare();
     void this.dressPeople();
+  }
+
+  /**
+   * The sky's own light on everything (effects3d.ts). Made after the zone is
+   * built rather than with it, so its shaders compile in the background.
+   */
+  private async light(): Promise<void> {
+    try {
+      const sky = await skyLight(this.renderer, SUN);
+      if (this.destroyed) {
+        sky.dispose();
+        return;
+      }
+      this.skyTarget = sky;
+      this.scene.environment = sky.texture;
+      this.scene.environmentIntensity = 0.14;
+      mark('sky');
+    } catch (error) {
+      // Lit by the sun and the hemisphere alone: flatter, but the zone plays.
+      // (A zone closed meanwhile has nothing to say.)
+      if (!this.destroyed) console.warn('Shohoj Quest: the sky light could not be made.', error);
+    }
   }
 
   /**
@@ -936,6 +960,8 @@ class Zone3d implements ZoneGame {
    * models are read in the same time.
    */
   private async prepare(): Promise<void> {
+    await this.lit;
+    if (this.destroyed) return;
     try {
       await this.finish.compile(this.scene);
     } catch {
@@ -983,6 +1009,10 @@ class Zone3d implements ZoneGame {
       waiting.add(figure.root);
       dressed.push({ someone, figure });
     }
+    // Models can arrive before the sky's light is made: compiled without it,
+    // they would compile again on the frame that first draws them.
+    await this.lit;
+    if (this.destroyed) return;
     try {
       await this.finish.compile(waiting);
     } catch {
@@ -1000,7 +1030,9 @@ class Zone3d implements ZoneGame {
     for (const idler of this.idlers) idler.person.group.position.y = idler.base;
     canvas.dataset['questPeople'] = 'models';
     mark('people-swapped');
-    this.timing = 'people-frame';
+    // Swapped in before the zone's first frame, they are drawn by it, and it
+    // keeps its own name.
+    if (this.timing !== 'first-frame') this.timing = 'people-frame';
     if (this.paused && this.prepared) this.finish.render();
   }
 
@@ -1043,7 +1075,7 @@ class Zone3d implements ZoneGame {
     for (const thing of this.kit.disposables) thing.dispose();
     this.ground.dispose();
     this.finish.dispose();
-    this.skyTarget.dispose();
+    this.skyTarget?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
@@ -1725,7 +1757,8 @@ class Zone3d implements ZoneGame {
       this.cameraTarget.copy(this.clampTarget(this.hero.group.position));
     }
     this.placeCamera();
-    if (this.paused) this.finish.render();
+    // Until its shaders are compiled the zone is not drawn (prepare).
+    if (this.paused && this.prepared) this.finish.render();
   }
 
   /**
