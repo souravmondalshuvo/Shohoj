@@ -40,6 +40,7 @@ import {
   PMREMGenerator,
   Quaternion,
   Scene,
+  Path,
   Shape,
   ShapeGeometry,
   SRGBColorSpace,
@@ -56,6 +57,7 @@ import {
   outlineArea,
   roadTraffic,
   seeded,
+  streetFront,
   streetPoles,
   streetTrees,
   urbanStoreys,
@@ -67,6 +69,7 @@ import {
 } from '../../core/campusSurroundings.ts';
 import { groundMaterial } from './rsGround.ts';
 import { treeMeshes, type CountryTree } from './rsLandscape.ts';
+import { detailSurface } from './modelSurfaces.ts';
 import { buildNeighbours, urbanPlan } from './rsNeighbours.ts';
 import { fbm, groundDetail } from './rsTextures.ts';
 
@@ -577,6 +580,22 @@ export async function buildCity(setup: CitySetup): Promise<City> {
     ground.push(mesh);
   }
 
+  // ── The campus's plot, where it is mapped: paved in slabs (#1012) ───────
+  // Round the cut only, so the campus can still open its basements there.
+  if (data.plot && data.plot.length >= 3) {
+    const shape = new Shape(data.plot.map((p) => new Vector2(p[0], p[1])));
+    shape.holes.push(
+      new Path([new Vector2(c.x1, c.y1), new Vector2(c.x2, c.y1), new Vector2(c.x2, c.y2), new Vector2(c.x1, c.y2)]),
+    );
+    const paving = keep(detailSurface(new MeshStandardMaterial({ color: '#aca698', roughness: 0.92 }), 'masonry', { tile: 1, groundY }));
+    const plot = new Mesh(keep(new ShapeGeometry(shape)), paving);
+    plot.rotation.x = -Math.PI / 2;
+    plot.position.y = groundY + 0.02;
+    plot.receiveShadow = true;
+    group.add(plot);
+    ground.push(plot);
+  }
+
   await nextFrame();
   // ── The mapped buildings ──────────────────────────────────────────────────
   const footprints = data.buildings.map((b) => b.outline);
@@ -584,7 +603,7 @@ export async function buildCity(setup: CitySetup): Promise<City> {
     const area = Math.abs(outlineArea(b.outline));
     return urbanPlan(area, urbanStoreys(area, b.levels, i), i);
   });
-  const neighbours = buildNeighbours(footprints, plans, { detailRadius: setup.light ? 0 : 300 });
+  const neighbours = buildNeighbours(footprints, plans, { detailRadius: setup.light ? 0 : 300, street: streetFront(data) });
   disposables.push(neighbours);
   neighbours.group.position.y = groundY;
   group.add(neighbours.group);
