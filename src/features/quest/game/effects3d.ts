@@ -39,6 +39,7 @@
 import {
   ACESFilmicToneMapping,
   AgXToneMapping,
+  BoxGeometry,
   CineonToneMapping,
   ColorManagement,
   CustomToneMapping,
@@ -47,6 +48,7 @@ import {
   LinearToneMapping,
   Mesh,
   NeutralToneMapping,
+  PerspectiveCamera,
   PlaneGeometry,
   ReinhardToneMapping,
   ShaderMaterial,
@@ -93,11 +95,29 @@ export function pickQuality(renderer: WebGLRenderer, coarse: boolean): Quality {
   return 'high';
 }
 
+/** How far the sky is blurred before it lights the scene, in radians. */
+const SKY_BLUR = 0.04;
+
+/**
+ * The step of PMREMGenerator (three r187) that draws with a material. It is
+ * private, so it is read with care: if a later three.js renames it, the sky
+ * light is still made, only with its shaders compiled as it is drawn
+ * (tests/questSkyLight.test.js says so first).
+ */
+interface PmremInside {
+  _renderCube?: (target: unknown, lod: number, material: Material) => void;
+}
+
 /**
  * The sky, rendered once into an environment map that lights the scene.
  * `sun` points from the ground towards the sun.
+ *
+ * Four shaders draw it: the sky's own, and the PMREM generator's blur, GGX and
+ * integration. Each is compiled in the background first (compileSkyLight).
+ * Compiled as fromScene first draws with it instead, they held the page still
+ * for about 0.4 s on a first visit, before anything of the zone was shown.
  */
-export function skyLight(renderer: WebGLRenderer, sun: Vector3): WebGLRenderTarget {
+export async function skyLight(renderer: WebGLRenderer, sun: Vector3): Promise<WebGLRenderTarget> {
   const sky = new Sky();
   sky.scale.setScalar(100);
   const uniforms = sky.material.uniforms;
@@ -109,13 +129,74 @@ export function skyLight(renderer: WebGLRenderer, sun: Vector3): WebGLRenderTarg
   const scene = new Scene();
   scene.add(sky);
   const pmrem = new PMREMGenerator(renderer);
-  // The render target, not just its texture: the caller must dispose the
-  // target to free its framebuffer when the zone closes.
-  const target = pmrem.fromScene(scene, 0.04);
-  pmrem.dispose();
-  sky.geometry.dispose();
-  sky.material.dispose();
-  return target;
+  try {
+    try {
+      await compileSkyLight(renderer, pmrem, scene);
+    } catch {
+      // Compiled as fromScene draws instead.
+    }
+    // The render target, not just its texture: the caller must dispose the
+    // target to free its framebuffer when the zone closes.
+    return pmrem.fromScene(scene, SKY_BLUR);
+  } finally {
+    pmrem.dispose();
+    sky.geometry.dispose();
+    sky.material.dispose();
+  }
+}
+
+/**
+ * Compile the shaders `pmrem.fromScene(sky)` will draw with, without holding
+ * the page while the graphics driver builds them (compileAsync).
+ *
+ * The generator makes its own materials as it first needs them, and keeps
+ * them. A dry run on an empty scene, with its drawing step stood in for, makes
+ * them and hands them over: an empty scene is only cleared, so nothing in it
+ * compiles. The real run then draws with those same materials.
+ *
+ * Every pass of fromScene draws into a render target, and three.js keys a
+ * shader by whether one is bound (no tone mapping, the working colour space),
+ * not by which: so one is bound while they compile.
+ */
+async function compileSkyLight(
+  renderer: WebGLRenderer,
+  pmrem: PMREMGenerator,
+  sky: Scene,
+): Promise<void> {
+  const materials = new Set<Material>();
+  const inside = pmrem as unknown as PmremInside;
+  if (typeof inside._renderCube === 'function') {
+    inside._renderCube = (_target, _lod, material) => {
+      materials.add(material);
+    };
+    try {
+      pmrem.fromScene(new Scene(), SKY_BLUR).dispose();
+    } finally {
+      // The prototype's own step again.
+      delete inside._renderCube;
+    }
+  }
+  const box = new BoxGeometry(5, 5, 5);
+  const passes = new Group();
+  for (const material of materials) passes.add(new Mesh(box, material));
+  // As each face of a cube camera sees.
+  const camera = new PerspectiveCamera(90, 1, 0.1, 100);
+  const bound = new WebGLRenderTarget(1, 1, { type: HalfFloatType });
+  const previous = renderer.getRenderTarget();
+  const waiting: Promise<unknown>[] = [];
+  try {
+    renderer.setRenderTarget(bound);
+    waiting.push(renderer.compileAsync(sky, camera));
+    if (materials.size > 0) waiting.push(renderer.compileAsync(passes, camera));
+  } finally {
+    renderer.setRenderTarget(previous);
+  }
+  try {
+    await Promise.all(waiting);
+  } finally {
+    bound.dispose();
+    box.dispose();
+  }
 }
 
 /** Warmth, richness and a soft vignette, after tone mapping. */
