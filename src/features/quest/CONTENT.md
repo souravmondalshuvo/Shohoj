@@ -263,6 +263,14 @@ visit on a laptop froze for 2.1 s on "high" and 1.0 s on "low" while the shadow
 type and the composer's buffer were keyed wrong. Once compiled as drawn, both
 first frames take about 0.1 s.
 
+The sky's light (`skyLight`) is made first, then everything is compiled for a
+scene that has it: a lit material's shader is keyed by whether there is one,
+so the people wait for it too, even when their models arrive sooner. Its own
+four shaders (the sky and the PMREM generator's three passes) compile in the
+background like the rest. Built in the zone's constructor instead, they held
+the page still for about 0.4 s before anything showed; now no step of the
+load holds it for more than about 0.17 s on "high" and 0.09 s on "low".
+
 The people are rigged, animated models (`game/people3d.ts`): Quaternius's
 CC0 Universal Base Characters, moved by his CC0 Universal Animation Library,
 built into `assets/people/{man,woman}.glb.gz` by
