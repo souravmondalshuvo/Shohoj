@@ -74,6 +74,7 @@ import {
   isSoftwareRenderer,
   type ExteriorModelState,
 } from './campusModel.ts';
+import { detailModel, detailSurface } from './modelSurfaces.ts';
 import type { RoomStatus, RoomTooltip } from './campusScene.ts';
 
 export interface NsuSceneColors {
@@ -254,7 +255,8 @@ export function createNsuCampusScene(
   // --- Site ----------------------------------------------------------------
   // Replaced by the model's own grounds once it loads.
   const drawnSite = [
-    slab(NSU_SITE, -0.35, 0.5, flat('#c4c0b4')),
+    // The base slab stays under the model, where it is the open paving: cut in slabs (#1012).
+    slab(NSU_SITE, -0.35, 0.5, detailSurface(flat('#c4c0b4'), 'masonry', { tile: 0.6, groundY: 0 })),
     slab(NSU_COURTYARD, -0.05, 0.12, flat('#b9b3a4')),
     slab(NSU_PLAYGROUND, -0.05, 0.12, flat('#6f9d62')),
   ];
@@ -416,6 +418,9 @@ export function createNsuCampusScene(
     root.traverse((object) => {
       if (object instanceof Mesh) object.castShadow = object.receiveShadow = true;
     });
+    // The model is flat colour: lay its brick in courses, cut its paving
+    // into slabs and weather its walls, in the shader (#1012).
+    detailModel(root, { tile: 0.6, groundY: 0 });
     scene.add(root);
     const ground = GROUND_NODES.flatMap((name) => root.getObjectByName(name) ?? []);
     campusModel = { root, buildings, ground };
