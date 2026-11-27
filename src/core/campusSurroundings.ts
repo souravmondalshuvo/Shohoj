@@ -446,16 +446,13 @@ export function streetPoles(
 }
 
 /**
- * Whether a point is on a street front: within `reach` metres of the kerb of
- * a road that carries shops (the roads that carry street trees, not service
- * lanes, footways or canals). The mapped roads are bucketed on a 20 m grid
- * once, so asking for every side of every block stays cheap.
+ * Roads bucketed on a 20 m grid, and a test for whether a point is within
+ * `reach` of a carriageway's edge (0: on the carriageway itself).
  */
-export function streetFront(data: Surroundings): (p: SPoint, reach: number) => boolean {
+function roadIndex(roads: readonly SurroundingRoad[]): (p: SPoint, reach: number) => boolean {
   const CELL = 20;
   const grid = new Map<string, Array<{ a: SPoint; b: SPoint; half: number }>>();
-  for (const rd of data.roads) {
-    if (!TREE_ROADS.has(rd.kind)) continue;
+  for (const rd of roads) {
     const half = rd.width / 2;
     for (let i = 1; i < rd.path.length; i++) {
       const a = rd.path[i - 1];
@@ -491,4 +488,221 @@ export function streetFront(data: Surroundings): (p: SPoint, reach: number) => b
     }
     return false;
   };
+}
+
+/**
+ * Whether a point is on a street front: within `reach` metres of the kerb of
+ * a road that carries shops (the roads that carry street trees, not service
+ * lanes, footways or canals). The mapped roads are bucketed on a 20 m grid
+ * once, so asking for every side of every block stays cheap.
+ */
+export function streetFront(data: Surroundings): (p: SPoint, reach: number) => boolean {
+  return roadIndex(data.roads.filter((rd) => TREE_ROADS.has(rd.kind)));
+}
+
+/** Someone on foot: where, which way they face, how tall, and seeds for their clothes and skin. */
+export interface Person {
+  x: number;
+  y: number;
+  turn: number;
+  height: number;
+  tone: number;
+  skin: number;
+}
+
+function person(x: number, y: number, turn: number, r: () => number): Person {
+  return { x, y, turn, height: 1.5 + r() * 0.28, tone: r(), skin: r() };
+}
+
+function inBuilding(p: SPoint, built: readonly Box[]): boolean {
+  return built.some(
+    (bb) =>
+      p[0] > bb.x1 && p[0] < bb.x2 && p[1] > bb.y1 && p[1] < bb.y2 && insidePolygon(p, bb.outline),
+  );
+}
+
+/**
+ * People on the footpaths within `reach` of the campus: walking along both
+ * sides of each street, the busier the street the more, and a few stopped
+ * and facing the road. Never on a carriageway, in a building or on the
+ * campus site. Illustrative, not a count. `density` thins them. Seeded.
+ */
+export function pedestrians(
+  data: Surroundings,
+  site: SiteRect,
+  reach: number,
+  density = 1,
+): Person[] {
+  const thin = Number.isFinite(density) && density > 0 ? density : 1;
+  const r = seeded(4800);
+  const built = boxes(
+    data.buildings.map((b) => b.outline),
+    0.3,
+  );
+  const onRoad = roadIndex(data.roads.filter((rd) => !rd.kind.startsWith('water-')));
+  const out: Person[] = [];
+  for (const rd of data.roads) {
+    const rate = TRAFFIC[rd.kind];
+    if (rate === undefined) continue;
+    for (let i = 1; i < rd.path.length; i++) {
+      const a = rd.path[i - 1];
+      const b = rd.path[i];
+      if (!a || !b) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 2) continue;
+      if (segmentDistance([0, 0], a, b) > reach) continue;
+      const ux = (b[0] - a[0]) / len;
+      const uy = (b[1] - a[1]) / len;
+      const count = Math.floor((len / 9) * (rate / thin) + r());
+      for (let k = 0; k < count; k++) {
+        const s = r() * len;
+        const side = r() < 0.5 ? -1 : 1;
+        const off = rd.width / 2 + 0.6 + r() * 1.4;
+        const p: SPoint = [a[0] + ux * s - uy * off * side, a[1] + uy * s + ux * off * side];
+        const stopped = r() < 0.2;
+        const along = Math.atan2(uy, ux) + (r() < 0.5 ? Math.PI : 0);
+        const turn = stopped
+          ? Math.atan2(uy, ux) - (side * Math.PI) / 2
+          : along + (r() - 0.5) * 0.3;
+        if (
+          Math.hypot(p[0], p[1]) > reach ||
+          inSite(p, site, 1) ||
+          onRoad(p, 0) ||
+          inBuilding(p, built)
+        )
+          continue;
+        out.push(person(p[0], p[1], turn, r));
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * About `count` people on an open plaza: inside `area`, clear of every rect
+ * in `avoid` (buildings, grown a little) and of `keepOut`. Some stand in
+ * twos and threes, facing each other. Seeded by `seed`.
+ */
+export function plazaPeople(
+  area: readonly SPoint[],
+  avoid: readonly SiteRect[],
+  keepOut: SiteRect | null,
+  count: number,
+  seed: number,
+): Person[] {
+  const r = seeded(seed);
+  const xs = area.map((p) => p[0]);
+  const ys = area.map((p) => p[1]);
+  const [x1, x2, y1, y2] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const clear = (p: SPoint): boolean =>
+    insidePolygon(p, area) &&
+    !avoid.some((a) => inSite(p, a, 0)) &&
+    !(keepOut && inSite(p, keepOut, 0));
+  const out: Person[] = [];
+  for (let tries = 0; out.length < count && tries < count * 30; tries++) {
+    const c: SPoint = [x1 + r() * (x2 - x1), y1 + r() * (y2 - y1)];
+    if (!clear(c)) continue;
+    const group = r() < 0.3 ? 2 + Math.floor(r() * 2) : 1;
+    for (let g = 0; g < group && out.length < count; g++) {
+      const ang = (g / group) * Math.PI * 2 + r();
+      const p: SPoint = group > 1 ? [c[0] + Math.cos(ang) * 0.6, c[1] + Math.sin(ang) * 0.6] : c;
+      if (!clear(p)) continue;
+      // In a group, face its middle; alone, any way.
+      const turn = group > 1 ? Math.atan2(c[1] - p[1], c[0] - p[0]) : r() * Math.PI * 2;
+      out.push(person(p[0], p[1], turn, r));
+    }
+  }
+  return out;
+}
+
+/** How far a point is outside a rect (0 inside it). */
+function outside(p: SPoint, rect: SiteRect): number {
+  const dx = Math.max(rect.x1 - p[0], 0, p[0] - rect.x2);
+  const dy = Math.max(rect.y1 - p[1], 0, p[1] - rect.y2);
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Cycle rickshaws waiting for fares where a street runs along the campus's
+ * edge: up to `max` rows of them, each parked nose-in at an angle to the kerb
+ * on the campus's side, at least 40 m apart. Out of buildings and off the
+ * site. Seeded.
+ */
+export function rickshawStands(data: Surroundings, site: SiteRect, max = 6): Vehicle[] {
+  const r = seeded(4900);
+  const built = boxes(
+    data.buildings.map((b) => b.outline),
+    0.3,
+  );
+  // Each stretch of road that runs within 20 m of the site's edge.
+  const runs: Array<{
+    a: SPoint;
+    ux: number;
+    uy: number;
+    from: number;
+    to: number;
+    side: number;
+    half: number;
+  }> = [];
+  for (const rd of data.roads) {
+    if (TRAFFIC[rd.kind] === undefined || rd.width < 4) continue;
+    for (let i = 1; i < rd.path.length; i++) {
+      const a = rd.path[i - 1];
+      const b = rd.path[i];
+      if (!a || !b) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 10) continue;
+      const ux = (b[0] - a[0]) / len;
+      const uy = (b[1] - a[1]) / len;
+      let from = -1;
+      const close = (s: number): boolean => {
+        const d = outside([a[0] + ux * s, a[1] + uy * s], site);
+        return d > 0 && d <= 20;
+      };
+      for (let s = 0; s <= len; s += 2) {
+        if (close(s) && from < 0) from = s;
+        if ((!close(s) || s + 2 > len) && from >= 0) {
+          const to = close(s) ? s : s - 2;
+          if (to - from >= 10) {
+            // The kerb on the site's side: whichever side's kerb is nearer it.
+            const m = (from + to) / 2;
+            const at = (side: number): SPoint => [
+              a[0] + ux * m - uy * side * rd.width,
+              a[1] + uy * m + ux * side * rd.width,
+            ];
+            const side = outside(at(1), site) < outside(at(-1), site) ? 1 : -1;
+            runs.push({ a, ux, uy, from, to, side, half: rd.width / 2 });
+          }
+          from = -1;
+        }
+      }
+    }
+  }
+  runs.sort((p, q) => q.to - q.from - (p.to - p.from));
+  const out: Vehicle[] = [];
+  const stands: SPoint[] = [];
+  for (const run of runs) {
+    if (stands.length >= max) break;
+    const mid: SPoint = [
+      run.a[0] + run.ux * ((run.from + run.to) / 2),
+      run.a[1] + run.uy * ((run.from + run.to) / 2),
+    ];
+    if (stands.some((s) => Math.hypot(s[0] - mid[0], s[1] - mid[1]) < 40)) continue;
+    stands.push(mid);
+    const n = Math.min(12, Math.floor((run.to - run.from - 2) / 1.7));
+    const off = run.half - 1.1;
+    const heading = Math.atan2(run.uy, run.ux);
+    for (let k = 0; k < n; k++) {
+      const s = run.from + 1 + k * 1.7 + (r() - 0.5) * 0.3;
+      const p: SPoint = [
+        run.a[0] + run.ux * s - run.uy * off * run.side,
+        run.a[1] + run.uy * s + run.ux * off * run.side,
+      ];
+      if (inSite(p, site, 1) || inBuilding(p, built)) continue;
+      // Nose to the kerb, at an angle.
+      const turn = heading + run.side * 1.1 + (r() - 0.5) * 0.5;
+      out.push({ x: p[0], y: p[1], turn, kind: 'rickshaw', tone: r() });
+    }
+  }
+  return out;
 }
