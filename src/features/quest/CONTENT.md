@@ -271,6 +271,17 @@ background like the rest. Built in the zone's constructor instead, they held
 the page still for about 0.4 s before anything showed; now no step of the
 load holds it for more than about 0.17 s on "high" and 0.09 s on "low".
 
+Two shaders were still built on a frame after that, and only a phone showed
+it: the sun's shadow pass draws every mesh that casts a shadow again, in
+three's depth material, and `compile()` never sees that pass. On an iPhone's
+first visit the shadow shader of the animated people stopped the frame they
+appear in for 1.4 s, and the scene's stopped the first frame for 0.4 s.
+`Finish.compileShadows` now compiles them with the rest, keyed as the pass
+asks (its side turned over, no fog: the pass draws with no scene of its own).
+To find a shader built on a frame, record `shaderSource` calls between the
+`quest3d:` marks; a shader built twice with the same source differs only in
+its key, which `WebGLPrograms.getProgramCacheKey` lists.
+
 The people are rigged, animated models (`game/people3d.ts`): Quaternius's
 CC0 Universal Base Characters, moved by his CC0 Universal Animation Library,
 built into `assets/people/{man,woman}.glb.gz` by
