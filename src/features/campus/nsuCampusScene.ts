@@ -562,6 +562,8 @@ export function createNsuCampusScene(
       mesh.visible = !underground && (i === 0 || !campusModel);
     });
     for (const node of campusModel?.ground ?? []) node.visible = !underground;
+    // And the people standing on it.
+    if (city) city.onSite.visible = !underground;
     shadowsStale = true;
     for (const storey of storeys) {
       const own = storey.building === focusBuilding;
@@ -809,6 +811,22 @@ export function createNsuCampusScene(
           farOuter: 1700,
           groundY: -0.12,
           light: small,
+          // People about the plaza and the playground, clear of the buildings (#1016).
+          plazas: [
+            {
+              area: [
+                [NSU_SITE.x1 + 2, NSU_SITE.y1 + 2],
+                [NSU_SITE.x2 - 2, NSU_SITE.y1 + 2],
+                [NSU_SITE.x2 - 2, NSU_SITE.y2 - 2],
+                [NSU_SITE.x1 + 2, NSU_SITE.y2 - 2],
+              ],
+              avoid: model.buildings
+                .filter(({ building }) => !building.below)
+                .map(({ building: { rect } }) => ({ x1: rect.x1 - 2, x2: rect.x2 + 2, y1: rect.y1 - 2, y2: rect.y2 + 2 })),
+              count: 160,
+              y: 0,
+            },
+          ],
         });
         // Torn down while it was building: free it instead.
         if (disposed) {
