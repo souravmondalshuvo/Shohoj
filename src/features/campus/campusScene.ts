@@ -91,6 +91,7 @@ import {
     type ExteriorModelState,
 } from './campusModel.ts';
 import type { City, Daylight } from './citySurroundings.ts';
+import { bracuSurfaceKind, detailModel } from './modelSurfaces.ts';
 
 export type RoomStatus = 'free' | 'busy';
 
@@ -1170,6 +1171,8 @@ export function createCampusScene(
             farOuter: 1500,
             groundY: MODEL_GROUND_Y - 0.12,
             light: small,
+            // People about the plot's paving, clear of the model's own site (#1016).
+            plazas: [{ area: plot, avoid: [], keepOut: { x1: -45, x2: 45, y1: -35, y2: 38 }, count: 120, y: MODEL_GROUND_Y - 0.1 }],
         });
         if (disposed) {
             built.dispose();
@@ -1224,6 +1227,15 @@ export function createCampusScene(
                 // Before precompiling: the clipping plane is part of each
                 // material's shader, so it has to be there when they compile.
                 clipModel(gltf.scene);
+                // Also before: the tower is flat colour, so weather its
+                // concrete, lay its podium in brick and pave its forecourt in
+                // the shader (#1016).
+                detailModel(
+                    gltf.scene,
+                    // The tower's floor plate (its plaster's extent): the rooms inside it stay clean.
+                    { tile: 0.6, groundY: MODEL_GROUND_Y, indoors: { x1: -32, x2: 32, z1: -29.2, z2: 26.7 } },
+                    bracuSurfaceKind,
+                );
                 return gltf;
             })
             .then((gltf) =>
