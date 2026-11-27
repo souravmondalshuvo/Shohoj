@@ -4,7 +4,8 @@
  * off the campus and within its radius; buildings are drawn as tall as OSM
  * says, or a likely height for the plot; street trees keep off roads,
  * buildings, water and the campus; the illustrative city stays in its ring;
- * shops face only the streets.
+ * shops face only the streets; people keep to footpaths and plazas, and
+ * rickshaws wait at the kerb by the campus.
  * All of it is seeded, so it repeats exactly.
  */
 
@@ -12,7 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { NSU_SITE } from '../src/core/campusNsu.ts';
-import { farCity, insidePolygon, outlineArea, roadTraffic, streetFront, streetPoles, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
+import { farCity, insidePolygon, outlineArea, pedestrians, plazaPeople, rickshawStands, roadTraffic, streetFront, streetPoles, streetTrees, urbanStoreys } from '../src/core/campusSurroundings.ts';
 import { BRACU_SURROUNDINGS } from '../src/core/surroundingsBracu.generated.ts';
 import { NSU_SURROUNDINGS } from '../src/core/surroundingsNsu.generated.ts';
 import { urbanPlan } from '../src/features/campus/rsNeighbours.ts';
@@ -195,4 +196,58 @@ test('a street front is the kerb of a road with shops on it, not a lane or the c
     assert.equal(front([0, 0], 6), false);
     // Nothing is a front without roads.
     assert.equal(streetFront({ ...NSU_SURROUNDINGS, roads: [] })([0, 0], 1000), false);
+});
+
+const onCarriageway = (p, roads) =>
+    roads.some((r) => r.path.some((q, i) => i > 0 && segmentDistance(p, r.path[i - 1], q) <= r.width / 2));
+
+test('people keep to the footpaths: off the carriageway, out of buildings, off the campus', () => {
+    const people = pedestrians(NSU_SURROUNDINGS, NSU_SITE, 320);
+    assert.deepEqual(pedestrians(NSU_SURROUNDINGS, NSU_SITE, 320), people);
+    assert.ok(people.length > 200, `people: ${people.length}`);
+    const roads = NSU_SURROUNDINGS.roads.filter((r) => !r.kind.startsWith('water-'));
+    for (const p of people) {
+        const at = [p.x, p.y];
+        assert.ok(Math.hypot(p.x, p.y) <= 320, `${Math.hypot(p.x, p.y).toFixed(0)} m out`);
+        assert.ok(!inSite(at, NSU_SITE), `on the campus at ${at}`);
+        assert.ok(!onCarriageway(at, roads), `on a carriageway at ${at}`);
+        for (const b of NSU_SURROUNDINGS.buildings) assert.ok(!insidePolygon(at, b.outline), `in a building at ${at}`);
+        assert.ok(p.height >= 1.5 && p.height <= 1.78, String(p.height));
+    }
+    assert.ok(pedestrians(NSU_SURROUNDINGS, NSU_SITE, 320, 2).length < people.length * 0.7);
+});
+
+test('a plaza crowd stays on the plaza, clear of its buildings and the kept-out site', () => {
+    const area = [[-100, -60], [100, -60], [100, 60], [-100, 60]];
+    const avoid = [{ x1: -40, x2: 40, y1: -10, y2: 10 }];
+    const keepOut = { x1: 60, x2: 100, y1: 20, y2: 60 };
+    const people = plazaPeople(area, avoid, keepOut, 150, 7);
+    assert.deepEqual(plazaPeople(area, avoid, keepOut, 150, 7), people);
+    assert.equal(people.length, 150);
+    for (const p of people) {
+        const at = [p.x, p.y];
+        assert.ok(insidePolygon(at, area), `off the plaza at ${at}`);
+        assert.ok(!(p.x > -40 && p.x < 40 && p.y > -10 && p.y < 10), `in a building at ${at}`);
+        assert.ok(!(p.x > 60 && p.y > 20), `in the kept-out site at ${at}`);
+    }
+    // Nowhere to stand: nobody, and no endless search.
+    assert.equal(plazaPeople(area, [{ x1: -200, x2: 200, y1: -200, y2: 200 }], null, 50, 7).length, 0);
+});
+
+test('rickshaws wait in rows at the kerb next to the campus, never on it', () => {
+    const stands = rickshawStands(NSU_SURROUNDINGS, NSU_SITE);
+    assert.deepEqual(rickshawStands(NSU_SURROUNDINGS, NSU_SITE), stands);
+    assert.ok(stands.length >= 20, `rickshaws: ${stands.length}`);
+    const roads = NSU_SURROUNDINGS.roads.filter((r) => !r.kind.startsWith('water-'));
+    for (const v of stands) {
+        const at = [v.x, v.y];
+        assert.equal(v.kind, 'rickshaw');
+        assert.ok(!inSite(at, NSU_SITE), `on the campus at ${at}`);
+        // Within a road, and within about 25 m of the campus's edge.
+        assert.ok(onCarriageway(at, roads), `off the road at ${at}`);
+        const dx = Math.max(NSU_SITE.x1 - v.x, 0, v.x - NSU_SITE.x2);
+        const dy = Math.max(NSU_SITE.y1 - v.y, 0, v.y - NSU_SITE.y2);
+        assert.ok(Math.hypot(dx, dy) <= 25, `${Math.hypot(dx, dy).toFixed(1)} m from the campus`);
+    }
+    assert.ok(rickshawStands(NSU_SURROUNDINGS, NSU_SITE, 1).length <= 12);
 });
