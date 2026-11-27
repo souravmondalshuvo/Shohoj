@@ -756,8 +756,9 @@ export function Component({
               real building, so it leaves more of the plot open than there is. Each neighbour is as
               tall as OpenStreetMap says where it has a storey count (few do) and otherwise a likely
               height for its plot. Their finishes, balconies, shops, signboards and rooftops, the
-              paving on the plot, the street trees, the traffic, the poles and cables, and the city
-              past 500 m out to the horizon are illustrative.
+              weathering on the tower, the paving on the plot, the street trees, the traffic, the
+              waiting rickshaws, the people, the poles and cables, and the city past 500 m out to
+              the horizon are illustrative.
             </p>
             <div className="campus-evidence-links">
               <a href="https://www.bracu.ac.bd/campus-360" target="_blank" rel="noreferrer">
