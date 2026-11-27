@@ -711,9 +711,10 @@ export function NsuCampus({ siteRoot = '../' }: NsuCampusProps = {}) {
               roads, water and green land within about 500 m, are from OpenStreetMap. How tall each
               building stands is OpenStreetMap&apos;s storey count where it has one (only a handful
               do) and otherwise a likely height for a plot that size. Their finishes, balconies,
-              shops, signboards and rooftops, the street trees, the traffic, the poles and cables,
-              the brick courses and paving joints on the campus itself, and the city past 500 m out
-              to the horizon are illustrative, not where anything really is.
+              shops, signboards and rooftops, the street trees, the traffic, the waiting rickshaws,
+              the people, the poles and cables, the brick courses and paving joints on the campus
+              itself, and the city past 500 m out to the horizon are illustrative, not where
+              anything really is.
             </p>
             <p>
               <strong>Timetable:</strong> NSU&apos;s section list for term {SNAPSHOT.term}, as
