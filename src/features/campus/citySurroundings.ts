@@ -55,12 +55,16 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   farCity,
   outlineArea,
+  pedestrians,
+  plazaPeople,
+  rickshawStands,
   roadTraffic,
   seeded,
   streetFront,
   streetPoles,
   streetTrees,
   urbanStoreys,
+  type Person,
   type Pole,
   type VehicleKind,
   type SiteRect,
@@ -165,14 +169,22 @@ export interface CitySetup {
   groundY: number;
   /** A small or slow device: half the trees and a nearer horizon. */
   light: boolean;
+  /**
+   * Open ground on the campus where people stand about (#1016): inside
+   * `area`, clear of `avoid` and `keepOut`, about `count` of them, their feet
+   * at scene height `y`. They are the campus's, so they go in `City.onSite`.
+   */
+  plazas?: ReadonlyArray<{ area: readonly SPoint[]; avoid: readonly SiteRect[]; keepOut?: SiteRect; count: number; y: number }>;
 }
 
 export interface City {
   group: Group;
   /** What lies on the ground. It never covers the campus's own site. */
   ground: Object3D[];
+  /** People on the campus's own plazas: the campus hides them when it opens its basements. */
+  onSite: Group;
   /** How many mapped buildings and trees stand, and how many far blocks. */
-  counts: { buildings: number; trees: number; far: number; vehicles: number; poles: number };
+  counts: { buildings: number; trees: number; far: number; vehicles: number; poles: number; people: number };
   dispose(): void;
 }
 
@@ -414,11 +426,20 @@ function vehicleGeometry(kind: VehicleKind): BufferGeometry {
         { size: [2.2, 0.35, 1.3], at: [0, 0.22, 0], shade: 0.12 },
       ]);
     case 'rickshaw':
+      // A cycle rickshaw (#1016): two big rear wheels under the passenger
+      // seat and its folding hood, a frame running forward to the driver's
+      // saddle over a single front wheel. Open underneath, not a block.
       return boxes([
-        { size: [1.1, 0.5, 1.05], at: [-0.3, 0.75, 0], shade: 0.5 },
-        { size: [1.0, 0.75, 1.15], at: [-0.35, 1.45, 0], shade: 1 },
-        { size: [1.0, 0.25, 0.25], at: [0.55, 0.55, 0], shade: 0.25 },
-        { size: [1.9, 0.5, 1.1], at: [0, 0.3, 0], shade: 0.12 },
+        { size: [0.66, 0.66, 0.05], at: [-0.35, 0.33, 0.5], shade: 0.1 },
+        { size: [0.66, 0.66, 0.05], at: [-0.35, 0.33, -0.5], shade: 0.1 },
+        { size: [0.6, 0.6, 0.05], at: [0.9, 0.3, 0], shade: 0.1 },
+        { size: [1.3, 0.06, 0.06], at: [0.3, 0.55, 0], shade: 0.15 },
+        { size: [0.4, 0.05, 0.9], at: [0.05, 0.45, 0], shade: 0.3 },
+        { size: [0.62, 0.3, 0.95], at: [-0.38, 0.78, 0], shade: 0.45 },
+        { size: [0.12, 0.55, 0.95], at: [-0.7, 1.05, 0], shade: 0.45 },
+        { size: [0.7, 0.55, 1.0], at: [-0.5, 1.4, 0], shade: 1 },
+        { size: [0.26, 0.08, 0.16], at: [0.62, 0.98, 0], shade: 0.1 },
+        { size: [0.05, 0.4, 0.05], at: [0.62, 0.75, 0], shade: 0.15 },
       ]);
     case 'bus':
       return boxes([
@@ -427,6 +448,53 @@ function vehicleGeometry(kind: VehicleKind): BufferGeometry {
         { size: [9.4, 0.55, 2.52], at: [0, 0.32, 0], shade: 0.12 },
       ]);
   }
+}
+
+/**
+ * Someone on foot at a distance, 1.67 m tall, facing +x: the clothes (legs a
+ * shade darker than the top) tinted per person, and the skin (head and hands,
+ * dark hair) toned per person. Two meshes, so a tint never reaches the skin.
+ */
+function personGeometry(): { clothes: BufferGeometry; skin: BufferGeometry } {
+  return {
+    clothes: boxes([
+      { size: [0.2, 0.8, 0.34], at: [0, 0.4, 0], shade: 0.55 },
+      { size: [0.24, 0.6, 0.42], at: [0, 1.1, 0], shade: 1 },
+    ]),
+    skin: boxes([
+      { size: [0.2, 0.22, 0.18], at: [0.01, 1.52, 0], shade: 1 },
+      { size: [0.21, 0.06, 0.19], at: [0, 1.64, 0], shade: 0.18 },
+      { size: [0.08, 0.1, 0.08], at: [0, 0.78, 0.24], shade: 1 },
+      { size: [0.08, 0.1, 0.08], at: [0, 0.78, -0.24], shade: 1 },
+    ]),
+  };
+}
+
+/** Everyday Dhaka clothes: white and cream panjabis and shirts, saris bright and deep, black burqas, office navy and grey. */
+const CLOTHES = ['#f2f0e8', '#f2f0e8', '#d9cfb8', '#7fa6c9', '#2c3e5c', '#6b2430', '#2f6b4f', '#c2307a', '#e07a2a', '#1f8f8f', '#e4c23a', '#1c1c1e', '#1c1c1e', '#8a8f96', '#b5523b'];
+const SKIN = ['#8d5a3c', '#a0694a', '#7a4b33', '#b07a58', '#6b4230'];
+
+/** Instanced people: clothes and skin, each tinted per person, standing at `y`. */
+function crowd(people: readonly Person[], y: number, shapes: { clothes: BufferGeometry; skin: BufferGeometry }, mat: Material): InstancedMesh[] {
+  if (people.length === 0) return [];
+  const clothes = new InstancedMesh(shapes.clothes, mat, people.length);
+  const skin = new InstancedMesh(shapes.skin, mat, people.length);
+  const q = new Quaternion();
+  const up = new Vector3(0, 1, 0);
+  people.forEach((p, k) => {
+    q.setFromAxisAngle(up, p.turn);
+    const s = p.height / 1.67;
+    const m = new Matrix4().compose(new Vector3(p.x, y, -p.y), q, new Vector3(s, s, s));
+    clothes.setMatrixAt(k, m);
+    skin.setMatrixAt(k, m);
+    clothes.setColorAt(k, new Color(CLOTHES[Math.floor(p.tone * CLOTHES.length) % CLOTHES.length] ?? '#f2f0e8'));
+    skin.setColorAt(k, new Color(SKIN[Math.floor(p.skin * SKIN.length) % SKIN.length] ?? '#8d5a3c'));
+  });
+  for (const m of [clothes, skin]) {
+    m.castShadow = true;
+    m.computeBoundingSphere();
+  }
+  return [clothes, skin];
 }
 
 /** Dhaka's paint: mostly white, silver and black cars; green CNGs; bright rickshaw hoods; liveried buses. */
@@ -625,7 +693,8 @@ export async function buildCity(setup: CitySetup): Promise<City> {
   await nextFrame();
   // ── Traffic: cars, CNGs, rickshaws and buses on the mapped roads ─────────
   await nextFrame();
-  const vehicles = roadTraffic(data, site, setup.light ? 2 : 1);
+  // The traffic, and rickshaws waiting for fares along the campus's edge (#1016).
+  const vehicles = [...roadTraffic(data, site, setup.light ? 2 : 1), ...rickshawStands(data, site)];
   const vehicleMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.25 }));
   const shapes: Record<VehicleKind, BufferGeometry> = {
     car: keep(vehicleGeometry('car')),
@@ -677,6 +746,22 @@ export async function buildCity(setup: CitySetup): Promise<City> {
     group.add(wires);
   }
 
+  // ── People: on the footpaths near the campus, and on its plazas ─────────
+  const personShapes = personGeometry();
+  keep(personShapes.clothes);
+  keep(personShapes.skin);
+  const personMat = keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
+  const walkers = pedestrians(data, site, 320, setup.light ? 2 : 1);
+  for (const mesh of crowd(walkers, groundY, personShapes, personMat)) group.add(mesh);
+  const onSite = new Group();
+  let standing = 0;
+  (setup.plazas ?? []).forEach((plaza, i) => {
+    const people = plazaPeople(plaza.area, plaza.avoid, plaza.keepOut ?? null, Math.round(plaza.count / (setup.light ? 2 : 1)), 5000 + i);
+    standing += people.length;
+    for (const mesh of crowd(people, plaza.y, personShapes, personMat)) onSite.add(mesh);
+  });
+  group.add(onSite);
+
   // ── The far city: one instanced box per block of flats ───────────────────
   const unit = keep(new BoxGeometry(1, 1, 1));
   const farMat = keep(farMaterial());
@@ -695,7 +780,8 @@ export async function buildCity(setup: CitySetup): Promise<City> {
   return {
     group,
     ground,
-    counts: { buildings: footprints.length, trees: trees.length, far: blocks.length, vehicles: vehicles.length, poles: poles.length },
+    onSite,
+    counts: { buildings: footprints.length, trees: trees.length, far: blocks.length, vehicles: vehicles.length, poles: poles.length, people: walkers.length + standing },
     dispose() {
       for (const d of disposables) d.dispose();
     },
