@@ -34,19 +34,27 @@
 // the scene is drawn into the composer's buffer, not the screen (no tone
 // mapping, linear colour: different shaders); GTAO draws it again in its own
 // normal material, which compile() never sees (it ignores overrideMaterial);
-// and each pass has full-screen shaders of its own.
+// and each pass has full-screen shaders of its own. On every quality, the sun's
+// shadow pass draws each mesh that casts a shadow again, in three's depth
+// material, which compile() never sees either: on an iPhone's first visit that
+// shader, built as the frame needed it, stopped the frame the people first
+// appear in for 1.4 s (a skinned mesh is a shader of its own).
 
 import {
   ACESFilmicToneMapping,
   AgXToneMapping,
+  BackSide,
   BoxGeometry,
   CineonToneMapping,
   ColorManagement,
   CustomToneMapping,
+  DoubleSide,
+  FrontSide,
   Group,
   HalfFloatType,
   LinearToneMapping,
   Mesh,
+  MeshDepthMaterial,
   NeutralToneMapping,
   PerspectiveCamera,
   PlaneGeometry,
@@ -57,10 +65,13 @@ import {
   Scene,
   Vector2,
   Vector3,
+  VSMShadowMap,
   WebGLRenderTarget,
   type Camera,
   type Material,
   type Object3D,
+  type Side,
+  type Texture,
   type ToneMapping,
   type WebGLRenderer,
 } from 'three';
@@ -94,6 +105,13 @@ export function pickQuality(renderer: WebGLRenderer, coarse: boolean): Quality {
   // "low" after about three seconds of slow frames (Finish.render).
   return 'high';
 }
+
+/** The side the shadow pass draws a material's mesh with (WebGLShadowMap). */
+const SHADOW_SIDE: Record<Side, Side> = {
+  [FrontSide]: BackSide,
+  [BackSide]: FrontSide,
+  [DoubleSide]: DoubleSide,
+};
 
 /** How far the sky is blurred before it lights the scene, in radians. */
 const SKY_BLUR = 0.04;
@@ -271,6 +289,12 @@ export class Finish {
   private gtao: GTAOPass | null = null;
   /** The passes' own shaders are compiled once; the scene's, per call. */
   private passesCompiled = false;
+  /**
+   * Depth materials the shadow pass's shaders were compiled with, kept for
+   * the zone's life: three deletes a shader when the last material using it
+   * is freed, and the shadow pass only takes these over when it first draws.
+   */
+  private readonly shadowMaterials = new Map<string, MeshDepthMaterial>();
   private tiltH: ShaderPass | null = null;
   private tiltV: ShaderPass | null = null;
   /** Seconds spent on slow frames lately, less a little for each quick one. */
@@ -345,7 +369,7 @@ export class Finish {
   async compile(root: Object3D): Promise<void> {
     const { renderer, camera, scene, composer } = this;
     if (!composer) {
-      await renderer.compileAsync(root, camera, scene);
+      await Promise.all([renderer.compileAsync(root, camera, scene), this.compileShadows(root)]);
       return;
     }
     // three keys a shader by the render target bound when it is compiled.
@@ -357,6 +381,7 @@ export class Finish {
       jobs.push(renderer.compileAsync(root, camera, scene));
       // As GTAO draws it: every mesh in the normal material.
       if (this.gtao) jobs.push(this.compileIn(root, this.gtao.normalMaterial));
+      jobs.push(this.compileShadows(root));
       if (!this.passesCompiled) {
         this.passesCompiled = true;
         jobs.push(this.compilePasses(composer, previous));
@@ -383,6 +408,99 @@ export class Finish {
       for (const [mesh, material] of own) mesh.material = material;
     }
   }
+  /**
+   * As the sun's shadow pass draws `root`: each mesh that casts a shadow in
+   * the depth material three would give it (WebGLShadowMap's getDepthMaterial,
+   * three r187: the side turned over, and the texture, alpha test and
+   * displacement of the mesh's own material), into a render target.
+   */
+  private compileShadows(root: Object3D): Promise<unknown> {
+    const { renderer, scene } = this;
+    if (!renderer.shadowMap.enabled || renderer.shadowMap.type === VSMShadowMap) {
+      return Promise.resolve();
+    }
+    let casting = false;
+    scene.traverseVisible((object) => {
+      const light = object as Object3D & { isLight?: boolean; isPointLight?: boolean };
+      // A point light's shadow is drawn in another material; the zone has none.
+      if (light.isLight && light.castShadow && !light.isPointLight) casting = true;
+    });
+    if (!casting) return Promise.resolve();
+    const own: [Mesh, Mesh['material']][] = [];
+    root.traverse((object) => {
+      if (!(object instanceof Mesh) || !object.castShadow) return;
+      const material = object.material;
+      own.push([object, material]);
+      const custom = object.customDepthMaterial as Material | undefined;
+      object.material =
+        custom ??
+        (Array.isArray(material)
+          ? material.map((each) => this.shadowMaterial(each))
+          : this.shadowMaterial(material));
+    });
+    if (own.length === 0) return Promise.resolve();
+    // The shadow pass draws into the light's shadow map; three keys a shader
+    // by whether a target is bound, not by which. It draws with no scene of
+    // its own (an empty stand-in, without fog): a depth material ignores fog,
+    // but whether the scene has fog is still part of the key, so the fog is
+    // set aside while these compile. The scene stays the source of the lights.
+    const bound = new WebGLRenderTarget(1, 1);
+    const previous = renderer.getRenderTarget();
+    const fog = scene.fog;
+    try {
+      renderer.setRenderTarget(bound);
+      scene.fog = null;
+      // compile() runs within the call; only the wait for the GPU is later.
+      return renderer.compileAsync(root, this.camera, scene);
+    } finally {
+      scene.fog = fog;
+      renderer.setRenderTarget(previous);
+      for (const [mesh, material] of own) mesh.material = material;
+      bound.dispose();
+    }
+  }
+
+  /** The depth material the shadow pass would draw `material` with. */
+  private shadowMaterial(material: Material): MeshDepthMaterial {
+    const source = material as Material & {
+      map?: Texture | null;
+      alphaMap?: Texture | null;
+      displacementMap?: Texture | null;
+      displacementScale?: number;
+      displacementBias?: number;
+      wireframe?: boolean;
+    };
+    const side: Side = material.shadowSide ?? SHADOW_SIDE[material.side];
+    const alphaTest = material.alphaToCoverage ? 0.5 : material.alphaTest;
+    const key = [
+      side,
+      source.map?.uuid,
+      source.alphaMap?.uuid,
+      alphaTest,
+      source.displacementMap?.uuid,
+      source.displacementScale,
+      source.wireframe,
+      material.clipShadows,
+      material.clippingPlanes?.length ?? 0,
+    ].join('|');
+    let depth = this.shadowMaterials.get(key);
+    if (!depth) {
+      depth = new MeshDepthMaterial();
+      depth.side = side;
+      depth.alphaTest = alphaTest;
+      depth.map = source.map ?? null;
+      depth.alphaMap = source.alphaMap ?? null;
+      depth.displacementMap = source.displacementMap ?? null;
+      depth.displacementScale = source.displacementScale ?? 1;
+      depth.displacementBias = source.displacementBias ?? 0;
+      depth.wireframe = source.wireframe ?? false;
+      depth.clipShadows = material.clipShadows;
+      depth.clippingPlanes = material.clippingPlanes;
+      depth.clipIntersection = material.clipIntersection;
+      this.shadowMaterials.set(key, depth);
+    }
+    return depth;
+  }
 
   /**
    * Every pass's full-screen shaders: the last pass's as drawn to the screen
@@ -393,7 +511,11 @@ export class Finish {
     screen: WebGLRenderTarget | null,
   ): Promise<unknown> {
     const { renderer, camera } = this;
+    // Shaped as the passes' own full-screen triangle is: a position and a uv,
+    // no normal. A normal is part of a shader's key (HAS_NORMAL), and with one
+    // every pass but the output compiled again on the first frame.
     const quad = new PlaneGeometry(2, 2);
+    quad.deleteAttribute('normal');
     const offscreen = new Group();
     const onscreen = new Group();
     const passes = composer.passes.filter((pass) => pass.enabled);
@@ -455,5 +577,7 @@ export class Finish {
 
   dispose(): void {
     this.dropComposer();
+    for (const material of this.shadowMaterials.values()) material.dispose();
+    this.shadowMaterials.clear();
   }
 }
